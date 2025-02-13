@@ -4,10 +4,11 @@ import { useState } from "react";
 import { signIn } from "../../api/auth";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function LoginForm() {
     const navigate = useNavigate();
-
+    const { login } = useAuth();
     const [data, setData] = useState({
         email: "",
         password: "",
@@ -30,7 +31,7 @@ export default function LoginForm() {
             // Llamar a la API para iniciar sesión
             await signIn(data.email, data.password);
             alert("Inicio de sesión exitoso");
-            navigate("/");
+            navigate("/profile");
         } catch (error) {
             alert("Credenciales incorrectas");
             console.error("Error en el inicio de sesión:", error);

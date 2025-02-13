@@ -1,6 +1,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShoppingCart, faUser } from "@fortawesome/free-solid-svg-icons";
 import { NavLink } from "react-router-dom";
+import Menu from "./Menu";
 
 export default function Header() {
     return (
@@ -51,26 +52,8 @@ export default function Header() {
                         </button>
 
                         {/* Menú desplegable */}
-                        <div className="absolute right-0 w-52 bg-amber-400 shadow-lg rounded-lg py-2 text-gray-800 hidden group-hover:block z-10">
-                            <NavLink
-                                to="/login"
-                                className="block px-4 py-2 hover:bg-gray-200"
-                            >
-                                Iniciar sesión
-                            </NavLink>
-                            <NavLink
-                                to="/register"
-                                className="block px-4 py-2 hover:bg-gray-200"
-                            >
-                                Registrarse
-                            </NavLink>
-                            <NavLink
-                                to="#"
-                                className="block px-4 py-2 hover:bg-gray-200"
-                            >
-                                Cerrar sesión
-                            </NavLink>
-                        </div>
+                        <Menu />
+                        
                     </div>
                 </div>
             </nav>
