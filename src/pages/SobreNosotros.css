@@ -2,12 +2,13 @@
 .sobre-nosotros-container {
     min-height: 100vh;
     width: 100%;
-    background-color: #D1D0CF;
+    background-color: #f0f0f0;
     /* Color del fondo según la imagen */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: start;
+    padding-top: 10rem;
 }
 
 /* Sentra la seccion xd*/
@@ -103,5 +104,5 @@
 .infotexto {
     font-size: 1.1rem;
     color: #555;
-    margin-bottom: 2rem;
+    margin-bottom: 5rem;
 }
