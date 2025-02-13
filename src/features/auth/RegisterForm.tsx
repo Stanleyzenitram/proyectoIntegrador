@@ -72,8 +72,8 @@ export default function RegisterForm() {
 
         try {
             await signUp(client);
-            alert("Registro exitoso");
-            navigate("/");
+            alert("Registro exitoso, confirme su correo electrónico antes de iniciar sesion.");
+            navigate("/login");
         } catch (err) {
             setError("Error en el registro.");
             console.error(err);

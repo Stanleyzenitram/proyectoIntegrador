@@ -1,4 +1,4 @@
-import  {supabase}  from "../services/supabase";
+import { supabase } from "../services/supabase";
 import type { Client } from "../types/index";
 
 /**
@@ -9,7 +9,7 @@ export const signUp = async (client: Client) => {
         // Crear usuario en Supabase Auth
         const { data, error } = await supabase.auth.signUp({
             email: client.email,
-            password: client.password
+            password: client.password,
         });
 
         if (error) throw error;
@@ -18,10 +18,9 @@ export const signUp = async (client: Client) => {
         const userId = data.user.id; // UUID generado por Supabase
 
         // Insertar en la tabla `clientes`
-        const { error: clienteError } = await supabase
-            .from("clientes")
-            .insert([{ 
-                uuid: userId, 
+        const { error: clienteError } = await supabase.from("clientes").insert([
+            {
+                uuid: userId,
                 nombre: client.name,
                 apellido: client.lastName,
                 email: client.email,
@@ -29,8 +28,9 @@ export const signUp = async (client: Client) => {
                 direccion: client.addressDetails,
                 tipo_cliente: client.idType,
                 rnc: client.idNumber.toString(),
-                fecha_registro: new Date()
-            }]);
+                fecha_registro: new Date(),
+            },
+        ]);
 
         if (clienteError) throw clienteError;
 
@@ -39,4 +39,13 @@ export const signUp = async (client: Client) => {
         console.error("Error en el registro:", err);
         throw err;
     }
+};
+
+export const signIn = async (email : string, password : string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+    });
+    
+    if (error) throw error;
 };
