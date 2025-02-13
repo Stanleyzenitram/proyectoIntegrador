@@ -15,6 +15,8 @@ export default function AppRouter() {
                 <Route element={<Layout />}>
                     <Route path="/" element={<HomePage />} index/>
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/sobreNosotros" element={<SobreNosotrosPage/>} />
                 </Route>
             </Routes>
         </BrowserRouter>
