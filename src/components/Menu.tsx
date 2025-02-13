@@ -26,7 +26,7 @@ export default function Menu() {
                         className="block px-4 py-2 hover:bg-gray-200"
                     >
                         <button
-                        className="w-full text-left hover:bg-gray-200 cursor-pointer"
+                        className="w-full text-left uppercase hover:bg-gray-200 cursor-pointer"
                             onClick={() => logout()}
                         >Cerrar sesion</button>
                     </NavLink>
