@@ -1,0 +1,107 @@
+/* Contenedor*/
+.sobre-nosotros-container {
+    min-height: 100vh;
+    width: 100%;
+    background-color: #D1D0CF;
+    /* Color del fondo según la imagen */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: start;
+}
+
+/* Sentra la seccion xd*/
+.sentroseccion {
+    padding: 4rem 1rem;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+/* titulos principales */
+.Printitle {  
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+/* modifica los subtitulos */
+.subtitulos {
+    font-size: 1.2rem;
+    color: #555;
+}
+
+/* Sección de Características */
+.espaciado{
+    width: 100%;
+    padding: 4rem 2rem;
+}
+
+/* Da formato en este caso a los rectangulos que se muetran en el medio de la pantalla */
+
+.rectangleformato {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+/* Da color en este caso a los rectangulos que se muetran en el medio de la pantalla */
+.cartaprin {
+    background: hsl(0, 0%, 100%);
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.iconosrectangulo {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+/* iconos de los rectangulos*/
+.icon {
+    width: 30px;
+    height: 30px;
+    color: #D89216;
+}
+/* Crea los titulos de los rectangulos */
+.titulos2{
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+/* Crea los subtitulos del titulo 2 */
+.subtitulos2 {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* Sección Información de la Empresa */
+
+.seccioninfo{
+    padding: 4rem 1rem;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+/* Crea los titulos de la informacion */
+.tituloinfo{
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+/* Crea los subtitulos de la informacion */
+
+.infotexto {
+    font-size: 1.1rem;
+    color: #555;
+    margin-bottom: 2rem;
+}
