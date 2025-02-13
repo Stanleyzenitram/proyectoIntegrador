@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 
 export default function Header() {
     return (
-        <div className="h-30 bg-amber-400 grid grid-cols-2 place-content-between">
+        <div className="h-30 bg-amber-400 grid grid-cols-2 place-content-between fixed top-0 left-0 w-full z-50">
             {/* Logo y Nombre */}
             <div className="flex items-center">
                 <NavLink to="/">
@@ -19,7 +19,7 @@ export default function Header() {
                     to="/"
                     className="text-2xl ml-4  text-amber-900 font-light hover:text-amber-600 transition"
                 >
-                    Tiles Import & Export S.R.L.
+                    <h1>Tiles Import & Export S.R.L.</h1>
                 </NavLink>
             </div>
             {/* Enlaces + Iconos */}
@@ -59,7 +59,7 @@ export default function Header() {
                                 Iniciar sesión
                             </NavLink>
                             <NavLink
-                                to="#"
+                                to="/register"
                                 className="block px-4 py-2 hover:bg-gray-200"
                             >
                                 Registrarse
