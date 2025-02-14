@@ -84,7 +84,7 @@ export default function RegisterForm() {
 
     return (
         <>
-            <div className="flex gap-2.5 relative h-full w-full flex-col py-20 pl-20 items-start mx-auto">
+            <div className="flex gap-2.5 relative h-full w-full flex-col py-20 pl-20 items-start mx-auto pt-45">
                 <h2 className="uppercase text-amber-900 font-medium text-2xl">
                     Creando una nueva cuenta
                 </h2>
@@ -104,7 +104,7 @@ export default function RegisterForm() {
                 </form>
             </div>
 
-            <div className="bg-gray-200 py-20 relative h-full w-full flex flex-col mx-auto items-start px-15">
+            <div className="bg-gray-200 py-20 relative h-full w-full flex flex-col mx-auto items-start px-15 pt-45">
                 <h3 className="uppercase text-amber-900 font-medium text-2xl ">
                     Ingrese sus datos de inicio de sesión
                 </h3>

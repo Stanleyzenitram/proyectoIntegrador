@@ -2,13 +2,13 @@ import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { signIn } from "../../api/auth";
-import type { Client } from "../../types/index";
 import { useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function LoginForm() {
-    
     const navigate = useNavigate();
-
+    const { login } = useAuth();
     const [data, setData] = useState({
         email: "",
         password: "",
@@ -31,7 +31,7 @@ export default function LoginForm() {
             // Llamar a la API para iniciar sesión
             await signIn(data.email, data.password);
             alert("Inicio de sesión exitoso");
-            navigate("/");
+            navigate("/profile");
         } catch (error) {
             alert("Credenciales incorrectas");
             console.error("Error en el inicio de sesión:", error);
@@ -39,7 +39,7 @@ export default function LoginForm() {
     };
     return (
         <>
-            <div className="flex gap-2.5 flex-col items-center mx-auto">
+            <div className="flex gap-2.5 flex-col items-center mx-auto shadow-lg p-5 mt-15 bg-gray-100 rounded-lg">
                 <h2 className="uppercase text-amber-900 font-medium text-2xl">
                     Iniciar sesion
                 </h2>
@@ -82,8 +82,21 @@ export default function LoginForm() {
                 {/*   PENDIENTE, TERMINAR LOGIN XD  */}
             </div>
 
-            <div className="flex flex-col items-center mx-auto">
-                <h2>¿AÚN NO ERES CLIENTE?</h2>
+            <div className="flex flex-col items-start mx-auto">
+                <h2 className="text-amber-900 font-medium text-2xl uppercase">
+                    ¿AÚN NO ERES CLIENTE?
+                </h2>
+                <p className="text-amber-900 font-light text-sm text-left text-wrap max-w-sm">
+                    ¿Es esta su primera experiencia de compra con nosotros? Le
+                    pediremos que por favor proporcione cierta información para
+                    que el pedido sea lo más seguro y fácil posible.
+                </p>
+                <button
+                    className="bg-amber-400 text-amber-900 ml-1 font-medium text-2xl py-2 mt-10 rounded-lg uppercase
+                    hover:bg-amber-500 hover: cursor-pointer p-5"
+                >
+                    <NavLink to="/register">Registrarse</NavLink>
+                </button>
             </div>
         </>
     );
