@@ -38,7 +38,10 @@ export default function Profile() {
         <div className="bg-gray-100 h-screen flex justify-center items-center">
             <h2>Perfil de Usuario</h2>
             {userData ? (
-                <pre>{JSON.stringify(userData, null, 2)}</pre>
+                <div>
+                    <pre>{JSON.stringify(userData, null, 2)}</pre>
+                </div>
+                
             ) : (
                 <p> Cargando datos...</p>
             )}
