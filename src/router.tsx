@@ -3,7 +3,7 @@ import HomePage from "./pages/Home";
 import LoginPage from "./pages/Login";
 import Layout from "./layouts/Layout";
 import Register from "./pages/Register";
-
+import Categoria from "./pages/Categorias";
 import { useAuth } from "./hooks/useAuth";
 import Profile from "./pages/Profile";
 import PrivateRoute from "./components/PrivateRoute";

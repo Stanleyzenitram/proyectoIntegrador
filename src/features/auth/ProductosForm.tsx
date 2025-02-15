@@ -188,7 +188,7 @@ export default function ProductoForm() {
             stock_actual: 0,
             descuento: 0,
             estado: true,
-            imagen: null,
+            imagen: "",
         });
     };
 
@@ -200,7 +200,7 @@ export default function ProductoForm() {
     return (
         <div className="flex space-x-4 p-4">
             {/* Formulario */}
-            <div className="w-1/2 p-4 border rounded-lg shadow-lg">
+            <div className="w-1/2 p-4 border rounded-lg shadow-lg overflow-y: scroll;">
                 <h2 className="text-xl font-bold mb-4">{isEditing ? "Editar Producto" : "Registrar Producto"}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input
@@ -286,27 +286,29 @@ export default function ProductoForm() {
                 </form>
             </div>
 
-            {/* Lista de Productos */}
-            <div className="w-1/2 p-4 border rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4">Productos Registrados</h2>
-                <ul>
-                    {productos.map((producto) => (
-                        <li key={producto.id_producto} className="flex justify-between items-center p-2 border-b">
-                            <div>
-                                <p className="font-semibold">{producto.nombre_producto}</p>
-                                <p className="text-sm text-gray-600">{producto.descripcion}</p>
-                                <p className="text-xs text-gray-500">Categoría: {producto.categoria?.nombre_categoria || "N/A"}</p>
-                                {producto.imagen && (
-                                    <img src={producto.imagen} alt={producto.nombre_producto} className="w-16 h-16 object-cover rounded" />
-                                )}
-                            </div>
-                            <button onClick={() => handleEdit(producto)} className="text-blue-500">
-                                <PencilIcon className="w-5 h-5" />
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+       
+<div className="w-1/2 p-4 border rounded-lg shadow-lg">
+    <h2 className="text-xl font-bold mb-4">Productos Registrados</h2>
+    <div className="max-h-96 overflow-y-auto"> 
+        <ul>
+            {productos.map((producto) => (
+                <li key={producto.id_producto} className="flex justify-between items-center p-2 border-b">
+                    <div>
+                        <p className="font-semibold">{producto.nombre_producto}</p>
+                        <p className="text-sm text-gray-600">{producto.descripcion}</p>
+                        <p className="text-xs text-gray-500">Categoría: {producto.categoria?.nombre_categoria || "N/A"}</p>
+                        {producto.imagen && (
+                            <img src={producto.imagen} alt={producto.nombre_producto} className="w-16 h-16 object-cover rounded" />
+                        )}
+                    </div>
+                    <button onClick={() => handleEdit(producto)} className="text-blue-500">
+                        <PencilIcon className="w-5 h-5" />
+                    </button>
+                </li>
+            ))}
+        </ul>
+    </div>
+</div>
         </div>
     );
 }
