@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../services/supabase";
 import { PencilIcon } from "@heroicons/react/24/solid";
+import { Categoria } from "../../types";
 
 interface Producto {
     id_producto?: number;
@@ -15,10 +16,6 @@ interface Producto {
     categoria?: { nombre_categoria: string }; // Relación con la tabla de categorías
 }
 
-interface Categoria {
-    id_categoria: number;
-    nombre_categoria: string;
-}
 
 export default function ProductoForm() {
     const [formData, setFormData] = useState<Producto>({

@@ -15,6 +15,7 @@ export default function CategoriaForm() {
     });
     const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [isEditing, setIsEditing] = useState(false);
+
     useEffect(() => {
         fetchCategorias();
     }, []);

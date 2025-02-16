@@ -1,15 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../services/supabase";
 import { PencilIcon } from "@heroicons/react/24/solid";
+import { Proveedor } from "../../types";
 
-interface Proveedor {
-    id_proveedor?: number;
-    nombre_proveedor: string;
-    contacto: string;
-    telefono: string;
-    correo: string;
-    direccion: string;
-}
 
 export default function ProveedorForm() {
     const [formData, setFormData] = useState<Proveedor>({
@@ -179,3 +172,6 @@ export default function ProveedorForm() {
         </div>
     );
 }
+
+
+
