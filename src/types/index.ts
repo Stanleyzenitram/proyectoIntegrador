@@ -22,6 +22,9 @@ export interface Proveedor {
 
 export interface Producto {
     id_producto: number;
+    id_categoria: number;
+        id_estilo: number;
+        id_materiales: number;
     nombre_producto: string;
     descripcion: string;
     precio: number;
@@ -30,6 +33,8 @@ export interface Producto {
     estado: boolean;
     imagen?: string | null;
     categoria?: { nombre_categoria: string };
+    estilo?: { nombre_estilo: string }; 
+    material?: { nombre_materiales: string };
 }
 
 export interface Estilo {

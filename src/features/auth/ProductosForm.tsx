@@ -10,7 +10,7 @@
         nombre_producto: string; // NO SE PUEDE MOVER AL INDEX PORQUE SE LE FALTAN LOS ID DE LOS FORAIN KEY 
         id_categoria: number;
         id_estilo: number; 
-        id_material: number; 
+        id_materiales: number; 
         descripcion: string;
         precio: number;
         stock_actual: number;
@@ -28,7 +28,7 @@
             nombre_producto: "",
             id_categoria: 0,
             id_estilo: 0,
-            id_material: 0,
+            id_materiales: 0,
             descripcion: "",
             precio: 0,
             stock_actual: 0,
@@ -64,6 +64,7 @@ const fetchMateriales = async () => {
     if (error) {
         console.error("❌ Error obteniendo materiales:", error.message);
     } else {
+        console.log("✅ Materiales obtenidos:", data); // <-- Verifica qué datos llegan
         setMateriales(data || []);
     }
 };
@@ -173,7 +174,7 @@ const fetchProductos = async () => {
                         nombre_producto: formData.nombre_producto,
                         id_categoria: formData.id_categoria,
                         id_estilo: formData.id_estilo, // Agregar id_estilo
-                        id_material: formData.id_material, // Agregar id_material
+                        id_materiales: formData.id_materiales, // Agregar id_material
                         descripcion: formData.descripcion,
                         precio: formData.precio,
                         stock_actual: formData.stock_actual,
@@ -197,7 +198,7 @@ const fetchProductos = async () => {
                         nombre_producto: formData.nombre_producto,
                         id_categoria: formData.id_categoria,
                         id_estilo: formData.id_estilo, // Agregar id_estilo
-                        id_material: formData.id_material, // Agregar id_material
+                        id_materiales: formData.id_materiales, // Agregar id_material
                         descripcion: formData.descripcion,
                         precio: formData.precio,
                         stock_actual: formData.stock_actual,
@@ -224,7 +225,7 @@ const fetchProductos = async () => {
                 nombre_producto: "",
                 id_categoria: 0,
                 id_estilo: 0,
-                id_material: 0,
+                id_materiales: 0,
                 descripcion: "",
                 precio: 0,
                 stock_actual: 0,
@@ -284,8 +285,8 @@ const fetchProductos = async () => {
 </select>
 
 <select
-    name="id_material"
-    value={formData.id_material}
+    name="id_materiales"  // <-- Cambiar a "id_materiales"
+    value={formData.id_materiales}
     onChange={handleChange}
     className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
     required
