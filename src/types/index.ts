@@ -11,6 +11,19 @@ export interface Client {
     password: string;
     confirmPassword: string;
 }
+
+export interface Empleado{
+    id_usuario?: number;
+    name: string;
+    lastName: string;
+    cedula: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    phoneNumber: string;
+    rol: string;
+}
+
 export interface Proveedor {
     id_proveedor?: number;
     nombre_proveedor: string;

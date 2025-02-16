@@ -8,6 +8,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import Provedor from "./pages/Proveedores";
 import Estilo from "./pages/Estilos";
 import Estilos from "./pages/Estilos";
+import Empleados from "./pages/Empleados";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -20,6 +21,8 @@ export default function AppRouter() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<Estilo />} />
                     <Route path="/sobreNosotros" element={<Estilos/>} />
+                    <Route path="/proveedores" element={<Provedor />} />
+                    <Route path="/empleados" element={<Empleados />} />
 
                     {/* Rutas protegidas */}
                     <Route element={<PrivateRoute />}>
