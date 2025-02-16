@@ -22,7 +22,6 @@ export interface Proveedor {
 
 export interface Producto {
     id_producto: number;
-    id_categoria: number;
     nombre_producto: string;
     descripcion: string;
     precio: number;

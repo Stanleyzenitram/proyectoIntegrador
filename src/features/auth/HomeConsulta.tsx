@@ -51,7 +51,7 @@ export default function Home() {
         const { data, error } = await query;
 
         if (error) {
-            console.error("❌ Error en la consulta:", error.message);
+            console.error("Error en la consulta:", error.message);
             return;
         }
 
@@ -62,7 +62,7 @@ export default function Home() {
         const { data, error } = await supabase.from("categorias").select("id_categoria, nombre_categoria");
 
         if (error) {
-            console.error("❌ Error al cargar categorías:", error.message);
+            console.error(" Error al cargar categorías:", error.message);
             return;
         }
 
