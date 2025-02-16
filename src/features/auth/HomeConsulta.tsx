@@ -84,7 +84,7 @@ export default function Home() {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4 pt-70">
             <h1 className="text-2xl font-bold mb-4">Buscar Productos</h1>
             
             {/* 🔹 Buscador */}
