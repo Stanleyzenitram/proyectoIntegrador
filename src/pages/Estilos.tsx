@@ -1,10 +1,9 @@
 import EstiloForm from "../features/auth/EstilosMaterialesCategorialForm";
-import Home from "../features/auth/HomeConsulta";
 
-export default function HomePage() {
+export default function Estilos() {
     return (
         <div className="bg-gray-100 h-screen flex justify-center items-center">
-                   <Home />
+            <EstiloForm />
         </div>
     );
 }
