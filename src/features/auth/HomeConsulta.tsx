@@ -8,7 +8,6 @@ export default function Home() {
     const [productos, setProductos] = useState<Producto[]>([]);
     const [categories, setCategories] = useState<{ id_categoria: string; nombre_categoria: string }[]>([]);
     const [selectedCategory, setSelectedCategory] = useState("");
-
     // 🔹 Estados para el rango de precios
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
