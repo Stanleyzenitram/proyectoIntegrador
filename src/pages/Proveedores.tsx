@@ -1,5 +1,5 @@
 
-import EstiloMaterialForm from "../features/auth/EstilosMaterialesCategorialForm";
+import EstiloMaterialForm from "../features/auth/EstilosForm";
 
 export default function Proveedor() {
     return (

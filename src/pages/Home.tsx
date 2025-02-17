@@ -1,4 +1,4 @@
-import EstiloForm from "../features/auth/EstilosMaterialesCategorialForm";
+import EstiloForm from "../features/auth/EstilosForm";
 import Home from "../features/auth/HomeConsulta";
 
 export default function HomePage() {

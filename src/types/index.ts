@@ -21,21 +21,25 @@ export interface Proveedor {
 }
 
 export interface Producto {
-    id_producto: number;
-    id_categoria: number;
-        id_estilo: number;
-        id_materiales: number;
+    id_producto: string;
     nombre_producto: string;
     descripcion: string;
     precio: number;
     stock_actual: number;
-    descuento: number;
-    estado: boolean;
-    imagen?: string | null;
-    categoria?: { nombre_categoria: string };
-    estilo?: { nombre_estilo: string }; 
-    material?: { nombre_materiales: string };
-}
+    imagen?: string;
+    material?: {
+      id_materiales: string;
+      nombre_materiales: string;
+    };
+    estilo?: {
+      id_estilo: string;
+      nombre_estilo: string;
+    };
+    categoria?: {
+      id_categoria: string;
+      nombre_categoria: string;
+    };
+  }
 
 export interface Estilo {
     id_estilo?: number;
