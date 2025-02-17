@@ -88,9 +88,9 @@ export default function Home() {
             {/* Navigation Bar con gradiente y sombra */}
             <div className="container mx-auto px-4 py-6">
                 <div className="flex justify-between items-center mb-6">
-                    <div className="flex-1 max-w-xl">
+                    <div className="flex-1 max-w-xl mt-32">
                         <div className="relative">
-                            <div className="relative w-full">
+                            
                                 <input
                                     type="text"
                                     placeholder={`${productos.length} productos encontrados`}
@@ -98,7 +98,7 @@ export default function Home() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
-                                            fetchProductos(); // 🔹 Ejecuta la búsqueda cuando presionas Enter
+                                            fetchProductos(); 
                                         }
                                     }}
                                     className="pr-10 pl-4 h-12 text-lg shadow-sm border border-gray-300 rounded-md focus:border-amber-500 focus:ring-amber-500 w-full"
@@ -109,7 +109,7 @@ export default function Home() {
                                 >
                                     <Search className="h-6 w-6" />
                                 </button>
-                            </div>
+                            
 
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         </div>
