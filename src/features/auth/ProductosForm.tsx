@@ -241,7 +241,7 @@ const fetchProductos = async () => {
         };
 
         return (
-            <div className="flex space-x-4 p-4">
+            <div className="flex space-x-4 pt-30 p-4">
                 {/* Formulario */}
                 <div className="w-1/2 p-4 border rounded-lg shadow-lg overflow-y: scroll;">
                     <h2 className="text-xl font-bold mb-4">{isEditing ? "Editar Producto" : "Registrar Producto"}</h2>

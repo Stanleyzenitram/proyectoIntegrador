@@ -84,7 +84,7 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+        <div className="min-h-screen bg-gradient-to-b pt-35 from-gray-50 to-gray-100">
             {/* Navigation Bar con gradiente y sombra */}
             <div className="container mx-auto px-4 py-6">
                 <div className="flex justify-between items-center mb-6">
