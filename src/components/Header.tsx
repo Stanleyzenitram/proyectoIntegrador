@@ -3,6 +3,7 @@ import { faShoppingCart, faUser } from "@fortawesome/free-solid-svg-icons";
 import { NavLink } from "react-router-dom";
 import Menu from "./Menu";
 import { useAuth } from "../hooks/useAuth";
+import MenuMant from "./MenuMant";
 
 export default function Header() {
     const { user } = useAuth();
@@ -71,7 +72,10 @@ export default function Header() {
                         <Menu />
                     </div>
                 </div>
+                
             </nav>
+            {/* Menu mantenimientos */}
+            <MenuMant/>
         </div>
     );
 }
