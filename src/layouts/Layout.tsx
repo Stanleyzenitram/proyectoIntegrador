@@ -5,7 +5,7 @@ export default function Layout() {
         <>
             <Header />
             {/*pt-30 */}
-            <main className="container mx-auto  ">
+            <main className="container mx-auto pt-25 ">
                 <Outlet />
             </main>
         </>
