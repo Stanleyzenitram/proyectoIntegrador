@@ -87,42 +87,7 @@ export default function Home() {
         <div className="min-h-screen bg-gradient-to-b pt-35 from-gray-50 to-gray-100">
             {/* Navigation Bar con gradiente y sombra */}
             <div className="container mx-auto px-4 py-6">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex-1 max-w-xl mt-32">
-                        <div className="relative">
-                            
-                                <input
-                                    type="text"
-                                    placeholder={`${productos.length} productos encontrados`}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            fetchProductos(); 
-                                        }
-                                    }}
-                                    className="pr-10 pl-4 h-12 text-lg shadow-sm border border-gray-300 rounded-md focus:border-amber-500 focus:ring-amber-500 w-full"
-                                />
-                                <button
-                                    onClick={fetchProductos} // 🔹 Ejecuta la búsqueda al hacer clic en el icono
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                >
-                                    <Search className="h-6 w-6" />
-                                </button>
-                            
-
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        </div>
-                    </div>
-                    <div className="ml-4">
-                        <button
-                            onClick={() => setOrderAsc(!orderAsc)}
-                            className="h-12 px-4 bg-gray-100 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-200 text-gray-700 font-medium transition"
-                        >
-                            Precio - {orderAsc ? "Ascendente ↑" : "Descendente ↓"}
-                        </button>
-                    </div>
-                </div>
+               
             </div>
 
             <div className="container mx-auto px-4 pb-12">
