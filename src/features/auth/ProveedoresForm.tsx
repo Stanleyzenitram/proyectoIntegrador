@@ -3,7 +3,6 @@ import { supabase } from "../../services/supabase";
 import { PencilIcon } from "@heroicons/react/24/solid";
 import { Proveedor } from "../../types";
 
-
 export default function ProveedorForm() {
     const [formData, setFormData] = useState<Proveedor>({
         nombre_proveedor: "",

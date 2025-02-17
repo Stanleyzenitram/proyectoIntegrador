@@ -5,10 +5,12 @@ import Layout from "./layouts/Layout";
 import { useAuth } from "./hooks/useAuth";
 import Profile from "./pages/Profile";
 import PrivateRoute from "./components/PrivateRoute";
-import Provedor from "./pages/Proveedores";
+
 import Estilo from "./pages/Estilos";
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
+
+import Producto from "./pages/Productos";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -20,9 +22,9 @@ export default function AppRouter() {
                     <Route path="/" element={<HomePage />} index/>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<Estilo />} />
-                    <Route path="/sobreNosotros" element={<Estilos/>} />
-                    <Route path="/proveedores" element={<Provedor />} />
+                    <Route path="/sobreNosotros" element={<Estilos/>} />                
                     <Route path="/empleados" element={<Empleados />} />
+                    <Route path="/sobreNosotros" element={<Producto/>} />
 
                     {/* Rutas protegidas */}
                     <Route element={<PrivateRoute />}>
