@@ -1,38 +1,35 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../services/supabase";
 import type { Producto } from "../../types/index";
-
-import { Search, } from "lucide-react";
-
-
-
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 
 export default function Home() {
     const [searchTerm, setSearchTerm] = useState("");
-
     const [productos, setProductos] = useState<Producto[]>([]);
-
-    // 🔹 Estados para los filtros
     const [selectedMaterial, setSelectedMaterial] = useState("");
     const [selectedEstilo, setSelectedEstilo] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
-
-    // Estado para el rango de precios
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
-
-    // Estado para orden ascendente/descendente
     const [orderAsc, setOrderAsc] = useState(true);
-
-    // Estado para los datos de materiales, estilos y categorías
     const [materials, setMaterials] = useState<{ id_materiales: string; nombre_materiales: string }[]>([]);
     const [estilos, setEstilos] = useState<{ id_estilo: string; nombre_estilo: string }[]>([]);
     const [categories, setCategories] = useState<{ id_categoria: string; nombre_categoria: string }[]>([]);
+    const [searchInput, setSearchInput] = useState("");
 
-    
-                            {/*Como se comportaran los efectos del renderizado  */}
+    const { user } = useAuth();
+    const { addItem } = useCart();
+    const navigate = useNavigate();
+
+    const calcularPrecioConDescuento = (precio: number, descuento?: number) => {
+        if (!descuento) return precio;
+        return precio * (1 - descuento / 100);
+    };
+
     useEffect(() => {
-
         fetchProductos();
         fetchCategories();
         fetchMaterials();
@@ -41,11 +38,8 @@ export default function Home() {
 
     useEffect(() => {
         fetchProductos();
-    }, [selectedCategory, selectedMaterial, selectedEstilo, minPrice, maxPrice, orderAsc]);
+    }, [selectedCategory, selectedMaterial, selectedEstilo, minPrice, maxPrice, orderAsc, searchTerm]);
 
-
-
-                            {/* Controla el renderizado de la barra de busqueda por medio de la tabla producto, es la tabla principak   */}
     const fetchProductos = async () => {
         let query = supabase
             .from("productos")
@@ -61,7 +55,6 @@ export default function Home() {
 
         const { data, error } = await query;
         if (error) return console.error("Error en la consulta:", error.message);
-
         setProductos(data || []);
     };
 
@@ -83,190 +76,196 @@ export default function Home() {
         setEstilos(data || []);
     };
 
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSearchTerm(searchInput);
+    };
+
     return (
-        <div className="min-h-screen bg-gradient-to-b pt-35 from-gray-50 to-gray-100">
-            {/* Navigation Bar con gradiente y sombra */}
-            <div className="container mx-auto px-4 py-6">
-               
-            </div>
-
-            <div className="container mx-auto px-4 pb-12">
-                <div className="flex gap-8">
-
+        <div className="pt-32">
+            <div className="container mx-auto px-4">
+                {/* Barra superior con búsqueda y ordenamiento */}
+                <div className="flex justify-between items-center mb-4">
+                    <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+                        <input
+                            type="text"
+                            placeholder="Buscar productos..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="w-full p-2 pl-10 border rounded-lg"
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                            {productos.length} productos encontrados
+                        </span>
+                    </form>
+                    <select
+                        value={orderAsc ? "asc" : "desc"}
+                        onChange={(e) => setOrderAsc(e.target.value === "asc")}
+                        className="ml-4 p-2 border rounded-lg bg-gray-100 text-amber-900"
+                    >
+                        <option value="asc">Precio - Ascendente</option>
+                        <option value="desc">Precio - Descendente</option>
+                    </select>
                 </div>
-            </div>
 
-
-            {/* Search Bar con diseño mejorado */}
-            <div className="container mx-auto px-4 py-6">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex-1 max-w-xl">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder={`${productos.length} productos encontrados`}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        fetchProductos();
-                                    }
-                                }}
-                                className="pl-10 pr-10 h-12 text-lg shadow-sm border border-gray-200 focus:border-amber-500 focus:ring-amber-500 rounded-md w-full"
-                            />
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <div className="flex gap-6">
+                    {/* Sidebar de filtros */}
+                    <div className="w-64 bg-gray-100 p-4">
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Ordenar por</h3>
                         </div>
-                    </div>
 
-                    {/* boton de asc y desc cambia cuando se clickea   */}
-
-                    <div className="ml-4">
-                        <button
-                            onClick={() => setOrderAsc(!orderAsc)}
-
-                            className="h-12 bg-white shadow-sm hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium rounded-md px-4"
-                        >
-                            Precio - {orderAsc ? "Ascendente ↑" : "Descendente ↓"}
-                        </button>
-
-                    </div>
-                </div>
-            </div>
-
-            <div className="container mx-auto px-4 pb-12">
-                <div className="flex gap-8">
-                    {/* Sidebar diseño */}
-                    <div className="w-64 flex-shrink-0">
-                        <div className="bg-white rounded-lg shadow-sm p-6 sticky top-6">
-                            {/* Price Range */}
-                            <div className="mb-8">
-                                <h3 className="font-bold mb-4 text-gray-900">Rango de precio</h3>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="number"
-                                        placeholder="Min"
-                                        value={minPrice}
-                                        onChange={(e) => setMinPrice(e.target.value)}
-                                        className="w-24 border border-gray-200 rounded-md px-2 py-1 focus:ring-amber-500 focus:border-amber-500"
-                                    />
-                                    <span className="text-gray-400">-</span>
-                                    <input
-                                        type="number"
-                                        placeholder="Max"
-                                        value={maxPrice}
-                                        onChange={(e) => setMaxPrice(e.target.value)}
-                                        className="w-24 border border-gray-200 rounded-md px-2 py-1 focus:ring-amber-500 focus:border-amber-500"
-                                    />
-
-                                </div>
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Rango de precio</h3>
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="number"
+                                    placeholder="Min"
+                                    value={minPrice}
+                                    onChange={(e) => setMinPrice(e.target.value)}
+                                    className="w-20 p-2 border rounded bg-gray-200"
+                                />
+                                <span>-</span>
+                                <input
+                                    type="number"
+                                    placeholder="Max"
+                                    value={maxPrice}
+                                    onChange={(e) => setMaxPrice(e.target.value)}
+                                    className="w-20 p-2 border rounded bg-gray-200"
+                                />
                             </div>
+                        </div>
 
-
-                            {/* Categoria  con diseño de check  */}
-                            <div className="mb-8">
-                                <h3 className="font-bold mb-4 text-gray-900">Categorías</h3>
-                                <ul className="space-y-3">
-                                    {categories.map((category) => (
-                                        <li key={category.id_categoria}>
-                                            <label className="flex items-center space-x-3 text-gray-700 hover:text-amber-600 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedCategory === category.id_categoria}
-                                                    onChange={() =>
-                                                        setSelectedCategory(prev => (prev === category.id_categoria ? "" : category.id_categoria))
-                                                    }
-                                                    className="border-gray-300 checked:bg-amber-500 checked:border-amber-500"
-                                                />
-                                                <span className="text-sm font-medium">{category.nombre_categoria}</span>
-                                            </label>
-                                        </li>
-                                    ))}
-                                </ul>
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Categorías</h3>
+                            <div className="space-y-2">
+                                {categories.map((cat) => (
+                                    <div key={cat.id_categoria} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`cat-${cat.id_categoria}`}
+                                            checked={selectedCategory === cat.id_categoria}
+                                            onChange={(e) => setSelectedCategory(e.target.checked ? cat.id_categoria : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`cat-${cat.id_categoria}`} className="text-gray-700">
+                                            {cat.nombre_categoria}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
+                        </div>
 
-                            {/* Materials con diseño de check  */}
-                            <div className="mb-8">
-                                <h3 className="font-bold mb-4 text-gray-900">Material</h3>
-                                <ul className="space-y-3">
-                                    {materials.map((material) => (
-                                        <li key={material.id_materiales}>
-                                            <label className="flex items-center space-x-3 text-gray-700 hover:text-amber-600 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedMaterial === material.id_materiales}
-                                                    onChange={() =>
-                                                        setSelectedMaterial(prev => (prev === material.id_materiales ? "" : material.id_materiales))
-                                                    }
-                                                    className="border-gray-300 checked:bg-amber-500 checked:border-amber-500"
-                                                />
-                                                <span className="text-sm font-medium">{material.nombre_materiales}</span>
-                                            </label>
-                                        </li>
-                                    ))}
-                                </ul>
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Material</h3>
+                            <div className="space-y-2">
+                                {materials.map((mat) => (
+                                    <div key={mat.id_materiales} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`mat-${mat.id_materiales}`}
+                                            checked={selectedMaterial === mat.id_materiales}
+                                            onChange={(e) => setSelectedMaterial(e.target.checked ? mat.id_materiales : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`mat-${mat.id_materiales}`} className="text-gray-700">
+                                            {mat.nombre_materiales}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
+                        </div>
 
-
-                            <div className="mb-8">
-                                <h3 className="font-bold mb-4 text-gray-900">Estilo</h3>
-                                <ul className="space-y-3">
-                                    {estilos.map((estilo) => (
-                                        <li key={estilo.id_estilo}>
-                                            <label className="flex items-center space-x-3 text-gray-700 hover:text-amber-600 cursor-pointer transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedEstilo === estilo.id_estilo}
-                                                    onChange={() =>
-                                                        setSelectedEstilo(prev => (prev === estilo.id_estilo ? "" : estilo.id_estilo))
-                                                    }
-                                                    className="border-gray-300 checked:bg-amber-500 checked:border-amber-500"
-                                                />
-
-                                                <span className="text-sm font-medium">{estilo.nombre_estilo}</span>
-                                            </label>
-                                        </li>
-                                    ))}
-                                </ul>
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Estilo</h3>
+                            <div className="space-y-2">
+                                {estilos.map((est) => (
+                                    <div key={est.id_estilo} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`est-${est.id_estilo}`}
+                                            checked={selectedEstilo === est.id_estilo}
+                                            onChange={(e) => setSelectedEstilo(e.target.checked ? est.id_estilo : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`est-${est.id_estilo}`} className="text-gray-700">
+                                            {est.nombre_estilo}
+                                        </label>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Product Grid */}
+                    {/* Grid de productos */}
                     <div className="flex-1">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {productos.map((producto) => (
-                                <div key={producto.id_producto} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
-                                    {producto.imagen && (
-                                        <div className="relative overflow-hidden"> {/*  caracteristicas de la imagen que se usa  */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {productos.map((producto) => {
+                                const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
+
+                                return (
+                                    <div key={producto.id_producto} className="bg-white p-4 rounded-lg shadow-sm">
+                                        {producto.imagen && (
                                             <img
                                                 src={producto.imagen}
                                                 alt={producto.nombre_producto}
-                                                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                                className="w-full h-40 object-cover mb-2"
                                             />
+                                        )}
+                                        <h3 className="text-sm font-medium mb-2">{producto.nombre_producto}</h3>
+                                        
+                                        {/* Contenedor de precio y disponibilidad con altura fija */}
+                                        <div className="h-[60px] mb-2"> {/* Altura fija para mantener alineación */}
+                                            <div className="flex justify-between items-start">
+                                                {producto.descuento ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="text-gray-500 line-through text-sm">
+                                                            RD${producto.precio.toFixed(2)}
+                                                        </span>
+                                                        <span className="font-bold text-red-600">
+                                                            RD${precioFinal.toFixed(2)}
+                                                        </span>
+                                                        <span className="text-xs text-green-600 font-medium">
+                                                            {producto.descuento}% OFF
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="font-bold">
+                                                        RD${producto.precio.toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span className="text-sm text-green-600">
+                                                    {producto.stock_actual > 0 ? 'Disponible' : 'No disponible'}
+                                                </span>
+                                            </div>
                                         </div>
-                                    )}
 
-                                    {/* Aqui puedes agregar las caracteristicas de los productos  solo hace un div y copixar la class */}
-                                    <div className="p-4">
-                                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
-                                            {producto.nombre_producto}
-                                        </h3>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-lg font-bold text-amber-600">
-                                                RD${producto.precio.toFixed(2)}
-                                            </span>
-                                            <span className="text-sm font-medium px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                                                Disponible   {/* corregir esto despues */}
-                                            </span>
-                                        </div>
+                                        {/* Botón de agregar al carrito */}
+                                        <button
+                                            onClick={() => {
+                                                if (producto.stock_actual <= 0) {
+                                                    alert('Producto fuera de stock');
+                                                    return;
+                                                }
+                                                addItem(producto);
+                                            }}
+                                            disabled={producto.stock_actual <= 0}
+                                            className={`w-full py-2 rounded-lg transition-colors ${
+                                                producto.stock_actual > 0
+                                                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            {producto.stock_actual > 0 ? 'Agregar al carrito' : 'Fuera de stock'}
+                                        </button>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     );
-
 }

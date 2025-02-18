@@ -40,19 +40,20 @@ export interface Producto {
     precio: number;
     stock_actual: number;
     imagen?: string;
+    descuento?: number;
     material?: {
-      id_materiales: string;
-      nombre_materiales: string;
+        id_materiales: string;
+        nombre_materiales: string;
     };
     estilo?: {
-      id_estilo: string;
-      nombre_estilo: string;
+        id_estilo: string;
+        nombre_estilo: string;
     };
     categoria?: {
-      id_categoria: string;
-      nombre_categoria: string;
+        id_categoria: string;
+        nombre_categoria: string;
     };
-  }
+}
 
 export interface Estilo {
     id_estilo?: number;
@@ -69,4 +70,8 @@ export interface  Categoria {
     id_categoria?: number;
     nombre_categoria: string;
     descripcion: string;
+}
+
+export interface CartItem extends Producto {
+    quantity: number;
 }
