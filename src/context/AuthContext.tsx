@@ -10,7 +10,7 @@ interface AuthContextProps {
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
 }
-
+    
 // Crear el contexto
 export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 

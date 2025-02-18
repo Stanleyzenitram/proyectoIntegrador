@@ -15,6 +15,7 @@ export default function EmpleadosForm() {
         rol: "",
     });
 
+    
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [isEditing, setIsEditing] = useState(false);
 
