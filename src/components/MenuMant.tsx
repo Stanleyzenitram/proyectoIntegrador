@@ -14,7 +14,7 @@ export default function MenuMant() {
                 setRol(null); // Si no hay usuario, limpiar el rol
                 setLoading(false);
                 return;
-            }
+            }   
 
             try {
                 const { data, error } = await supabase

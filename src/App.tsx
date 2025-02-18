@@ -16,3 +16,5 @@ function App() {
 }
 
 export default App; 
+
+// esto sirve para como se va a comportar el nav es el controlador 

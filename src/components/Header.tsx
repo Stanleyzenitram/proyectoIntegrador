@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShoppingCart, faUser } from "@fortawesome/free-solid-svg-icons";
 import { NavLink, useNavigate } from "react-router-dom";
-import Menu from "./Menu";
 import { useAuth } from "../hooks/useAuth";
 import MenuMant from "./MenuMant";
 import Cart from "./Cart";
@@ -12,7 +11,7 @@ import MiniCart from './MiniCart';
 export default function Header() {
     const { user, logout } = useAuth();
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const { items, itemCount } = useCart();
+    const { itemCount } = useCart();
     const cartRef = useRef<HTMLDivElement>(null);
     const [showMiniCart, setShowMiniCart] = useState(false);
     const navigate = useNavigate();
@@ -84,8 +83,8 @@ export default function Header() {
                         <button 
                             onClick={() => setIsCartOpen(!isCartOpen)}
                             onMouseEnter={() => setShowMiniCart(true)}
-                            onMouseLeave={() => setShowMiniCart(false)}
                             className="w-12 h-12 flex items-center justify-center text-2xl text-amber-900 rounded-lg hover:text-amber-600 transition relative"
+                            id="cart-button"
                         >
                             <FontAwesomeIcon icon={faShoppingCart} size="lg" />
                             {itemCount > 0 && (
@@ -95,7 +94,13 @@ export default function Header() {
                             )}
                         </button>
 
-                        {showMiniCart && !isCartOpen && <MiniCart />}
+                        {showMiniCart && !isCartOpen && (
+                            <div 
+                                onMouseLeave={() => setShowMiniCart(false)}
+                            >
+                                <MiniCart onClose={() => setShowMiniCart(false)} />
+                            </div>
+                        )}
                         {isCartOpen && <Cart onClose={() => setIsCartOpen(false)} />}
                     </div>
 
@@ -151,7 +156,11 @@ export default function Header() {
                 </div>
             </nav>
             {/* Menu mantenimientos */}
-            {user && user.role === 'admin' && <MenuMant/>}
+            {user && (
+                <div className="w-full">
+                    <MenuMant />
+                </div>
+            )}
         </div>
     );
 }
