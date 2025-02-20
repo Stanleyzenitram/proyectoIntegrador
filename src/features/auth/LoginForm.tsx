@@ -2,7 +2,7 @@ import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { signIn } from "../../api/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -77,6 +77,12 @@ export default function LoginForm() {
                         value="Iniciar sesión"
                         onClick={handleSubmit}
                     />
+
+                    <div className="text-center mt-4">
+                        <Link to="/reset-password" className="text-blue-500 hover:text-blue-600">
+                            ¿Olvidaste tu contraseña?
+                        </Link>
+                    </div>
                 </form>
 
                 {/*   PENDIENTE, TERMINAR LOGIN XD  */}

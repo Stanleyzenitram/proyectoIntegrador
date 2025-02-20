@@ -13,7 +13,11 @@ import Clientes from "./pages/Clientes";
 import Proveedores from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
-import SobreNosotrosPage from "./pages/SobreNosotros";
+import  PasswordReset  from './components/PasswordReset';
+import UpdatePassword from './components/UpdatePassword';
+import SobreNosotrosPage from "./pages/sobreNosotros";
+
+
 
 
 export default function AppRouter() {
@@ -21,15 +25,20 @@ export default function AppRouter() {
 
     return (
         <Routes>
+                          <Route path="/update-password" element={<UpdatePassword />} />
             <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} index/>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
+                <Route path="/reset-password" element={<PasswordReset />} />
+                
+
                 {/* Rutas protegidas */}
                 <Route element={<PrivateRoute />}>
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/checkout" element={<Checkout />} />
+                   
                     
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />
