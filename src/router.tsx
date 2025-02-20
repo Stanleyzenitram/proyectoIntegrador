@@ -13,7 +13,7 @@ import Clientes from "./pages/Clientes";
 import Proveedores from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
-import SobreNosotrosPage from "./pages/sobreNosotros";
+import SobreNosotrosPage from "./pages/SobreNosotros";
 
 
 export default function AppRouter() {
