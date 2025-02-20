@@ -60,7 +60,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                       
                         <button
                             onClick={handleCheckout}
-                            className="w-full bg-amber-500 hover:pointer text-white py-2 px-4 rounded hover:bg-amber-600 transition-colors text-center"
+                            className="w-full bg-amber-500 hover:cursor-pointer text-white py-2 px-4 rounded hover:bg-amber-600 transition-colors text-center"
                         >
                             VER CARRITO DE COMPRAS
                         </button>

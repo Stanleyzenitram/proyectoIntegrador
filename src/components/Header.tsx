@@ -66,6 +66,7 @@ export default function Header() {
                     {/* Iconos */}
                     <div className="relative" ref={cartRef}>
                         <button 
+                            id="cart-button"
                             onClick={() => setIsCartOpen(!isCartOpen)}
                             onMouseEnter={() => setShowMiniCart(true)}
                             className="relative w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition"
