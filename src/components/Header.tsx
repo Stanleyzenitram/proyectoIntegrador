@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faShoppingCart, faUser, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import MenuMant from "./MenuMant";
 import Cart from "./Cart";
 import { useCart } from "../context/CartContext";
-import MiniCart from './MiniCart';
+import MiniCart from "./MiniCart";
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -14,6 +14,7 @@ export default function Header() {
     const { itemCount } = useCart();
     const cartRef = useRef<HTMLDivElement>(null);
     const [showMiniCart, setShowMiniCart] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -24,9 +25,7 @@ export default function Header() {
         }
 
         document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const handleLogout = async () => {
@@ -35,132 +34,102 @@ export default function Header() {
     };
 
     return (
-        <div className="h-30 bg-amber-400 grid grid-cols-2 place-content-between fixed top-0 left-0 w-full z-50">
-            {/* Logo y Nombre */}
-            <div className="flex items-center">
-                <NavLink to="/">
-                    <img
-                        src="/src/assets/images/icon.png"
-                        alt="icon"
-                        className="h-20 ml-4 px-5"
-                    />
-                </NavLink>
-
-                <NavLink
-                    to="/"
-                    className="text-2xl ml-4 text-amber-900 font-bold hover:text-amber-600 transition"
-                >
-                    <h1>Tiles Import & Export S.R.L.</h1>
-                </NavLink>
-            </div>
-            {/* Enlaces + Iconos */}
-            <nav className="flex items-center font-medium text-amber-900 uppercase place-content-end h-30">
-                <div className="flex items-center justify-end font-bold">
-                    <NavLink
-                        to="/"
-                        className={({ isActive }) =>
-                            isActive
-                                ? "text-amber-600 underline mr-6"
-                                : "mr-6 hover:text-amber-600 transition"
-                        }
-                    >
-                        Inicio
+        <header className="bg-amber-400 fixed top-0 left-0 w-full z-50 shadow-md">
+            <div className="flex justify-between items-center px-4 py-2 md:px-8">
+                {/* Logo y Nombre */}
+                <div className="flex items-center">
+                    <NavLink to="/">
+                        <img
+                            src="/src/assets/images/icon.png"
+                            alt="icon"
+                            className="h-14 md:h-20 mr-3"
+                        />
                     </NavLink>
-                    <NavLink
-                        to="/sobreNosotros"
-                        className={({ isActive }) =>
-                            isActive
-                                ? "text-amber-600 underline mr-6"
-                                : "mr-6 hover:text-amber-600 transition"
-                        }
-                    >
-                        Sobre nosotros
+                    <NavLink to="/" className="text-lg md:text-2xl text-amber-900 font-bold hover:text-amber-600 transition hidden sm:block">
+                        Tiles Import & Export S.R.L.
                     </NavLink>
                 </div>
-                {/* Iconos */}
-                <div className="flex items-center justify-end mr-4 relative">
-                    <div ref={cartRef} className="relative">
+
+                {/* Botón menú hamburguesa (móvil) */}
+                <button 
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="sm:hidden text-2xl text-amber-900 hover:text-amber-600 transition"
+                >
+                    <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
+                </button>
+
+                {/* Navegación (escritorio) */}
+                <nav className="hidden sm:flex items-center space-x-6 font-medium text-amber-900 uppercase">
+                    <NavLink to="/" className={({ isActive }) => isActive ? "text-amber-600 underline" : "hover:text-amber-600 transition"}>Inicio</NavLink>
+                    <NavLink to="/sobreNosotros" className={({ isActive }) => isActive ? "text-amber-600 underline" : "hover:text-amber-600 transition"}>Sobre nosotros</NavLink>
+
+                    {/* Iconos */}
+                    <div className="relative" ref={cartRef}>
                         <button 
                             onClick={() => setIsCartOpen(!isCartOpen)}
                             onMouseEnter={() => setShowMiniCart(true)}
-                            className="w-12 h-12 flex items-center justify-center text-2xl text-amber-900 rounded-lg hover:text-amber-600 transition relative"
-                            id="cart-button"
+                            className="relative w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition"
                         >
-                            <FontAwesomeIcon icon={faShoppingCart} size="lg" />
+                            <FontAwesomeIcon icon={faShoppingCart} />
                             {itemCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                                     {itemCount}
                                 </span>
                             )}
                         </button>
-
                         {showMiniCart && !isCartOpen && (
-                            <div 
-                                onMouseLeave={() => setShowMiniCart(false)}
-                            >
+                            <div onMouseLeave={() => setShowMiniCart(false)}>
                                 <MiniCart onClose={() => setShowMiniCart(false)} />
                             </div>
                         )}
                         {isCartOpen && <Cart onClose={() => setIsCartOpen(false)} />}
                     </div>
 
-                    {/* Icono de usuario con menú */}
+                    {/* Menú de usuario */}
                     <div className="group relative">
-                        <button className={`w-12 h-12 flex items-center justify-center text-2xl rounded-lg hover:text-amber-600 transition ${
-                            user ? 'text-amber-200' : 'text-amber-900'
-                        }`}>
-                            <FontAwesomeIcon icon={faUser} size="lg" />
+                        <button className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition ${user ? 'text-amber-200' : 'text-amber-900'}`}>
+                            <FontAwesomeIcon icon={faUser} />
                         </button>
-
-                        {/* Menú desplegable */}
-                        <div className="absolute right-0 w-52 bg-amber-400 shadow-lg py-2 text-gray-800 hidden group-hover:block z-10">
+                        <div className="absolute right-0 w-44 bg-amber-400 shadow-lg py-2 text-gray-800 hidden group-hover:block z-10 rounded-lg">
                             {user ? (
-                                <div>
-                                    <NavLink
-                                        to="/profile"
-                                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
-                                    >
-                                        Perfil
-                                    </NavLink>
-                                    <NavLink
-                                        to="/pedidos"
-                                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
-                                    >
-                                        Pedidos
-                                    </NavLink>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="block w-full text-left px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
-                                    >
-                                        Cerrar Sesión
-                                    </button>
-                                </div>
+                                <>
+                                    <NavLink to="/profile" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Perfil</NavLink>
+                                    <NavLink to="/pedidos" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Pedidos</NavLink>
+                                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 font-bold uppercase hover:bg-amber-500">Cerrar Sesión</button>
+                                </>
                             ) : (
-                                <div>
-                                    <NavLink
-                                        to="/login"
-                                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
-                                    >
-                                        Iniciar sesión
-                                    </NavLink>
-                                    <NavLink
-                                        to="/register"
-                                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
-                                    >
-                                        Registrarse
-                                    </NavLink>
-                                </div>
+                                <>
+                                    <NavLink to="/login" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Iniciar sesión</NavLink>
+                                    <NavLink to="/register" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Registrarse</NavLink>
+                                </>
                             )}
                         </div>
                     </div>
-                </div>
-            </nav>
-            {/* Menu mantenimientos */}
-            {user && (
-                <div className="w-full">
-                    <MenuMant />
-                </div>
+                </nav>
+            </div>
+
+            {/* Menú desplegable (móvil) */}
+            {isMenuOpen && (
+                <nav className="sm:hidden bg-amber-300 py-4 px-6 space-y-4 font-medium text-amber-900 uppercase">
+                    <NavLink to="/" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => setIsMenuOpen(false)}>Inicio</NavLink>
+                    <NavLink to="/sobreNosotros" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => setIsMenuOpen(false)}>Sobre nosotros</NavLink>
+                    {user ? (
+                        <>
+                            <NavLink to="/profile" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Perfil</NavLink>
+                            <NavLink to="/pedidos" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Pedidos</NavLink>
+                            <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left hover:text-amber-600 transition">Cerrar Sesión</button>
+                        </>
+                    ) : (
+                        <>
+                            <NavLink to="/login" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Iniciar sesión</NavLink>
+                            <NavLink to="/register" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Registrarse</NavLink>
+                        </>
+                    )}
+                </nav>
             )}
-        </div>
+
+            {/* Menú mantenimientos */}
+            {user && <MenuMant />}
+        </header>
     );
 }

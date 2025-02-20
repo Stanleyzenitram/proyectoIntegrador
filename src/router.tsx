@@ -7,13 +7,13 @@ import Profile from "./pages/Profile";
 import PrivateRoute from "./components/PrivateRoute";
 import Register from "./pages/Register";
 
-import Estilo from "./pages/Estilos";
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
 import Clientes from "./pages/Clientes";
 import Proveedores from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
+import SobreNosotrosPage from "./pages/sobreNosotros";
 
 
 export default function AppRouter() {
@@ -25,7 +25,7 @@ export default function AppRouter() {
                 <Route path="/" element={<HomePage />} index/>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<Register />} />
-
+                <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
                 {/* Rutas protegidas */}
                 <Route element={<PrivateRoute />}>
                     <Route path="/profile" element={<Profile />} />
