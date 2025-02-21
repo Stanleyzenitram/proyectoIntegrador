@@ -79,7 +79,7 @@ export default function LoginForm() {
                     />
 
                     <div className="text-center mt-4">
-                        <Link to="/reset-password" className="text-blue-500 hover:text-blue-600">
+                        <Link to="/reset-password" className="tborder-b border-amber-900 my-2 text-amber-900 focus:outline-none">
                             ¿Olvidaste tu contraseña?
                         </Link>
                     </div>
