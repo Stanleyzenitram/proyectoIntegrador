@@ -1,4 +1,4 @@
-import ProductoForm from "../features/auth/ProductosForm";
+import ProductoForm from "../features/mantenimientos/ProductosForm";
 
     export default function Producto() {
         return (

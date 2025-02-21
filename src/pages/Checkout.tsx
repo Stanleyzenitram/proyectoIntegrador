@@ -6,20 +6,9 @@ import { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';    
 import { useNavigate } from 'react-router-dom';
-
-interface Cliente {
-    nombre: string;
-    apellido: string;
-    telefono: string;
-    sector: string;
-    codigo_postal: string;
-    detalles_direccion: string;
-    tipo_documento: string;
-    numero_documento: string;
-    email: string;
-}
+import type {Cliente} from '../types/index';
 
 export default function Checkout() {
     const { items, total, clearCart } = useCart();
