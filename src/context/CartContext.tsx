@@ -8,6 +8,8 @@ interface CartContextType {
     removeItem: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     total: number;
+    tax: number;
+    totalAmount: number;
     totalWithDiscount: number;
     clearCart: () => void;
     itemCount: number;
@@ -107,16 +109,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const total = items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
-    
+
     const totalWithDiscount = items.reduce((sum, item) => {
         const itemTotal = item.precio * item.quantity;
         const discount = item.descuento ? (itemTotal * item.descuento) / 100 : 0;
         return sum + (itemTotal - discount);
     }, 0);
+    
+    const tax = totalWithDiscount * 0.18; // ITBIS (18%)
+    const totalAmount = totalWithDiscount + tax; // Total final con impuestos
 
     const clearCart = () => {
         setItems([]);
     };
+
 
     const value = {
         items,
@@ -124,6 +130,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem,
         updateQuantity,
         total,
+        tax,
+        totalAmount,
         totalWithDiscount,
         clearCart,
         itemCount

@@ -6,7 +6,7 @@ interface MiniCartProps {
 }
 
 const MiniCart = ({ onClose }: MiniCartProps) => {
-    const { items } = useCart();
+    const { items, removeItem } = useCart();
   
 
     const handleCartClick = () => {
@@ -26,7 +26,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
     };
 
     return (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 p-4">
+        <div className="absolute right-0 mt-2 w-xl bg-white rounded-lg shadow-xl z-50 p-4">
             <h3 className="text-lg font-bold text-amber-900 mb-4 border-b pb-2">
                 ÚLTIMOS PRODUCTOS AGREGADOS A SU CARRITO DE COMPRAS
             </h3>
@@ -53,6 +53,16 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                                         {item.quantity} Und
                                     </p>
                                 </div>
+                                <p className="font-medium text-amber-900">
+                                    RD${(item.precio * item.quantity).toFixed(2)}
+                                </p>
+                                {/*Elimiinar item */}
+                                <button
+                                    onClick={() => removeItem(item.id_producto)}
+                                    className="text-red-700 pr-3 cursor-pointer"
+                                >
+                                    X
+                                </button>
                             </div>
                         ))}
                     </div>

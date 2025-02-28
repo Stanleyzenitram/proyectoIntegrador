@@ -25,7 +25,7 @@ const Cart = ({ onClose }: CartProps) => {
             });
         } else {
             onClose();
-            navigate('/checkout');
+            navigate('/payment');
         }
     };
 

@@ -96,7 +96,7 @@ export default function Header() {
                                 <>
                                     <NavLink to="/profile" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Perfil</NavLink>
                                     <NavLink to="/pedidos" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Pedidos</NavLink>
-                                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 font-bold uppercase hover:bg-amber-500">Cerrar Sesión</button>
+                                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 font-bold uppercase hover:bg-amber-500 hover:cursor-pointer">Cerrar Sesión</button>
                                 </>
                             ) : (
                                 <>
@@ -118,7 +118,7 @@ export default function Header() {
                         <>
                             <NavLink to="/profile" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Perfil</NavLink>
                             <NavLink to="/pedidos" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Pedidos</NavLink>
-                            <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left hover:cursor-pointer hover:text-amber-600 transition">Cerrar Sesión</button>
+                            <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left hover:cursor-pointer hover:text-amber-600  hover:cursor-pointertransition">Cerrar Sesión</button>
                         </>
                     ) : (
                         <>
