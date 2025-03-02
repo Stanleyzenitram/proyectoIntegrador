@@ -75,3 +75,16 @@ export interface  Categoria {
 export interface CartItem extends Producto {
     quantity: number;
 }
+
+
+export interface Cliente {
+    nombre: string;
+    apellido: string;
+    telefono: string;
+    sector: string;
+    codigo_postal: string;
+    detalles_direccion: string;
+    tipo_documento: string;
+    numero_documento: string;
+    email: string;
+}

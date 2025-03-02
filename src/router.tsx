@@ -10,11 +10,12 @@ import Register from "./pages/Register";
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
 import Clientes from "./pages/Clientes";
-import Proveedores from "./pages/Proveedores";
+import Proveedor from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
 import  PasswordReset  from './components/PasswordReset';
 import UpdatePassword from './components/UpdatePassword';
+
 import SobreNosotrosPage from "./pages/sobreNosotros";
 import EditProfile from "./pages/EditProfile";
 
@@ -44,7 +45,7 @@ export default function AppRouter() {
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />
                     <Route path="/clientes" element={<Clientes />} />
-                    <Route path="/proveedores" element={<Proveedores />} />
+                    <Route path="/proveedores" element={<Proveedor />} />
                     <Route path="/productos" element={<Productos />} />
                     <Route path="/estilos" element={<Estilos />} />
                     

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../services/supabase";
-import type { Producto } from "../../types/index";
-import { useCart } from "../../context/CartContext";
-import { useAuth } from "../../hooks/useAuth";
+import { supabase } from "../services/supabase";
+import type { Producto } from "../types/index";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 

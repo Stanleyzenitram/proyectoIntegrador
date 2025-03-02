@@ -1,5 +1,5 @@
 
-import CategoriaForm from "../features/auth/CategoriasForm";
+import CategoriaForm from "../features/mantenimientos/CategoriasForm";
 
 export default function Categoria() {
     return (

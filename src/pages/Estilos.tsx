@@ -1,5 +1,5 @@
-import EstiloForm from "../features/auth/EstilosForm";
-import ProductoForm from "../features/auth/ProductosForm";
+import EstiloForm from "../features/mantenimientos/EstilosForm";
+import ProductoForm from "../features/mantenimientos/ProductosForm";
 
 export default function Estilos() {
     return (

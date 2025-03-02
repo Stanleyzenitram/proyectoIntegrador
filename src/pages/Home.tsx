@@ -1,5 +1,5 @@
 
-import Home from "../features/auth/HomeConsulta";
+import Home from "../features/HomeConsulta";
 
 export default function HomePage() {
     return (
