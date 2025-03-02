@@ -39,16 +39,18 @@ function getAccessToken() {
 const accessToken = getAccessToken();
 
 const PAYPAL_FUNCTION_URL = "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-paypal-order";
-
 const handlePayment = async () => {
   try {
+    // Abrimos la ventana en blanco antes de hacer la solicitud
+    const newWindow = window.open("", "_blank");
+
     const response = await fetch(PAYPAL_FUNCTION_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        'Authorization': `Bearer ${accessToken}`,  // Agregar el token JWT
+        'Authorization': `Bearer ${accessToken}`,  
       },
-      body: JSON.stringify({ amount: "10.00" }),
+      body: JSON.stringify({ amount: totalAmount.toFixed(2) }), // Enviar el total real
     });
 
     if (!response.ok) {
@@ -57,7 +59,15 @@ const handlePayment = async () => {
 
     const data = await response.json();
     console.log("Orden creada:", data);
-    
+
+    // Buscar el enlace de aprobación en la respuesta
+    const approveLink = data.links.find(link => link.rel === "approve")?.href;
+
+    if (approveLink && newWindow) {
+      newWindow.location.href = approveLink; // Asignar la URL a la ventana
+    } else {
+      throw new Error("No se encontró el enlace de aprobación de PayPal.");
+    }
   } catch (error) {
     console.error("Error en el pago:", error);
   }
