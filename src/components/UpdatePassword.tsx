@@ -31,7 +31,7 @@ export default function UpdatePassword() {
             setMessage('Contraseña actualizada exitosamente. Por favor, inicia sesión con tu nueva contraseña.');
             setError('');
             // Redirigir al login después de 3 segundos
-            setTimeout(() => navigate('/login'), 2000);
+            setTimeout(() => navigate('/login'), 1000);
         } catch (err: any) {
             setError(err.message);
             setMessage('');
