@@ -41,8 +41,18 @@ const accessToken = getAccessToken();
 const PAYPAL_FUNCTION_URL = "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-paypal-order";
 const handlePayment = async () => {
   try {
-    // Abrimos la ventana en blanco antes de hacer la solicitud
-    const newWindow = window.open("", "_blank");
+    // Dimensiones y opciones de la ventana emergente
+    const width = 600;
+    const height = 700;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
+
+    // Abrimos una ventana emergente vacía con tamaño específico
+    const newWindow = window.open(
+      "", 
+      "PayPalPopup", 
+      `width=${width},height=${height},top=${top},left=${left},resizable=no,scrollbars=yes`
+    );
 
     const response = await fetch(PAYPAL_FUNCTION_URL, {
       method: "POST",
@@ -50,7 +60,7 @@ const handlePayment = async () => {
         "Content-Type": "application/json",
         'Authorization': `Bearer ${accessToken}`,  
       },
-      body: JSON.stringify({ amount: totalAmount.toFixed(2) }), // Enviar el total real
+      body: JSON.stringify({ amount: totalAmount.toFixed(2) }),
     });
 
     if (!response.ok) {
@@ -64,7 +74,8 @@ const handlePayment = async () => {
     const approveLink = data.links.find(link => link.rel === "approve")?.href;
 
     if (approveLink && newWindow) {
-      newWindow.location.href = approveLink; // Asignar la URL a la ventana
+      newWindow.location.href = approveLink; // Asignamos la URL de PayPal al popup
+      newWindow.focus(); // Ponemos foco en la nueva ventana
     } else {
       throw new Error("No se encontró el enlace de aprobación de PayPal.");
     }
