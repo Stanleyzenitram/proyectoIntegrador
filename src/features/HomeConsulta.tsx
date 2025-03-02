@@ -82,7 +82,7 @@ export default function Home() {
     };
 
     return (
-        <div className="pt-40">
+        <div className="pt-120">
             <div className="container mx-auto px-4">
                 {/* Barra superior con búsqueda y ordenamiento */}
                 <div className="flex justify-between items-center mb-4">

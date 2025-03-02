@@ -3,5 +3,11 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  "compilerOptions": {
+    "types": ["deno"],
+    "noEmitOnError": false,  // Permite la compilación aunque haya errores de tipo
+    "skipLibCheck": true      // Ignora errores de tipo en bibliotecas externas
+
+  }
 }

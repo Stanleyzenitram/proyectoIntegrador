@@ -1,17 +1,68 @@
 import { NavLink } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import axios from "axios";
+import { useState } from "react";
+
 
 export default function Payment() {
+
   const {
     items,
     removeItem,
-    updateQuantity,
     total,
     tax,
     totalAmount,
     totalWithDiscount,
-    clearCart,
   } = useCart();
+
+
+
+function getAccessToken() {
+  for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const item = localStorage.getItem(key);
+
+      try {
+          const parsedItem = JSON.parse(item);
+          if (parsedItem && parsedItem.access_token) {
+              return parsedItem.access_token;
+          }
+      } catch (error) {
+          // Si no es un JSON válido, ignoramos y continuamos
+      }
+  }
+  console.log('No se encontró ningún token en localStorage.');
+  return null;
+}
+
+// Uso
+const accessToken = getAccessToken();
+
+const PAYPAL_FUNCTION_URL = "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-paypal-order";
+
+const handlePayment = async () => {
+  try {
+    const response = await fetch(PAYPAL_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${accessToken}`,  // Agregar el token JWT
+      },
+      body: JSON.stringify({ amount: "10.00" }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Error al crear la orden de PayPal");
+    }
+
+    const data = await response.json();
+    console.log("Orden creada:", data);
+    
+  } catch (error) {
+    console.error("Error en el pago:", error);
+  }
+};
+
 
   return (
     <div className="container h-full mx-auto grid place-items-center grid-cols-2 ">
@@ -139,6 +190,7 @@ export default function Payment() {
           type="submit"
           value="Continuar"
           className="bg-amber-900 text-white w-1/2 h-12 rounded-lg hover:bg-amber-600 transition cursor-pointer mt-5"
+          onClick={handlePayment}
         />
       </div>
     </div>
