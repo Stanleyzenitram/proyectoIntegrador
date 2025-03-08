@@ -79,7 +79,7 @@ export default function Home() {
     };
 
     return (
-        <div className="pt-24">
+        <div className="h-full">
             <div className="container mx-auto px-4">
                 {/* Barra superior responsiva */}
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">

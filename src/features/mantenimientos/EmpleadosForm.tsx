@@ -89,7 +89,7 @@ export default function EmpleadosForm() {
     
     console.log(empleados);
     return (
-        <div className="flex space-x-4 p-4 pt-30">
+        <div className="flex space-x-4 p-4 pt-40">
             {/* Formulario */}
             <div className="w-1/2 p-4 border rounded-lg shadow-lg">
                 <h2 className="text-xl font-bold mb-4 uppercase">

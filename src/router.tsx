@@ -13,16 +13,28 @@ import Clientes from "./pages/Clientes";
 import Proveedor from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
+<<<<<<< HEAD
 import PasswordReset from "./components/PasswordReset";
 import UpdatePassword from "./components/UpdatePassword";
 import SobreNosotrosPage from "./pages/SobreNosotros";
+=======
+import  PasswordReset  from './components/PasswordReset';
+import UpdatePassword from './components/UpdatePassword';
+
+import SobreNosotrosPage from "./pages/sobreNosotros";
+import EditProfile from "./pages/EditProfile";
+>>>>>>> a26e2ec0ab5edc5155a5c7e15483851b57a74e31
 
 export default function AppRouter() {
     const { user } = useAuth();
 
     return (
         <Routes>
+<<<<<<< HEAD
             <Route path="/update-password" element={<UpdatePassword />} />
+=======
+                          <Route path="/update-password" element={<UpdatePassword />} /> 
+>>>>>>> a26e2ec0ab5edc5155a5c7e15483851b57a74e31
             <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} index />
                 <Route path="/login" element={<LoginPage />} />
@@ -33,8 +45,13 @@ export default function AppRouter() {
                 {/* Rutas protegidas */}
                 <Route element={<PrivateRoute />}>
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/edit-profile" element={<EditProfile />} />
                     <Route path="/checkout" element={<Checkout />} />
+<<<<<<< HEAD
 
+=======
+                    
+>>>>>>> a26e2ec0ab5edc5155a5c7e15483851b57a74e31
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />
                     <Route path="/clientes" element={<Clientes />} />

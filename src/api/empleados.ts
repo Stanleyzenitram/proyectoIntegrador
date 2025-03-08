@@ -2,43 +2,11 @@ import { supabase } from "../services/supabase";
 import type { Empleado } from "../types/index";
 
 /**
- * Registra un usuario en Supabase Auth y lo vincula con la tabla `usuarios(empleados)`.
+ * Registra un usuario en Supabase Auth y lo vincula con la tabla `usuarios`.
  */
 export const crearEmpleado = async (empleado: Empleado) => {
     try {
-        console.log("🔍 Verificando si el correo ya existe en auth.users...");
-        const { data: existingAuthUser, error: authError } = await supabase
-            .from("auth.users")
-            .select("id")
-            .eq("email", empleado.email);
-
-        if (authError) {
-            console.error("❌ Error al verificar en auth.users:", authError.message);
-            throw authError;
-        }
-
-        if (existingAuthUser.length > 0) {
-            console.warn("⚠️ El correo ya existe en auth.users:", empleado.email);
-            throw new Error("El correo ya está registrado en el sistema.");
-        }
-
-        console.log("🔍 Verificando si el correo ya existe en la tabla usuarios...");
-        const { data: existingUser, error: fetchError } = await supabase
-            .from("usuarios")
-            .select("uuid")
-            .eq("correo", empleado.email);
-
-        if (fetchError) {
-            console.error("❌ Error al verificar en usuarios:", fetchError.message);
-            throw fetchError;
-        }
-
-        if (existingUser.length > 0) {
-            console.warn("⚠️ El correo ya existe en empleados:", empleado.email);
-            throw new Error("El correo ya está registrado en empleados.");
-        }
-
-        console.log("✅ Creando usuario en auth.signUp...");
+        console.log("✅ Creando usuario en Auth...");
         const { data, error } = await supabase.auth.signUp({
             email: empleado.email,
             password: empleado.password,
@@ -46,12 +14,11 @@ export const crearEmpleado = async (empleado: Empleado) => {
 
         if (error) {
             console.error("❌ Error en auth.signUp:", error.message);
-            throw error;
+            throw new Error("El correo ya está registrado o hubo un problema con Auth.");
         }
 
         if (!data.user) {
-            console.error("❌ No se pudo crear el usuario en Auth.");
-            throw new Error("No se pudo crear el usuario en Auth.");
+            throw new Error("No se pudo obtener el UUID del usuario.");
         }
 
         const userId = data.user.id;
@@ -75,7 +42,7 @@ export const crearEmpleado = async (empleado: Empleado) => {
 
         if (empleadoError) {
             console.error("❌ Error al insertar en usuarios:", empleadoError.message);
-            throw empleadoError;
+            throw new Error("Hubo un problema al registrar el empleado.");
         }
 
         console.log("✅ Usuario registrado correctamente en empleados.");
@@ -86,14 +53,21 @@ export const crearEmpleado = async (empleado: Empleado) => {
     }
 };
 
-
+/**
+ * Obtiene la lista de empleados desde la base de datos.
+ */
 export const fetchEmpleados = async () => {
-    const { data, error } = await supabase.from("usuarios").select("*");
+    try {
+        const { data, error } = await supabase.from("usuarios").select("*");
 
-    if (error) {
-        console.error("Error al obtener empleados:", error);
-        throw error;
+        if (error) {
+            console.error("❌ Error al obtener empleados:", error.message);
+            throw new Error("No se pudo obtener la lista de empleados.");
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error("🚨 Error en fetchEmpleados:", err.message || err);
+        throw err;
     }
-
-    return data || [];
 };
