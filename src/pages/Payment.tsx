@@ -1,6 +1,14 @@
 import { NavLink } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useState } from "react";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import CheckoutForm from "../components/CheckoutForm";
+
+// Cargar la clave pública de Stripe
+const stripePromise = loadStripe(
+    "pk_test_51R0Gi8JuhLNYchQ9lePwC1KtcjB6KmfRtZ5tvNf1douRFmrKd8sD3xwDIYEtWztuPNhuIqgR9hVaSm0wC9jFOw4b00Ddrs4F6x"
+);
 
 export default function Payment() {
     const {
@@ -64,25 +72,12 @@ export default function Payment() {
         return cleanedValue.slice(0, 4); // Limitar a 3 o 4 dígitos
     };
 
-    // Función para manejar cambios en los campos del formulario
-    const handleCardDataChange = (e) => {
-        const { name, value } = e.target;
-        let formattedValue = value;
-
-        if (name === "cardNumber") {
-            formattedValue = formatCardNumber(value);
-        } else if (name === "expiryDate") {
-            formattedValue = formatExpiryDate(value);
-        } else if (name === "cvv") {
-            formattedValue = formatCVV(value);
-        }
-
-        setCardData((prev) => ({ ...prev, [name]: formattedValue }));
-    };
-
     // Función para validar el formulario antes de procesar el pago
     const validateCardData = () => {
-        if (!cardData.cardNumber || cardData.cardNumber.replace(/\s/g, "").length !== 16) {
+        if (
+            !cardData.cardNumber ||
+            cardData.cardNumber.replace(/\s/g, "").length !== 16
+        ) {
             setPaymentError("Número de tarjeta inválido.");
             return false;
         }
@@ -90,11 +85,18 @@ export default function Payment() {
             setPaymentError("Nombre en la tarjeta inválido.");
             return false;
         }
-        if (!cardData.expiryDate || !/^\d{2}\/\d{2}$/.test(cardData.expiryDate)) {
+        if (
+            !cardData.expiryDate ||
+            !/^\d{2}\/\d{2}$/.test(cardData.expiryDate)
+        ) {
             setPaymentError("Fecha de expiración inválida.");
             return false;
         }
-        if (!cardData.cvv || cardData.cvv.length < 3 || cardData.cvv.length > 4) {
+        if (
+            !cardData.cvv ||
+            cardData.cvv.length < 3 ||
+            cardData.cvv.length > 4
+        ) {
             setPaymentError("CVV inválido.");
             return false;
         }
@@ -220,19 +222,24 @@ export default function Payment() {
                 {/* Columna 1: Métodos de pago */}
                 <div className="w-full md:w-1/2">
                     <div className="flex flex-col space-y-2">
-                        <NavLink
-                            className="text-gray-400 uppercase hover:text-amber-900 transition"
-                            to="/"
-                        >
-                            Inicio&nbsp;&gt;
-                        </NavLink>
-                        <NavLink
-                            className="text-gray-400 uppercase hover:text-amber-900 transition"
-                            to="/"
-                        >
-                            Carrito&nbsp;&gt;
-                        </NavLink>
-                        <span className="uppercase text-amber-900">Pago</span>
+                        <div>
+                            <NavLink
+                                className="text-gray-400 uppercase hover:text-amber-900 transition"
+                                to="/"
+                            >
+                                Inicio&nbsp;&gt;
+                            </NavLink>
+                            <NavLink
+                                className="text-gray-400 uppercase hover:text-amber-900 transition"
+                                to="/"
+                            >
+                                Carrito&nbsp;&gt;
+                            </NavLink>
+                            <span className="uppercase text-amber-900">
+                                Pago
+                            </span>
+                        </div>
+
                         <h1 className="text-amber-900 text-3xl md:text-5xl uppercase mt-4 font-bold">
                             Finalizar compra
                         </h1>
@@ -368,67 +375,14 @@ export default function Payment() {
 
                     {/* Formulario de tarjeta o botón de PayPal */}
                     {selectedPayment === "Card" ? (
-                        <div className="mt-6">
-                            <h3 className="text-amber-900 text-lg font-semibold mb-4">
-                                Ingrese los datos de su tarjeta
-                            </h3>
-                            <form className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Número de tarjeta
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="cardNumber"
-                                        value={cardData.cardNumber}
-                                        onChange={handleCardDataChange}
-                                        className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                        placeholder="1234 5678 9012 3456"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Nombre en la tarjeta
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="cardName"
-                                        value={cardData.cardName}
-                                        onChange={handleCardDataChange}
-                                        className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                        placeholder="Juan Pérez"
-                                    />
-                                </div>
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Fecha de expiración
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="expiryDate"
-                                            value={cardData.expiryDate}
-                                            onChange={handleCardDataChange}
-                                            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                            placeholder="MM/AA"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            CVV
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="cvv"
-                                            value={cardData.cvv}
-                                            onChange={handleCardDataChange}
-                                            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                            placeholder="123"
-                                        />
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
+                        //frm tarjeta///////////////////////////////////////////////////////////////////////////////////////////////////////as /
+                        <Elements stripe={stripePromise}>
+                         
+                                <CheckoutForm 
+                                total = {totalAmount.toFixed(2)}
+                                />
+  
+                        </Elements>
                     ) : null}
 
                     {/* Mostrar errores de pago */}
@@ -441,11 +395,11 @@ export default function Payment() {
                     {/* Botón de continuar */}
                     <div className="flex justify-center mt-6">
                         <button
-                            className={`w-full md:w-1/2 h-12 rounded-lg transition-colors ${
+                            className={`w-full md:w-1/2 h-12 rounded-lg transition-colors cursor-pointer ${
                                 selectedPayment === "PayPal"
                                     ? "bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
                                     : selectedPayment === "Card"
-                                    ? "bg-amber-900 hover:bg-amber-700 text-white"
+                                    ? "hidden"
                                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                             }`}
                             onClick={handlePayment}
