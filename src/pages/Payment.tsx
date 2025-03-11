@@ -380,6 +380,8 @@ export default function Payment() {
                          
                                 <CheckoutForm 
                                 total = {totalAmount.toFixed(2)}
+                                orderItems={items}
+                                clearCart={clearCart}
                                 />
   
                         </Elements>

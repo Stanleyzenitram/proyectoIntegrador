@@ -47,6 +47,8 @@ serve(async (req) => {
       currency,
     });
 
+    console.log("PaymentIntent creado:", paymentIntent);
+
     // Devolver el clientSecret del PaymentIntent
     return new Response(
       JSON.stringify({ clientSecret: paymentIntent.client_secret }),

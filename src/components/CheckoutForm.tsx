@@ -1,105 +1,132 @@
 import { useState } from "react";
 import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
+import { useNavigate } from "react-router-dom"; // Importa useNavigate
 
-const CheckoutForm = ({ total }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Función para obtener el token de acceso desde localStorage
-  function getAccessToken() {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      const item = localStorage.getItem(key);
-      try {
-        const parsedItem = JSON.parse(item);
-        if (parsedItem && parsedItem.access_token) {
-          return parsedItem.access_token;
+const CheckoutForm = ({ total, orderItems, clearCart }) => {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [paymentCompleted, setPaymentCompleted] = useState(false); // Nuevo estado para controlar el estado de la compra
+    const navigate = useNavigate(); // Usamos useNavigate para la redirección
+
+    console.log("orderItems", orderItems);
+
+    function getAccessToken() {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const item = localStorage.getItem(key);
+            try {
+                const parsedItem = JSON.parse(item);
+                if (parsedItem && parsedItem.access_token) {
+                    return parsedItem.access_token;
+                }
+            } catch (error) {
+                // Ignorar JSON inválido
+            }
         }
-      } catch (error) {
-        // Ignorar JSON inválido
-      }
-    }
-    console.log("No se encontró ningún token en localStorage.");
-    return null;
-  }
-
-  const token = getAccessToken();
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!stripe || !elements) return;
-
-    if (!token) {
-      setError("No se ha encontrado el token de acceso.");
-      return;
+        console.log("No se encontró ningún token en localStorage.");
+        return null;
     }
 
-    setLoading(true);
-    setError(null);
+    const token = getAccessToken();
 
-    const cardElement = elements.getElement(CardElement);
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        if (!stripe || !elements) return;
 
-    try {
-      // Multiplicar el total por 100 para convertirlo en centavos
-      const amountInCents = Math.round(total * 100);
+        setLoading(true);
 
-      const response = await fetch("https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: amountInCents, // Enviar el monto en centavos
-          currency: "usd",
-        }),
-      });
+        const cardElement = elements.getElement(CardElement);
 
-      if (!response.ok) {
-        throw new Error("Error al obtener el clientSecret");
-      }
+        try {
+            // Multiplicar el total por 100 para convertirlo en centavos
+            const amountInCents = Math.round(total * 100);
 
-      const { clientSecret } = await response.json();
+            // Crear el PaymentIntent en el backend
+            const response = await fetch(
+                "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-payment-intent",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        amount: amountInCents,
+                        currency: "usd",
+                    }),
+                }
+            );
 
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        },
-      });
+            if (!response.ok) {
+                throw new Error("Error al obtener el clientSecret");
+            }
 
-      if (error) {
-        console.error("Error de pago:", error.message);
-        setError(error.message);
-      } else if (paymentIntent.status === "succeeded") {
-        console.log("Pago exitoso!");
-        setLoading(false);
-        setError(null);
-        // Aquí podrías redirigir al usuario a una página de éxito o mostrar un mensaje de éxito.
-      }
-    } catch (error) {
-      console.error("Error al obtener el clientSecret:", error);
-      setLoading(false);
-      setError("Ocurrió un error al procesar el pago.");
-    }
-  };
+            const { clientSecret } = await response.json();
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <CardElement />
-      </div>
-      {error && <div style={{ color: "red" }}>{error}</div>}
-      <button
-        className="bg-amber-900 hover:bg-amber-700 text-white mt-5"
-        type="submit"
-        disabled={!stripe || loading}
-      >
-        {loading ? "Procesando..." : "Pagar"}
-      </button>
-    </form>
-  );
+            // Confirmar el pago con Stripe
+            const { error, paymentIntent } = await stripe.confirmCardPayment(
+                clientSecret,
+                {
+                    payment_method: {
+                        card: cardElement,
+                    },
+                }
+            );
+
+            if (error) {
+                setError(error.message);
+            } else if (paymentIntent.status === "succeeded") {
+                console.log("Pago exitoso!");
+
+                // Actualizar el stock después de un pago exitoso
+                const updateResponse = await fetch("https://pdokbwzmygythqtjroje.supabase.co/functions/v1/update-stock", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        orderItems, // Enviar los productos comprados para actualizar el stock
+                    }),
+                });
+
+                if (updateResponse.ok) {
+                    console.log("Stock actualizado correctamente");
+                    clearCart();
+                    setPaymentCompleted(true); // Marcar que el pago fue completado
+                    setLoading(false);
+                    // Redirigir a la página de éxito después de un pago y actualización exitosos
+                    navigate("/success"); // Aquí "/success" es la ruta de destin
+                } else {
+                    console.error("Error al actualizar el stock");
+                    setLoading(false);
+                }
+            }
+        } catch (error) {
+            console.error("Error al procesar el pago:", error);
+            setError("Ocurrió un error al procesar el pago.");
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div>
+                <CardElement />
+            </div>
+            {error && <div style={{ color: "red" }}>{error}</div>}
+            <button
+                className="bg-amber-900 hover:bg-amber-700 text-white mt-5"
+                type="submit"
+                disabled={loading || paymentCompleted} // Deshabilitar el botón si se está procesando o si el pago fue completado
+            >
+                {loading ? "Procesando..." : paymentCompleted ? "Pago completado" : "Pagar"}
+            </button>
+        </form>
+    );
 };
 
 export default CheckoutForm;
