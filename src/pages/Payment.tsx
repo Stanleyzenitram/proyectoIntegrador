@@ -376,15 +376,15 @@ export default function Payment() {
                     {/* Formulario de tarjeta o botón de PayPal */}
                     {selectedPayment === "Card" ? (
                         //frm tarjeta///////////////////////////////////////////////////////////////////////////////////////////////////////as /
-                        <Elements stripe={stripePromise}>
-                         
-                                <CheckoutForm 
-                                total = {totalAmount.toFixed(2)}
-                                orderItems={items}
-                                clearCart={clearCart}
+                        <div className="mt-6">
+                            <Elements stripe={stripePromise}>
+                                <CheckoutForm
+                                    total={totalAmount.toFixed(2)}
+                                    orderItems={items}
+                                    clearCart={clearCart}
                                 />
-  
-                        </Elements>
+                            </Elements>
+                        </div>
                     ) : null}
 
                     {/* Mostrar errores de pago */}
