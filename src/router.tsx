@@ -13,43 +13,48 @@ import Clientes from "./pages/Clientes";
 import Proveedor from "./pages/Proveedores";
 import Productos from "./pages/Productos";
 import Checkout from "./pages/Checkout";
-import  PasswordReset  from './components/PasswordReset';
-import UpdatePassword from './components/UpdatePassword';
-
-import SobreNosotrosPage from "./pages/SobreNosotros";
-import EditProfile from "./pages/EditProfile";
+import PasswordReset from "./components/PasswordReset";
+import UpdatePassword from "./components/UpdatePassword";
+import SobreNosotrosPage from "./pages/sobreNosotros";
+import Payment from "./pages/Payment";
+import PrivateLogin from "./components/PrivateLogin";
 
 export default function AppRouter() {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
-    return (
-        <Routes>
-           <Route path="/update-password" element={<UpdatePassword />} /> 
-            <Route element={<Layout />}>
-                <Route path="/" element={<HomePage />} index />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
-                <Route path="/reset-password" element={<PasswordReset />} />
+  return (
+    <Routes>
+      <Route path="/update-password" element={<UpdatePassword />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} index />
+        
+        <Route path="/register" element={<Register />} />
+        <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
+        <Route path="/reset-password" element={<PasswordReset />} />
+        <Route path="/payment" element={<Payment />} />
 
-                {/* Rutas protegidas */}
-                <Route element={<PrivateRoute />}>
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/edit-profile" element={<EditProfile />} />
-                    <Route path="/checkout" element={<Checkout />} />
-                    
-                    {/* Mantenimientos */}
-                    <Route path="/empleados" element={<Empleados />} />
-                    <Route path="/clientes" element={<Clientes />} />
-                    <Route path="/proveedores" element={<Proveedor />} />
-                    <Route path="/productos" element={<Productos />} />
-                    <Route path="/estilos" element={<Estilos />} />
+        {/* Rutas protegidas */}
 
-                    {/* Inventario */}
+        <Route element={<PrivateLogin />}>
+          <Route path="/login" element={<LoginPage />} />
+        </Route>
+        
+        <Route element={<PrivateRoute />}>
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/checkout" element={<Checkout />} />
 
-                    {/* Reportes */}
-                </Route>
-            </Route>
-        </Routes>
-    );
+          {/* Mantenimientos */}
+          <Route path="/empleados" element={<Empleados />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/proveedores" element={<Proveedor />} />
+          <Route path="/productos" element={<Productos />} />
+          <Route path="/estilos" element={<Estilos />} />
+
+          {/* Inventario */}
+
+          {/* Reportes */}
+        </Route>
+      </Route>
+    </Routes>
+  );
 }

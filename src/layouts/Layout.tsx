@@ -5,7 +5,7 @@ export default function Layout() {
         <>
             <Header />
             {/*pt-30 */}
-            <main className="container h-screen mx-auto ">
+            <main className="container mx-auto pt-40 bg-gray-100  h-screen">
                 <Outlet />
             </main>
         </>
