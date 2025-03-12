@@ -6,6 +6,7 @@ import { useAuth } from "./hooks/useAuth";
 import Profile from "./pages/Profile";
 import PrivateRoute from "./components/PrivateRoute";
 import Register from "./pages/Register";
+import { ChatPage } from "./pages/ChatPage";
 
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
@@ -18,6 +19,10 @@ import UpdatePassword from './components/UpdatePassword';
 
 import SobreNosotrosPage from "./pages/sobreNosotros";
 import EditProfile from "./pages/EditProfile";
+import Inventario from "./features/mantenimientos/Inventario";
+import CompraProductos from "./features/mantenimientos/CompraProductos";
+import ListaProveedores from "./features/mantenimientos/ListaProveedores";
+import ReporteCompras from './features/reportes/ReporteCompras';
 
 
 
@@ -32,8 +37,9 @@ export default function AppRouter() {
                 <Route path="/" element={<HomePage />} index/>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
+                <Route path="/SobreNosotros" element={<Empleados />} />
                 <Route path="/reset-password" element={<PasswordReset />} />
+                <Route path="/chat" element={<ChatPage />} />
                 
 
                 {/* Rutas protegidas */}
@@ -48,12 +54,19 @@ export default function AppRouter() {
                     <Route path="/proveedores" element={<Proveedor />} />
                     <Route path="/productos" element={<Productos />} />
                     <Route path="/estilos" element={<Estilos />} />
+                    <Route path="/inventario" element={<Inventario />} />
+                    <Route path="/compras" element={<CompraProductos />} />
+                    <Route path="/proveedores-lista" element={<ListaProveedores />} />
+
+                   <Route path="/stock" element={<Inventario />} />
+
+                  
                     
 
                     {/* Inventario */}
             
                     {/* Reportes */}
-      
+      <Route path="/reportes/compras" element={<ReporteCompras />} />
       
                 </Route>
             </Route>

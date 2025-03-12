@@ -41,13 +41,17 @@ export interface Producto {
     stock_actual: number;
     imagen?: string;
     descuento?: number;
+    metros_por_caja: number;
+    disponibilidad: boolean;
+    color: string;
+    formato: string;
+    estilo: {
+        id_estilo: string;
+        nombre_estilo: string;
+    };
     material?: {
         id_materiales: string;
         nombre_materiales: string;
-    };
-    estilo?: {
-        id_estilo: string;
-        nombre_estilo: string;
     };
     categoria?: {
         id_categoria: string;
@@ -74,6 +78,7 @@ export interface  Categoria {
 
 export interface CartItem extends Producto {
     quantity: number;
+<<<<<<< HEAD
 }
 
 
@@ -88,3 +93,9 @@ export interface Cliente {
     numero_documento: string;
     email: string;
 }
+=======
+    metrosCuadrados: number;  // Metros cuadrados solicitados
+    cajasNecesarias: number;  // Número de cajas calculado
+    metrosReales: number;     // Metros cuadrados reales (basado en cajas completas)
+}
+>>>>>>> 1f1cd32 (Carrito y home para agregar la compra por metros y cajas)

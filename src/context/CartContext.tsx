@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Producto, CartItem } from '../types';
 import { supabase } from '../services/supabase';
 
@@ -8,6 +8,8 @@ interface CartContextType {
     removeItem: (productId: string) => void;
     updateQuantity: (productId: string, quantity: number) => void;
     total: number;
+    tax: number;
+    totalAmount: number;
     totalWithDiscount: number;
     clearCart: () => void;
     itemCount: number;
@@ -16,13 +18,20 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>([]);
+    const [items, setItems] = useState<CartItem[]>(() => {
+        // Recuperar carrito desde localStorage al cargar la app
+        const storedCart = localStorage.getItem('cart');
+        return storedCart ? JSON.parse(storedCart) : [];
+    });
 
-    // Calcular la cantidad total de artículos
+    // Efecto para guardar en localStorage cada vez que los ítems cambien
+    useEffect(() => {
+        localStorage.setItem('cart', JSON.stringify(items));
+    }, [items]);
+
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
     const addItem = async (product: Producto) => {
-        // Verificar stock actual
         const { data: currentProduct } = await supabase
             .from('productos')
             .select('stock_actual')
@@ -42,14 +51,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        if (currentQuantity + 1 > currentProduct.stock_actual) {
-            alert('No hay suficiente stock disponible');
-            return;
-        }
-
         setItems(currentItems => {
             const existingItem = currentItems.find(item => item.id_producto === product.id_producto);
-            
             if (existingItem) {
                 return currentItems.map(item =>
                     item.id_producto === product.id_producto
@@ -57,7 +60,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         : item
                 );
             }
-            
             return [...currentItems, { ...product, quantity: 1 }];
         });
     };
@@ -72,7 +74,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // Verificar stock actual
         const { data: currentProduct } = await supabase
             .from('productos')
             .select('stock_actual')
@@ -86,7 +87,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (quantity > currentProduct.stock_actual) {
             alert('No hay suficiente stock disponible');
-            // Establecer la cantidad al máximo stock disponible
             setItems(currentItems =>
                 currentItems.map(item =>
                     item.id_producto === productId
@@ -107,15 +107,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const total = items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
-    
+
     const totalWithDiscount = items.reduce((sum, item) => {
         const itemTotal = item.precio * item.quantity;
         const discount = item.descuento ? (itemTotal * item.descuento) / 100 : 0;
         return sum + (itemTotal - discount);
     }, 0);
+    
+    const tax = totalWithDiscount * 0.18;
+    const totalAmount = totalWithDiscount + tax;
 
     const clearCart = () => {
         setItems([]);
+        localStorage.removeItem('cart'); // Limpiar localStorage
     };
 
     const value = {
@@ -124,6 +128,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem,
         updateQuantity,
         total,
+        tax,
+        totalAmount,
         totalWithDiscount,
         clearCart,
         itemCount
@@ -142,4 +148,4 @@ export const useCart = () => {
         throw new Error('useCart must be used within a CartProvider');
     }
     return context;
-}; 
+};
