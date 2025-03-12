@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom"; // Importa useNavigate
 
-
 const CheckoutForm = ({ total, orderItems, clearCart }) => {
     const stripe = useStripe();
     const elements = useElements();
@@ -55,7 +54,7 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
                     },
                     body: JSON.stringify({
                         amount: amountInCents,
-                        currency: "usd",
+                        currency: "dop",
                     }),
                 }
             );
@@ -99,7 +98,7 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
                     setPaymentCompleted(true); 
                     setLoading(false);
                     // Redirigir a la página de éxito después de un pago y actualización exitosos
-                    navigate("/success"); 
+                    navigate("/factura"); 
                 } else {
                     console.error("Error al actualizar el stock");
                     setLoading(false);
@@ -113,18 +112,27 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div>
-                <CardElement />
+        <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-8 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Formulario de Pago</h2>
+            
+            <div className="mb-4">
+                <CardElement 
+                    className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                />
             </div>
-            {error && <div style={{ color: "red" }}>{error}</div>}
-            <button
-                className="bg-amber-900 hover:bg-amber-700 text-white mt-5"
-                type="submit"
-                disabled={loading || paymentCompleted} // Deshabilitar el botón si se está procesando o si el pago fue completado
-            >
-                {loading ? "Procesando..." : paymentCompleted ? "Pago completado" : "Pagar"}
-            </button>
+
+            {error && <div className="text-red-600 text-sm mt-2 text-center">{error}</div>}
+
+            <div className="flex justify-between items-center mt-4">
+                <span className="text-xl font-semibold text-gray-800">Total: {total} DOP</span>
+                <button
+                    className="bg-amber-900 hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-md transition-all"
+                    type="submit"
+                    disabled={loading || paymentCompleted}
+                >
+                    {loading ? "Procesando..." : paymentCompleted ? "Pago completado" : "Pagar"}
+                </button>
+            </div>
         </form>
     );
 };
