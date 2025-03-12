@@ -4,7 +4,7 @@ import type { Producto } from "../types/index";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, Filter } from "lucide-react"; // Añadimos el ícono de filtro
 import ProductModal from '../components/ProductModal';
 
 export default function Home() {
@@ -22,6 +22,7 @@ export default function Home() {
     const [categories, setCategories] = useState<{ id_categoria: string; nombre_categoria: string }[]>([]);
     const [searchInput, setSearchInput] = useState("");
     const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+    const [showFilters, setShowFilters] = useState(false); // Estado para mostrar/ocultar filtros en móviles
 
     const { user } = useAuth();
     const { addItem } = useCart();
@@ -29,10 +30,8 @@ export default function Home() {
     const location = useLocation();
 
     useEffect(() => {
-        // Verificar si debemos mostrar ofertas desde la navegación
         if (location.state?.showOffers) {
             setShowOnlyOffers(true);
-            // Limpiar el estado para futuras navegaciones
             navigate(location.pathname, { replace: true });
         }
     }, [location.state]);
@@ -107,16 +106,15 @@ export default function Home() {
     };
 
     const handleProductClick = (product: Producto) => {
-        console.log("Producto seleccionado:", product);
         setSelectedProduct(product);
     };
 
     return (
-        <div className="pt-90">
+        <div className="h-screen">
             <div className="container mx-auto px-4">
                 {/* Barra superior con búsqueda y ordenamiento */}
-                <div className="flex justify-between items-center mb-4">
-                    <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                    <form onSubmit={handleSearch} className="relative flex-1 max-w-xl w-full">
                         <input
                             type="text"
                             placeholder="Buscar productos..."
@@ -132,16 +130,22 @@ export default function Home() {
                     <select
                         value={orderAsc ? "asc" : "desc"}
                         onChange={(e) => setOrderAsc(e.target.value === "asc")}
-                        className="ml-4 p-2 border rounded-lg bg-gray-100 text-amber-900"
+                        className="w-full md:w-auto p-2 border rounded-lg bg-gray-100 text-amber-900"
                     >
                         <option value="asc">Precio - Ascendente</option>
                         <option value="desc">Precio - Descendente</option>
                     </select>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="md:hidden p-2 border rounded-lg bg-gray-100 text-amber-900 flex items-center gap-2"
+                    >
+                        <Filter size={20} /> Filtros
+                    </button>
                 </div>
 
                 <div className="flex gap-6">
                     {/* Sidebar de filtros */}
-                    <div className="w-64 bg-gray-100 p-4">
+                    <div className={`${showFilters ? 'block' : 'hidden'} md:block w-64 bg-gray-100 p-4`}>
                         <div className="mb-6">
                             <h3 className="text-amber-900 font-medium mb-2">Ordenar por</h3>
                         </div>
@@ -230,7 +234,7 @@ export default function Home() {
 
                     {/* Grid de productos */}
                     <div className="flex-1">
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {productos.map((producto) => {
                                 const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
                                 const stockStatus = getStockStatus(producto.stock_actual);
@@ -240,7 +244,6 @@ export default function Home() {
                                         key={producto.id_producto} 
                                         className="bg-white p-4 rounded-lg shadow-sm flex flex-col h-full justify-between"
                                     >
-                                        {/* Contenedor de imagen y detalles */}
                                         <div>
                                             {producto.imagen && (
                                                 <div 
@@ -260,16 +263,9 @@ export default function Home() {
                                             >
                                                 {producto.nombre_producto}
                                             </h3>
-                                            
-                                            
-                                            
-                                              
-                            
                                         </div>
                                         
-                                        {/* Contenedor de precio y botón */}
                                         <div>
-                                            {/* Precio y disponibilidad */}
                                             <div className="mb-4">
                                                 <div className="flex justify-between items-start">
                                                     {producto.descuento ? (
@@ -295,7 +291,6 @@ export default function Home() {
                                                 </div>
                                             </div>
 
-                                           
                                             <button
                                                 onClick={() => handleProductClick(producto)}
                                                 disabled={producto.stock_actual === 0}
