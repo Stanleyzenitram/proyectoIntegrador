@@ -18,43 +18,45 @@ import UpdatePassword from "./components/UpdatePassword";
 import SobreNosotrosPage from "./pages/sobreNosotros";
 import Payment from "./pages/Payment";
 import PrivateLogin from "./components/PrivateLogin";
+import Factura from "./pages/Factura";
 
 export default function AppRouter() {
-  const { user } = useAuth();
+    const { user } = useAuth();
 
-  return (
-    <Routes>
-      <Route path="/update-password" element={<UpdatePassword />} />
-      <Route element={<Layout />}>
-        <Route path="/" element={<HomePage />} index />
-        
-        <Route path="/register" element={<Register />} />
-        <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
-        <Route path="/reset-password" element={<PasswordReset />} />
-        <Route path="/payment" element={<Payment />} />
+    return (
+        <Routes>
+            <Route path="/update-password" element={<UpdatePassword />} />
+            <Route element={<Layout />}>
+                <Route path="/" element={<HomePage />} index />
 
-        {/* Rutas protegidas */}
+                <Route path="/register" element={<Register />} />
+                <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
+                <Route path="/reset-password" element={<PasswordReset />} />
+                <Route path="/payment" element={<Payment />} />
 
-        <Route element={<PrivateLogin />}>
-          <Route path="/login" element={<LoginPage />} />
-        </Route>
-        
-        <Route element={<PrivateRoute />}>
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/checkout" element={<Checkout />} />
+                {/* Rutas protegidas */}
 
-          {/* Mantenimientos */}
-          <Route path="/empleados" element={<Empleados />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/proveedores" element={<Proveedor />} />
-          <Route path="/productos" element={<Productos />} />
-          <Route path="/estilos" element={<Estilos />} />
+                <Route element={<PrivateLogin />}>
+                    <Route path="/login" element={<LoginPage />} />
+                </Route>
 
-          {/* Inventario */}
+                <Route element={<PrivateRoute />}>
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/factura" element={<Factura />} />
 
-          {/* Reportes */}
-        </Route>
-      </Route>
-    </Routes>
-  );
+                    {/* Mantenimientos */}
+                    <Route path="/empleados" element={<Empleados />} />
+                    <Route path="/clientes" element={<Clientes />} />
+                    <Route path="/proveedores" element={<Proveedor />} />
+                    <Route path="/productos" element={<Productos />} />
+                    <Route path="/estilos" element={<Estilos />} />
+
+                    {/* Inventario */}
+
+                    {/* Reportes */}
+                </Route>
+            </Route>
+        </Routes>
+    );
 }

@@ -99,7 +99,7 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
                     setPaymentCompleted(true); 
                     setLoading(false);
                     // Redirigir a la página de éxito después de un pago y actualización exitosos
-                    navigate("/success"); 
+                    navigate("/factura"); 
                 } else {
                     console.error("Error al actualizar el stock");
                     setLoading(false);
