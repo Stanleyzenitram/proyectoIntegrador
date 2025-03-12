@@ -7,7 +7,7 @@ import CheckoutForm from "../components/CheckoutForm";
 
 // Cargar la clave pública de Stripe
 const stripePromise = loadStripe(
-    "pk_test_51R0Gi8JuhLNYchQ9lePwC1KtcjB6KmfRtZ5tvNf1douRFmrKd8sD3xwDIYEtWztuPNhuIqgR9hVaSm0wC9jFOw4b00Ddrs4F6x"
+    "pk_test_51R0GiIFQBuN0FbW6Hqq3PogLIiw9tp4FoGx14hsaMzy71EoUIy9ckmmBGoMbkh0s7nLZmy2Cc0lD7cRUzuzrgh3i00kbU2tfKH"
 );
 
 export default function Payment() {
