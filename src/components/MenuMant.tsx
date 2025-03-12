@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { supabase } from "../services/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FileText } from 'lucide-react';
 
 export default function MenuMant() {
     const { user } = useAuth();
@@ -71,10 +72,24 @@ export default function MenuMant() {
                             <div className="space-y-2">
                                 <NavLink to="/stock" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Stock</NavLink>
                                 <NavLink to="/proveedores" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
+                               
+                                <NavLink to="/compras" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Compras</NavLink>
                             </div>
                         </details>
 
-                        <p className="px-4 py-2 cursor-pointer hover:bg-amber-100 rounded">Reportes</p>
+                        <details className="group">
+                            <summary className="cursor-pointer px-4 py-2 hover:bg-amber-100 rounded">Reportes</summary>
+                            <div className="space-y-2">
+                                <NavLink 
+                                    to="/reportes/compras" 
+                                    onClick={() => setIsMenuOpen(false)} 
+                                    className="block px-4 py-2 hover:bg-gray-200 flex items-center"
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Compras
+                                </NavLink>
+                            </div>
+                        </details>
                     </div>
                 </nav>
             )}
@@ -97,11 +112,24 @@ export default function MenuMant() {
                     <div className="absolute left-0 w-40 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
                         <NavLink to="/stock" className="block px-4 py-2 hover:bg-gray-200">Stock</NavLink>
                         <NavLink to="/proveedores" className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
+                        <NavLink to="/inventario" className="block px-4 py-2 hover:bg-gray-200">Inventario</NavLink>
+                        <NavLink to="/compras" className="block px-4 py-2 hover:bg-gray-200">Compras</NavLink>
                     </div>
                 </div>
 
-                <p className="cursor-pointer">Reportes</p>
+                <div className="relative group">
+                    <p className="cursor-pointer">Reportes</p>
+                    <div className="absolute left-0 w-40 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
+                        <NavLink 
+                            to="/reportes/compras" 
+                            className="block px-4 py-2 hover:bg-gray-200 flex items-center"
+                        >
+                            <FileText className="w-5 h-5 mr-2" />
+                            Reporte de Compras
+                        </NavLink>
+                    </div>
+                </div>
             </nav>
-        </div>
-    );
+        </div>
+    );
 }

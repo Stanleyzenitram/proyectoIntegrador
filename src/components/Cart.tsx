@@ -4,6 +4,7 @@ import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import CartItem from './CartItem';
 
 interface CartProps {
     onClose: () => void;
@@ -99,98 +100,20 @@ const Cart = ({ onClose }: CartProps) => {
                     </div>
                 ) : (
                     <>
-                        {/* Línea divisoria */}
-                        <div className="border-b-[3px] border-black my-8"></div>
+                        {/* Encabezados */}
+                        <div className="grid grid-cols-5 py-2 border-b text-sm font-medium">
+                            <div>Productos</div>
+                            <div className="text-center">Precio</div>
+                            <div className="text-center">Cantidad</div>
+                            <div className="text-center">UOM</div>
+                            <div className="text-right">Total</div>
+                        </div>
 
-                        {/* Tabla de productos */}
-                        <div className="overflow-x-auto -mx-4 md:mx-0">
-                            <table className="w-full mb-6">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 md:px-6 py-3 text-left text-sm font-bold text-black uppercase tracking-wider">Producto</th>
-                                        <th className="px-4 md:px-6 py-3 text-right text-sm font-bold text-black uppercase tracking-wider">Precio</th>
-                                        <th className="px-4 md:px-6 py-3 text-right text-sm font-bold text-black uppercase tracking-wider">Cantidad</th>
-                                        <th className="hidden md:table-cell px-6 py-3 text-right text-sm font-bold text-black uppercase tracking-wider">UOM</th>
-                                        <th className="px-4 md:px-6 py-3 text-right text-sm font-bold text-black uppercase tracking-wider">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {items.map((item) => (
-                                        <tr key={item.id_producto}>
-                                            <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    {item.imagen && (
-                                                        <img 
-                                                            src={item.imagen} 
-                                                            alt={item.nombre_producto} 
-                                                            className="w-16 h-16 object-cover rounded mr-4"
-                                                        />
-                                                    )}
-                                                    <div>
-                                                        <h3 className="font-medium text-gray-900">{item.nombre_producto}</h3>
-                                                        <p className="text-sm text-gray-500">
-                                                            
-                                                        </p>
-                                                        <button
-                                                            onClick={() => removeItem(item.id_producto)}
-                                                            className="text-red-500 text-sm hover:text-red-700 mt-1"
-                                                        >
-                                                            Borrar
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 md:px-6 py-4 text-right text-sm text-gray-500">
-                                                RD${item.precio.toFixed(2)}
-                                            </td>
-                                            <td className="px-4 md:px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end space-x-2">
-                                                    <button
-                                                        onClick={() => updateQuantity(item.id_producto, Math.max(1, item.quantity - 1))}
-                                                        className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300"
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <div className="flex flex-col items-center">
-                                                        <input
-                                                            type="number"
-                                                            value={item.quantity}
-                                                            onChange={(e) => {
-                                                                const newValue = parseInt(e.target.value) || 1;
-                                                                if (newValue <= item.stock_actual) {
-                                                                    updateQuantity(item.id_producto, newValue);
-                                                                }
-                                                            }}
-                                                            min="1"
-                                                            max={item.stock_actual}
-                                                            className="w-16 text-center border rounded p-1"
-                                                        />
-                                                        <span className="text-xs text-gray-500 mt-1">
-                                                            (Stock: {item.stock_actual})
-                                                        </span>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => updateQuantity(item.id_producto, Math.min(item.stock_actual, item.quantity + 1))}
-                                                        className={`w-8 h-8 flex items-center justify-center rounded
-                                                            ${item.quantity >= item.stock_actual 
-                                                                ? 'bg-gray-300 cursor-not-allowed' 
-                                                                : 'bg-gray-200 hover:bg-gray-300'}`}
-                                                        disabled={item.quantity >= item.stock_actual}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="hidden md:table-cell px-6 py-4 text-right text-sm text-gray-500">
-                                                Und
-                                            </td>
-                                            <td className="px-4 md:px-6 py-4 text-right text-sm font-medium text-gray-900">
-                                                RD${(item.precio * item.quantity).toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        {/* Lista de items */}
+                        <div className="divide-y">
+                            {items.map(item => (
+                                <CartItem key={item.id_producto} item={item} />
+                            ))}
                         </div>
 
                         {/* Resumen de totales */}

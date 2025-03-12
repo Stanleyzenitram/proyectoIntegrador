@@ -1,9 +1,7 @@
     import { useState, useEffect } from "react";
     import { supabase } from "../../services/supabase";
     import { PencilIcon } from "@heroicons/react/24/solid";
-    import { Categoria } from "../../types";
-    import { Estilo } from "../../types";
-    import { Material } from "../../types";
+    import { Categoria, Estilo, Material } from "../../types";
 
     interface Producto {
         id_producto?: number;
@@ -15,8 +13,12 @@
         precio: number;
         stock_actual: number;
         descuento: number;
+        disponibilidad: boolean;
         estado: boolean;
         imagen?: string | null;
+        formato: string;  // Nuevo campo
+        metros_por_caja: number;  // Nuevo campo
+        piezas_por_caja: number;  // Nuevo campo
         categoria?: { nombre_categoria: string };
         estilo?: { nombre_estilo: string }; 
         material?: { nombre_materiales: string }; // Relación con la tabla de materiales
@@ -33,8 +35,11 @@
             precio: 0,
             stock_actual: 0,
             descuento: 0,
+            disponibilidad: true,
             estado: true,
-            imagen: null,
+            formato: "",  // Inicialización del nuevo campo
+            metros_por_caja: 0,  // Inicialización del nuevo campo
+            piezas_por_caja: 0,  // Inicialización del nuevo campo
         });
         const [productos, setProductos] = useState<Producto[]>([]);
         const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -98,11 +103,33 @@ const fetchProductos = async () => {
             }
         };
 
+        // Función para calcular metros por caja automáticamente
+        const calcularMetrosPorCaja = (formato: string, piezas: number): number => {
+            const [ancho, largo] = formato.split('x').map(Number);
+            if (!ancho || !largo || !piezas) return 0;
+            const metrosPorPieza = (ancho * largo) / 10000; // convertir de cm² a m²
+            return metrosPorPieza * piezas;
+        };
+
+        // Modificar el handleChange para calcular metros_por_caja automáticamente
         const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
             const { name, value } = e.target;
-            setFormData({
-                ...formData,
-                [name]: name === "id_categoria" ? parseInt(value) : value,
+            
+            setFormData(prev => {
+                const newData = {
+                    ...prev,
+                    [name]: name === "id_categoria" || name === "piezas_por_caja" ? parseInt(value) : value,
+                };
+
+                // Si se cambió el formato o las piezas por caja, recalcular metros_por_caja
+                if (name === "formato" || name === "piezas_por_caja") {
+                    newData.metros_por_caja = calcularMetrosPorCaja(
+                        name === "formato" ? value : prev.formato,
+                        name === "piezas_por_caja" ? parseInt(value) : prev.piezas_por_caja
+                    );
+                }
+
+                return newData;
             });
         };
 
@@ -181,6 +208,9 @@ const fetchProductos = async () => {
                         descuento: formData.descuento,
                         estado: formData.estado,
                         imagen: formData.imagen,
+                        formato: formData.formato,
+                        metros_por_caja: formData.metros_por_caja,
+                        piezas_por_caja: formData.piezas_por_caja
                     })
                     .eq("id_producto", formData.id_producto);
                 
@@ -205,6 +235,9 @@ const fetchProductos = async () => {
                         descuento: formData.descuento,
                         estado: formData.estado,
                         imagen: formData.imagen,
+                        formato: formData.formato,
+                        metros_por_caja: formData.metros_por_caja,
+                        piezas_por_caja: formData.piezas_por_caja
                     }]);
                     
                     if (error) {
@@ -230,14 +263,23 @@ const fetchProductos = async () => {
                 precio: 0,
                 stock_actual: 0,
                 descuento: 0,
+                disponibilidad: true,
                 estado: true,
-                imagen: "",
+                formato: "",
+                metros_por_caja: 0,
+                piezas_por_caja: 0
             });
         };
 
         const handleEdit = (producto: Producto) => {
             setFormData(producto);
             setIsEditing(true);
+        };
+
+        // Función helper para formatear números
+        const formatNumber = (value: number | null | undefined): string => {
+            if (value === null || value === undefined) return '0.00';
+            return value.toFixed(2);
         };
 
         return (
@@ -352,6 +394,52 @@ const fetchProductos = async () => {
     )}
                         
 
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                                Formato (ejemplo: 30x60)
+                            </label>
+                            <input
+                                type="text"
+                                name="formato"
+                                value={formData.formato}
+                                onChange={handleChange}
+                                placeholder="30x60"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                                Piezas por caja
+                            </label>
+                            <input
+                                type="number"
+                                name="piezas_por_caja"
+                                value={formData.piezas_por_caja}
+                                onChange={handleChange}
+                                min="1"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                                Metros cuadrados por caja (calculado)
+                            </label>
+                            <input
+                                type="number"
+                                name="metros_por_caja"
+                                value={formatNumber(formData.metros_por_caja)}
+                                readOnly
+                                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm"
+                            />
+                            <p className="text-sm text-gray-500 mt-1">
+                                Este valor se calcula automáticamente basado en el formato y las piezas por caja
+                            </p>
+                        </div>
+
                         <button type="submit" className="bg-orange-500 text-white p-2 rounded w-full">
                             {isEditing ? "Actualizar" : "Guardar"}
                         </button>
@@ -368,15 +456,37 @@ const fetchProductos = async () => {
                         <div>
                             <p className="font-semibold">{producto.nombre_producto}</p>
                             <p className="text-sm text-gray-600">{producto.descripcion}</p>
-                            <p className="text-xs text-gray-500">Categoría: {producto.categoria?.nombre_categoria || "N/A"}</p>
-                            <p className="text-xs text-gray-500">Estilo: {producto.estilo?.nombre_estilo || "N/A"}</p>
-                            <p className="text-xs text-gray-500">Material: {producto.material?.nombre_materiales || "N/A"}</p>
+                            <p className="text-xs text-gray-500">
+                                Precio: RD$ {formatNumber(producto.precio)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Stock: {formatNumber(producto.stock_actual)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Metros por caja: {formatNumber(producto.metros_por_caja)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Categoría: {producto.categoria?.nombre_categoria || "N/A"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Estilo: {producto.estilo?.nombre_estilo || "N/A"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Material: {producto.material?.nombre_materiales || "N/A"}
+                            </p>
 
                             {producto.imagen && (
-                                <img src={producto.imagen} alt={producto.nombre_producto} className="w-16 h-16 object-cover rounded" />
+                                <img 
+                                    src={producto.imagen} 
+                                    alt={producto.nombre_producto} 
+                                    className="w-16 h-16 object-cover rounded" 
+                                />
                             )}
                         </div>
-                        <button onClick={() => handleEdit(producto)} className="text-blue-500">
+                        <button 
+                            onClick={() => handleEdit(producto)} 
+                            className="text-blue-500"
+                        >
                             <PencilIcon className="w-5 h-5" />
                         </button>
                     </li>
