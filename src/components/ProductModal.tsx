@@ -59,15 +59,15 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
 
     const handleAddToCart = () => {
         const metrosReales = cajasDeseadas * product.metros_por_caja;
-        
+     
         const itemToAdd = {
             ...product,
             quantity: cajasDeseadas,
             metrosCuadrados: metrosDeseados,
             cajasNecesarias: cajasDeseadas,
-            metrosReales: metrosReales
+            metrosReales: metrosReales,
         };
-
+        console.log("Agregando al carrito:", itemToAdd);
         if (isUpdating) {
             updateItemQuantity(product.id_producto, itemToAdd);
         } else {

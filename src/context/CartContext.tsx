@@ -4,9 +4,17 @@ import { supabase } from '../services/supabase';
 
 interface CartContextType {
     items: CartItem[];
-    addItem: (product: Producto) => void;
+    addItem: (product: Producto, quantity?: number, options?: { 
+        metrosCuadrados?: number;
+        cajasNecesarias?: number;
+        metrosReales?: number;
+    }) => void;
     removeItem: (productId: string) => void;
-    updateQuantity: (productId: string, quantity: number) => void;
+    updateQuantity: (productId: string, quantity: number, options?: {
+        metrosCuadrados?: number;
+        cajasNecesarias?: number;
+        metrosReales?: number;
+    }) => void;
     total: number;
     tax: number;
     totalAmount: number;
@@ -31,7 +39,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-    const addItem = async (product: Producto) => {
+    const addItem = async (
+        product: Producto, 
+        quantity: number = 1, 
+        options?: {
+            metrosCuadrados?: number;
+            cajasNecesarias?: number;
+            metrosReales?: number;
+        }
+    ) => {
         const { data: currentProduct } = await supabase
             .from('productos')
             .select('stock_actual')
@@ -46,8 +62,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const currentItem = items.find(item => item.id_producto === product.id_producto);
         const currentQuantity = currentItem?.quantity || 0;
 
-        if (currentQuantity >= currentProduct.stock_actual) {
-            alert('Has alcanzado el límite de stock disponible');
+        if (currentQuantity + quantity > currentProduct.stock_actual) {
+            alert('No hay suficiente stock disponible');
             return;
         }
 
@@ -56,11 +72,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             if (existingItem) {
                 return currentItems.map(item =>
                     item.id_producto === product.id_producto
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? {
+                            ...item,
+                            quantity: item.quantity + quantity,
+                            ...options
+                        }
                         : item
                 );
             }
-            return [...currentItems, { ...product, quantity: 1 }];
+            return [...currentItems, {
+                ...product,
+                quantity,
+                unidadMedida: product.metros_por_caja ? 'metro' : 'unidad',
+                ...options
+            }];
         });
     };
 
@@ -68,7 +93,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(currentItems => currentItems.filter(item => item.id_producto !== productId));
     };
 
-    const updateQuantity = async (productId: string, quantity: number) => {
+    const updateQuantity = async (
+        productId: string, 
+        quantity: number,
+        options?: {
+            metrosCuadrados?: number;
+            cajasNecesarias?: number;
+            metrosReales?: number;
+        }
+    ) => {
         if (quantity < 1) {
             removeItem(productId);
             return;
@@ -87,29 +120,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         if (quantity > currentProduct.stock_actual) {
             alert('No hay suficiente stock disponible');
-            setItems(currentItems =>
-                currentItems.map(item =>
-                    item.id_producto === productId
-                        ? { ...item, quantity: currentProduct.stock_actual }
-                        : item
-                )
-            );
             return;
         }
 
         setItems(currentItems =>
             currentItems.map(item =>
                 item.id_producto === productId
-                    ? { ...item, quantity }
+                    ? { ...item, quantity, ...options }
                     : item
             )
         );
     };
 
-    const total = items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
+    const total = items.reduce((sum, item) => {
+        if (item.unidadMedida === 'metro' && item.metrosReales) {
+            return sum + (item.precio * item.metrosReales);
+        }
+        return sum + (item.precio * item.quantity);
+    }, 0);
 
     const totalWithDiscount = items.reduce((sum, item) => {
-        const itemTotal = item.precio * item.quantity;
+        let itemTotal;
+        if (item.unidadMedida === 'metro' && item.metrosReales) {
+            itemTotal = item.precio * item.metrosReales;
+        } else {
+            itemTotal = item.precio * item.quantity;
+        }
         const discount = item.descuento ? (itemTotal * item.descuento) / 100 : 0;
         return sum + (itemTotal - discount);
     }, 0);

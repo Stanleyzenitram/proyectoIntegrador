@@ -6,7 +6,7 @@ interface MiniCartProps {
 }
 
 const MiniCart = ({ onClose }: MiniCartProps) => {
-    const { items, removeItem } = useCart();
+    const { items, removeItem, total, itemCount } = useCart();
   
 
     const handleCartClick = () => {
@@ -50,11 +50,11 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                                 <div className="flex-1">
                                     <h4 className="font-medium text-amber-900">{item.nombre_producto}</h4>
                                     <p className="text-sm text-amber-700">
-                                        {item.quantity} Und
+                                        {itemCount} Cajas
                                     </p>
                                 </div>
                                 <p className="font-medium text-amber-900">
-                                    RD${(item.precio * item.quantity).toFixed(2)}
+                                    RD${(total).toFixed(2)}
                                 </p>
                                 {/*Elimiinar item */}
                                 <button
