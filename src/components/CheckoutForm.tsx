@@ -96,10 +96,10 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
                 if (updateResponse.ok) {
                     console.log("Stock actualizado correctamente");
                     clearCart();
-                    setPaymentCompleted(true); // Marcar que el pago fue completado
+                    setPaymentCompleted(true); 
                     setLoading(false);
                     // Redirigir a la página de éxito después de un pago y actualización exitosos
-                    navigate("/success"); // Aquí "/success" es la ruta de destin
+                    navigate("/success"); 
                 } else {
                     console.error("Error al actualizar el stock");
                     setLoading(false);
