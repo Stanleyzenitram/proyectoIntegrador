@@ -55,7 +55,7 @@ const CheckoutForm = ({ total, orderItems, clearCart }) => {
                     },
                     body: JSON.stringify({
                         amount: amountInCents,
-                        currency: "usd",
+                        currency: "dop",
                     }),
                 }
             );
