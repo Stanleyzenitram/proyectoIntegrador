@@ -4,7 +4,7 @@ import type { Producto } from "../types/index";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Search } from "lucide-react";
 import ProductModal from '../components/ProductModal';
 
 export default function Home() {
@@ -22,7 +22,6 @@ export default function Home() {
     const [categories, setCategories] = useState<{ id_categoria: string; nombre_categoria: string }[]>([]);
     const [searchInput, setSearchInput] = useState("");
     const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
-    const [showFilters, setShowFilters] = useState(false); // Estado para mostrar/ocultar filtros en móvil
 
     const { user } = useAuth();
     const { addItem } = useCart();
@@ -112,84 +111,217 @@ export default function Home() {
         setSelectedProduct(product);
     };
 
-    {productos.map((producto) => {
-        const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
-    
-        return (
-            <div 
-                key={producto.id_producto} 
-                className="bg-white p-4 rounded-lg shadow-sm flex flex-col h-full justify-between"
-            >
-                {/* Contenedor de imagen y detalles */}
-                <div>
-                    {producto.imagen && (
-                        <div 
-                            onClick={() => handleProductClick(producto)}
-                            className="cursor-pointer transition-opacity hover:opacity-80"
-                        >
-                            <img
-                                src={producto.imagen}
-                                alt={producto.nombre_producto}
-                                className="w-full h-40 object-cover mb-2 rounded"
-                            />
-                        </div>
-                    )}
-                    <h3 
-                        onClick={() => handleProductClick(producto)}
-                        className="text-sm font-medium mb-2 cursor-pointer hover:text-orange-500"
+    return (
+        <div className="pt-90">
+            <div className="container mx-auto px-4">
+                {/* Barra superior con búsqueda y ordenamiento */}
+                <div className="flex justify-between items-center mb-4">
+                    <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+                        <input
+                            type="text"
+                            placeholder="Buscar productos..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="w-full p-2 pl-10 border rounded-lg"
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                            {productos.length} productos encontrados
+                        </span>
+                    </form>
+                    <select
+                        value={orderAsc ? "asc" : "desc"}
+                        onChange={(e) => setOrderAsc(e.target.value === "asc")}
+                        className="ml-4 p-2 border rounded-lg bg-gray-100 text-amber-900"
                     >
-                        {producto.nombre_producto}
-                    </h3>
+                        <option value="asc">Precio - Ascendente</option>
+                        <option value="desc">Precio - Descendente</option>
+                    </select>
                 </div>
-                
-                {/* Contenedor de precio y botón */}
-                <div>
-                    {/* Precio y disponibilidad */}
-                    <div className="mb-4">
-                        <div className="flex justify-between items-start">
-                            {producto.descuento ? (
-                                <div className="flex flex-col">
-                                    <span className="text-gray-500 line-through text-sm">
-                                        RD${producto.precio.toFixed(2)}
-                                    </span>
-                                    <span className="font-bold text-red-600">
-                                        RD${precioFinal.toFixed(2)}
-                                    </span>
-                                    <span className="text-xs text-green-600 font-medium">
-                                        {producto.descuento}% OFF
-                                    </span>
-                                </div>
-                            ) : (
-                                <span className="font-bold">
-                                    RD${producto.precio.toFixed(2)}
-                                </span>
-                            )}
-                            <span className={`text-sm ${stockStatus.color}`}>
-                                {stockStatus.text}
-                            </span>
+
+                <div className="flex gap-6">
+                    {/* Sidebar de filtros */}
+                    <div className="w-64 bg-gray-100 p-4">
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Ordenar por</h3>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Rango de precio</h3>
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="number"
+                                    placeholder="Min"
+                                    value={minPrice}
+                                    onChange={(e) => setMinPrice(e.target.value)}
+                                    className="w-20 p-2 border rounded bg-gray-200"
+                                />
+                                <span>-</span>
+                                <input
+                                    type="number"
+                                    placeholder="Max"
+                                    value={maxPrice}
+                                    onChange={(e) => setMaxPrice(e.target.value)}
+                                    className="w-20 p-2 border rounded bg-gray-200"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Categorías</h3>
+                            <div className="space-y-2">
+                                {categories.map((cat) => (
+                                    <div key={cat.id_categoria} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`cat-${cat.id_categoria}`}
+                                            checked={selectedCategory === cat.id_categoria}
+                                            onChange={(e) => setSelectedCategory(e.target.checked ? cat.id_categoria : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`cat-${cat.id_categoria}`} className="text-gray-700">
+                                            {cat.nombre_categoria}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Material</h3>
+                            <div className="space-y-2">
+                                {materials.map((mat) => (
+                                    <div key={mat.id_materiales} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`mat-${mat.id_materiales}`}
+                                            checked={selectedMaterial === mat.id_materiales}
+                                            onChange={(e) => setSelectedMaterial(e.target.checked ? mat.id_materiales : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`mat-${mat.id_materiales}`} className="text-gray-700">
+                                            {mat.nombre_materiales}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-amber-900 font-medium mb-2">Estilo</h3>
+                            <div className="space-y-2">
+                                {estilos.map((est) => (
+                                    <div key={est.id_estilo} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id={`est-${est.id_estilo}`}
+                                            checked={selectedEstilo === est.id_estilo}
+                                            onChange={(e) => setSelectedEstilo(e.target.checked ? est.id_estilo : '')}
+                                            className="mr-2"
+                                        />
+                                        <label htmlFor={`est-${est.id_estilo}`} className="text-gray-700">
+                                            {est.nombre_estilo}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-    
-                    <button
-                        onClick={() => {
-                            if (producto.stock_actual <= 0) {
-                                alert('Producto fuera de stock');
-                                return;
-                            }
-                            addItem(producto);
-                        }}
-                        disabled={producto.stock_actual <= 0}
-                        className={`w-full py-2 rounded-lg transition-colors ${
-                            producto.stock_actual > 0
-                                ? 'bg-amber-500 text-white hover:bg-amber-600'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                    >
-                        {producto.stock_actual > 0 ? 'Agregar al carrito' : 'Fuera de stock'}
-                    </button>
+
+                    {/* Grid de productos */}
+                    <div className="flex-1">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {productos.map((producto) => {
+                                const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
+                                const stockStatus = getStockStatus(producto.stock_actual);
+
+                                return (
+                                    <div 
+                                        key={producto.id_producto} 
+                                        className="bg-white p-4 rounded-lg shadow-sm flex flex-col h-full justify-between"
+                                    >
+                                        {/* Contenedor de imagen y detalles */}
+                                        <div>
+                                            {producto.imagen && (
+                                                <div 
+                                                    onClick={() => handleProductClick(producto)}
+                                                    className="cursor-pointer transition-opacity hover:opacity-80"
+                                                >
+                                                    <img
+                                                        src={producto.imagen}
+                                                        alt={producto.nombre_producto}
+                                                        className="w-full h-40 object-cover mb-2 rounded"
+                                                    />
+                                                </div>
+                                            )}
+                                            <h3 
+                                                onClick={() => handleProductClick(producto)}
+                                                className="text-sm font-medium mb-2 cursor-pointer hover:text-orange-500"
+                                            >
+                                                {producto.nombre_producto}
+                                            </h3>
+                                            
+                                            
+                                            
+                                              
+                            
+                                        </div>
+                                        
+                                        {/* Contenedor de precio y botón */}
+                                        <div>
+                                            {/* Precio y disponibilidad */}
+                                            <div className="mb-4">
+                                                <div className="flex justify-between items-start">
+                                                    {producto.descuento ? (
+                                                        <div className="flex flex-col">
+                                                            <span className="text-gray-500 line-through text-sm">
+                                                                RD${producto.precio.toFixed(2)}
+                                                            </span>
+                                                            <span className="font-bold text-red-600">
+                                                                RD${precioFinal.toFixed(2)}
+                                                            </span>
+                                                            <span className="text-xs text-green-600 font-medium">
+                                                                {producto.descuento}% OFF
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="font-bold">
+                                                            RD${producto.precio.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-sm ${stockStatus.color}`}>
+                                                        {stockStatus.text}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                           
+                                            <button
+                                                onClick={() => handleProductClick(producto)}
+                                                disabled={producto.stock_actual === 0}
+                                                className={`w-full py-2 px-4 rounded-lg ${
+                                                    producto.stock_actual > 0
+                                                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                {producto.stock_actual > 0 ? 'ELEGIR CANTIDAD ›' : 'SIN STOCK'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
-            </div> // <---- Aquí faltaba cerrar este div
-        );
-    })}
-    
+            </div>
+
+            {selectedProduct && (
+                <ProductModal 
+                    product={selectedProduct} 
+                    onClose={() => setSelectedProduct(null)} 
+                />
+            )}
+        </div>
+    );
 }
