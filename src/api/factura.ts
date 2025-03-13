@@ -1,4 +1,4 @@
-import { supabase } from "../../services/supabase";
+import { supabase } from "../services/supabase";
 
 // Función para obtener el id_cliente basado en el uuid
 export const obtenerIdClientePorUuid = async (uuid: string) => {

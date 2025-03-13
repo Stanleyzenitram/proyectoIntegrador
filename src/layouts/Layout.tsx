@@ -7,7 +7,7 @@ export default function Layout() {
         <>
             <Header />
             {/*pt-30 */}
-            <main className="container mx-auto pt-30 bg-gray-100  h-screen">
+            <main className="container mx-auto pt-30 bg-gray-100  h-full">
                 <Outlet />
             </main>
             <FloatingChatIcon />
