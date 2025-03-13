@@ -3,35 +3,51 @@ import { supabase } from "../../services/supabase";
 // Función para obtener el id_cliente basado en el uuid
 export const obtenerIdClientePorUuid = async (uuid: string) => {
     try {
+        // Verificar que el uuid no sea null ni undefined
+        if (!uuid) {
+            throw new Error('UUID no proporcionado');
+        }
+
         // Realizamos una consulta en la tabla 'clientes' donde el 'uuid' sea igual al valor proporcionado
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
             .from('clientes')
-            .select('id_cliente')  // Seleccionamos solo el campo 'id' que es el id_cliente
-            .eq('uuid', uuid)  // Filtramos por el uuid que recibimos
-            .single();  // Como esperamos solo un resultado, usamos .single() para obtener un solo objeto
+            .select('id_cliente')  
+            .eq('uuid', uuid)  
+            .single();  // Usamos .single() para obtener un solo resultado
 
         if (error) {
             throw new Error(`Error al obtener el cliente: ${error.message}`);
         }
 
-        // Retornar el id_cliente encontrado, si existe
-        return data?.id_cliente || null;
+        // Verificar si se devuelve más de una fila
+        if (count && count > 1) {
+            throw new Error(`Se han encontrado múltiples clientes con el mismo UUID: ${uuid}`);
+        }
+
+        // Verificar si no se encuentra un cliente
+        if (!data) {
+            throw new Error(`No se encontró cliente con el UUID: ${uuid}`);
+        }
+
+        // Retornar el id_cliente encontrado
+        return data.id_cliente || null;
     } catch (err) {
         console.error("Error al obtener el id_cliente por uuid:", err);
         throw err;
     }
 };
 
-
 // Función para crear la factura
 export const crearFactura = async (datosFactura: any) => {
     const { id, fechaActual, descuento, productos } = datosFactura;
+    
+    // Obtener el id_cliente por uuid
     const id_cliente = await obtenerIdClientePorUuid(id);
 
     // Calcular el total de la factura
-    const total = datosFactura.total
+    const total = datosFactura.total;
 
-    // Insertar la factura en la tabla 'factura'
+    // Insertar la factura en la tabla 'facturas'
     const { data: facturaData, error: facturaError } = await supabase
         .from('facturas')
         .insert([
@@ -70,9 +86,6 @@ export const crearFactura = async (datosFactura: any) => {
 
     return { success: true, idFactura };
 };
-
-
-
 
 // Función para obtener los datos de una factura por su ID
 export const obtenerFacturaPorId = async (idFactura: number) => {
