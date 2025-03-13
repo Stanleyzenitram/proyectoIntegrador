@@ -284,7 +284,7 @@ export default function Payment() {
                                     alt="MasterCard"
                                 />
                                 <h3 className="text-gray-700 font-medium">
-                                    Tarjeta
+                                    Tarjeta de credito o debito
                                 </h3>
                                 <input
                                     type="radio"
@@ -323,7 +323,7 @@ export default function Payment() {
                                         Cantidad: {item.quantity}
                                     </p>
                                     <p className="text-gray-400 text-sm">
-                                        Precio: ${item.precio}
+                                        Precio por m^2: ${item.precio}
                                     </p>
                                 </div>
                             </div>
@@ -382,6 +382,9 @@ export default function Payment() {
                                     total={totalAmount.toFixed(2)}
                                     orderItems={items}
                                     clearCart={clearCart}
+                                    descuento={total - totalWithDiscount}
+                                    subtotal={total}
+                                    itbis={tax}
                                 />
                             </Elements>
                         </div>
