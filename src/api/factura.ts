@@ -1,4 +1,6 @@
 import { supabase } from "../services/supabase";
+import { crearPedido } from "../api/pedidos";
+
 
 // Función para obtener el id_cliente basado en el uuid
 export const obtenerIdClientePorUuid = async (uuid: string) => {
@@ -83,6 +85,22 @@ export const crearFactura = async (datosFactura: any) => {
     if (detallesError) {
         throw new Error(`Error al crear los detalles de la factura: ${detallesError.message}`);
     }
+
+    const datosPedido = {
+        idCliente: id_cliente,
+        fechaActual: fechaActual,
+        total: total,
+        estado: datosFactura.estado,
+        metodoPago: datosFactura.metodoPago,
+        id_factura: idFactura,
+    };
+        
+
+    console.log('Datos del pedido:', datosPedido); // Depuración de los datos del pedido
+    // Crear el pedido en la tabla 'pedidos'
+    await crearPedido({ datosPedido     
+    });
+     
 
     return { success: true, idFactura };
 };

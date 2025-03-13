@@ -19,6 +19,7 @@ const CheckoutForm = ({
     const [paymentCompleted, setPaymentCompleted] = useState(false); // Nuevo estado para controlar el estado de la compra
     const navigate = useNavigate(); // Usamos useNavigate para la redirección
     const { user } = useAuth();
+    const [metodo_Pago, setMetodoPago] = useState("Tarjeta de Crédito o debito");
 
     // Datos para la factura
     const datosFactura = {
@@ -35,6 +36,7 @@ const CheckoutForm = ({
             precioUnit: item.precio,
             subtotal: (item.precio * item.quantity).toFixed(2),
         })),
+        metodoPago: metodo_Pago,
     };
 
     console.log("Datos para crear la factura: ", datosFactura);

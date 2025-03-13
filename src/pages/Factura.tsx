@@ -93,6 +93,7 @@ export default function Factura() {
         return `${year}-${month}-${day}`;
     };
 
+    console.log(factura);
     return (
         <div className="container mx-auto px-6 md:p-10">
             {/* 🔹 Contenido imprimible */}
