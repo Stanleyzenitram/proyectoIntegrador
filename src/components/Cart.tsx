@@ -20,7 +20,7 @@ const Cart = ({ onClose }: CartProps) => {
             onClose();
             navigate('/login', { 
                 state: { 
-                    returnTo: '/checkout', //aqui tienes que cambiar a la pagina de checkout cuando termines el proceso de compra
+                    returnTo: '/checkout',
                     message: 'Por favor inicia sesión para completar tu compra' 
                 } 
             });
@@ -34,7 +34,7 @@ const Cart = ({ onClose }: CartProps) => {
         <div className="fixed inset-0 bg-gray-100 z-50 overflow-auto">
             <Header />
 
-            <div className="container mx-auto px-4 py-8 pt-32">
+            <div className="container mx-auto px-4 py-8">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">CARRITO DE COMPRAS</h1>
                     <div className="flex gap-2">
@@ -65,7 +65,6 @@ const Cart = ({ onClose }: CartProps) => {
                     </div>
                 </div>
 
-                {/* Enlace para seguir comprando */}
                 <div className="mb-6">
                     <button 
                         onClick={onClose}
@@ -100,7 +99,6 @@ const Cart = ({ onClose }: CartProps) => {
                     </div>
                 ) : (
                     <>
-                        {/* Encabezados */}
                         <div className="grid grid-cols-5 py-2 border-b text-sm font-medium">
                             <div>Productos</div>
                             <div className="text-center">Precio</div>
@@ -109,15 +107,13 @@ const Cart = ({ onClose }: CartProps) => {
                             <div className="text-right">Total</div>
                         </div>
 
-                        {/* Lista de items */}
                         <div className="divide-y">
                             {items.map(item => (
                                 <CartItem key={item.id_producto} item={item} />
                             ))}
                         </div>
 
-                        {/* Resumen de totales */}
-                        <div className="border-t pt-4 mt-4">
+                        <div className="mt-6">
                             <div className="flex justify-end">
                                 <div className="w-full md:w-64">
                                     <div className="flex justify-between text-sm mb-2">
@@ -125,11 +121,12 @@ const Cart = ({ onClose }: CartProps) => {
                                         <span className="font-medium">RD${total.toFixed(2)}</span>
                                     </div>
                                     
-                                    {/* Nuevo renglón de descuento */}
-                                    <div className="flex justify-between text-sm mb-2">
-                                        <span className="text-gray-600">Descuento:</span>
-                                        <span className="font-medium text-green-600">-RD${(total - totalWithDiscount).toFixed(2)}</span>
-                                    </div>
+                                    {total !== totalWithDiscount && (
+                                        <div className="flex justify-between text-sm mb-2">
+                                            <span className="text-gray-600">Descuento:</span>
+                                            <span className="font-medium text-green-600">-RD${(total - totalWithDiscount).toFixed(2)}</span>
+                                        </div>
+                                    )}
 
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-600">ITBIS (18%):</span>
@@ -137,36 +134,22 @@ const Cart = ({ onClose }: CartProps) => {
                                     </div>
 
                                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                                        <span className="text-gray-900">Total (ITBIS inc.):</span>
+                                        <span className="text-gray-900">Total:</span>
                                         <span className="text-amber-600">RD${(totalWithDiscount * 1.18).toFixed(2)}</span>
                                     </div>
+
+                                    <button
+                                        onClick={handleCheckout}
+                                        className="w-full mt-4 bg-amber-500 text-white py-2 px-4 rounded hover:bg-amber-600 transition-colors"
+                                        data-checkout-button
+                                    >
+                                        Proceder al pago
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </>
                 )}
-
-                {/* Botón de finalizar compra */}
-                <div className="flex justify-end mt-6">
-                    <button
-                        onClick={handleCheckout}
-                        disabled={items.length === 0}
-                        className={`
-                            px-8 py-3 rounded-lg transition-colors
-                            ${items.length === 0 
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                : 'bg-amber-500 text-white hover:bg-amber-600'
-                            }
-                        `}
-                    >
-                        {items.length === 0 
-                            ? 'Carrito Vacío'
-                            : user 
-                                ? 'FINALIZAR COMPRA' 
-                                : 'INICIAR SESIÓN PARA COMPRAR'
-                        }
-                    </button>
-                </div>
             </div>
         </div>
     );

@@ -15,7 +15,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     const [selectionMode, setSelectionMode] = useState<'metros' | 'cajas'>('metros');
     const [metrosDeseados, setMetrosDeseados] = useState(currentMetros || product.metros_por_caja);
     const [cajasDeseadas, setCajasDeseadas] = useState(1);
-    const { addItem, updateItemQuantity } = useCart();
+    const { addItem, updateQuantity } = useCart();
     const navigate = useNavigate();
 
     // Función para calcular metros cuadrados por pieza con validación
@@ -29,23 +29,40 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     // Cálculos básicos
     const metrosPorPieza = calcularMetrosPorPieza(product.formato);
     const piezasPorCaja = product.metros_por_caja ? Math.round(product.metros_por_caja / metrosPorPieza) : 0;
-    const metrosMaximos = product.stock_actual * product.metros_por_caja;
+    const metrosMaximos = product.stock_actual * (product.metros_por_caja || 0);
+
+    // Función para calcular el precio total
+    const calcularPrecioTotal = () => {
+        const precioBase = product.precio * cajasDeseadas;
+
+        // Aplicar descuento si existe
+        if (product.descuento && product.descuento > 0) {
+            const descuento = (precioBase * product.descuento) / 100;
+            return precioBase - descuento;
+        }
+
+        return precioBase;
+    };
 
     // Actualizar cálculos basados en el modo de selección
     useEffect(() => {
         if (selectionMode === 'cajas') {
-            setMetrosDeseados(cajasDeseadas * product.metros_por_caja);
+            setMetrosDeseados(cajasDeseadas * (product.metros_por_caja || 0));
         } else {
-            setCajasDeseadas(Math.ceil(metrosDeseados / product.metros_por_caja));
+            const cajasNecesarias = Math.ceil(metrosDeseados / (product.metros_por_caja || 1));
+            setCajasDeseadas(cajasNecesarias);
+            // Actualizar metros deseados para reflejar el número real de metros basado en cajas completas
+            setMetrosDeseados(cajasNecesarias * (product.metros_por_caja || 0));
         }
     }, [selectionMode, cajasDeseadas, metrosDeseados, product.metros_por_caja]);
 
     const handleMetrosChange = (metros: number) => {
-        if (metros < product.metros_por_caja) return;
-        const cajasRequeridas = Math.ceil(metros / product.metros_por_caja);
+        if (metros < (product.metros_por_caja || 0)) return;
+        const cajasRequeridas = Math.ceil(metros / (product.metros_por_caja || 1));
         
         if (cajasRequeridas <= product.stock_actual) {
-            setMetrosDeseados(metros);
+            const metrosReales = cajasRequeridas * (product.metros_por_caja || 0);
+            setMetrosDeseados(metrosReales);
             setCajasDeseadas(cajasRequeridas);
         }
     };
@@ -53,25 +70,28 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     const handleCajasChange = (cajas: number) => {
         if (cajas >= 1 && cajas <= product.stock_actual) {
             setCajasDeseadas(cajas);
-            setMetrosDeseados(cajas * product.metros_por_caja);
+            setMetrosDeseados(cajas * (product.metros_por_caja || 0));
         }
     };
 
     const handleAddToCart = () => {
-        const metrosReales = cajasDeseadas * product.metros_por_caja;
-     
-        const itemToAdd = {
-            ...product,
-            quantity: cajasDeseadas,
-            metrosCuadrados: metrosDeseados,
-            cajasNecesarias: cajasDeseadas,
-            metrosReales: metrosReales,
-        };
-        console.log("Agregando al carrito:", itemToAdd);
+        const metrosReales = cajasDeseadas * (product.metros_por_caja || 0);
+        const precioTotal = calcularPrecioTotal();
+        
         if (isUpdating) {
-            updateItemQuantity(product.id_producto, itemToAdd);
+            updateQuantity(product.id_producto, cajasDeseadas, {
+                metrosCuadrados: metrosDeseados,
+                cajasNecesarias: cajasDeseadas,
+                metrosReales: metrosReales,
+                precioTotal: precioTotal
+            });
         } else {
-            addItem(itemToAdd);
+            addItem(product, cajasDeseadas, {
+                metrosCuadrados: metrosDeseados,
+                cajasNecesarias: cajasDeseadas,
+                metrosReales: metrosReales,
+                precioTotal: precioTotal
+            });
         }
         onClose();
     };
@@ -113,215 +133,184 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     }
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-            {/* Overlay semi-transparente */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Fondo semi-transparente con efecto de desenfoque */}
             <div 
-                className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm"
                 onClick={onClose}
             />
             
-            {/* Modal */}
-            <div className="relative bg-white p-6 rounded-lg max-w-2xl w-full mx-4 shadow-xl">
-                <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-2xl font-bold">{product.nombre_producto}</h2>
-                    <div className="flex gap-2">
-                      
+            {/* Contenido del modal */}
+            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-2xl font-bold text-gray-900">{product.nombre_producto}</h2>
                         <button 
-                            onClick={onClose} 
-                            className="text-gray-500 hover:text-gray-700 text-2xl"
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-gray-500"
                         >
-                            ×
+                            <span className="sr-only">Cerrar</span>
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        {product.imagen && (
-                            <img 
-                                src={product.imagen} 
-                                alt={product.nombre_producto} 
-                                className="w-full rounded-lg"
-                            />
-                        )}
-                    </div>
-
-                    <div>
-                        <div className="mb-4">
-                            <p className="text-2xl font-bold text-amber-600">
-                                RD${product.precio.toFixed(2)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                                Precio por Metro cuadrado (No incluye ITBIS)
-                            </p>
-                        </div>
-
-                        <div className="mb-4 space-y-2">
-                            <p className="text-sm text-gray-600">
-                                Formato: {product.formato} cm
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                m² por caja: {product.metros_por_caja}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                Piezas por caja: {piezasPorCaja}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                Estado: 
-                                <span className={`ml-2 font-medium ${stockStatus.color}`}>
-                                    {stockStatus.text}
-                                </span>
-                            </p>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="flex gap-4 mb-4">
-                                <button
-                                    onClick={() => setSelectionMode('metros')}
-                                    className={`px-4 py-2 rounded ${
-                                        selectionMode === 'metros' 
-                                            ? 'bg-orange-500 text-white' 
-                                            : 'bg-gray-100'
-                                    }`}
-                                >
-                                    Por metros cuadrados
-                                </button>
-                                <button
-                                    onClick={() => setSelectionMode('cajas')}
-                                    className={`px-4 py-2 rounded ${
-                                        selectionMode === 'cajas' 
-                                            ? 'bg-orange-500 text-white' 
-                                            : 'bg-gray-100'
-                                    }`}
-                                >
-                                    Por cajas
-                                </button>
-                            </div>
-
-                            {selectionMode === 'metros' ? (
-                                // Control de metros cuadrados
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        ¿Cuántos metros cuadrados necesitas?
-                                        <span className="text-sm text-gray-500 ml-2">
-                                            (Máximo: {metrosMaximos.toFixed(2)} m²)
-                                        </span>
-                                    </label>
-                                    <div className="flex items-center mt-1">
-                                        <button 
-                                            onClick={() => handleMetrosChange(metrosDeseados - product.metros_por_caja)}
-                                            className="px-3 py-1 border rounded-l bg-gray-100"
-                                            disabled={metrosDeseados <= product.metros_por_caja}
-                                        >
-                                            -
-                                        </button>
-                                        <input
-                                            type="number"
-                                            value={metrosDeseados}
-                                            onChange={(e) => handleMetrosChange(parseFloat(e.target.value) || product.metros_por_caja)}
-                                            className="w-24 text-center border-y"
-                                            min={product.metros_por_caja}
-                                            max={metrosMaximos}
-                                            step={0.01}
-                                        />
-                                        <button 
-                                            onClick={() => handleMetrosChange(metrosDeseados + product.metros_por_caja)}
-                                            className="px-3 py-1 border rounded-r bg-gray-100"
-                                            disabled={cajasDeseadas >= product.stock_actual}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                // Control de cajas
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        ¿Cuántas cajas necesitas?
-                                        <span className="text-sm text-gray-500 ml-2">
-                                            (Stock disponible: {product.stock_actual} cajas)
-                                        </span>
-                                    </label>
-                                    <div className="flex items-center mt-1">
-                                        <button 
-                                            onClick={() => handleCajasChange(cajasDeseadas - 1)}
-                                            className="px-3 py-1 border rounded-l bg-gray-100"
-                                            disabled={cajasDeseadas <= 1}
-                                        >
-                                            -
-                                        </button>
-                                        <input
-                                            type="number"
-                                            value={cajasDeseadas}
-                                            onChange={(e) => handleCajasChange(parseInt(e.target.value) || 1)}
-                                            className="w-24 text-center border-y"
-                                            min={1}
-                                            max={product.stock_actual}
-                                        />
-                                        <button 
-                                            onClick={() => handleCajasChange(cajasDeseadas + 1)}
-                                            className="px-3 py-1 border rounded-r bg-gray-100"
-                                            disabled={cajasDeseadas >= product.stock_actual}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="relative">
+                            {product.imagen && (
+                                <img
+                                    src={product.imagen}
+                                    alt={product.nombre_producto}
+                                    className="w-full h-64 object-cover rounded-lg shadow-md"
+                                />
                             )}
-
-                            <div className="mt-2 space-y-1">
-                                <p className="text-sm text-gray-600">
-                                    Cajas: {cajasDeseadas}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    Metros cuadrados: {metrosDeseados.toFixed(2)} m²
-                                </p>
-                                <p className="text-sm font-semibold text-amber-600">
-                                    Total a pagar: RD${(product.precio * metrosDeseados).toFixed(2)}
-                                </p>
-                            </div>
                         </div>
 
-                        {product.color && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700">Color</label>
-                                <select 
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                    value={product.color}
-                                    disabled
-                                >
-                                    <option>{product.color}</option>
-                                </select>
-                            </div>
-                        )}
+                        <div className="bg-white rounded-lg">
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900">Detalles del producto</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{product.descripcion}</p>
+                                </div>
 
-                        {product.estilo && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700">Estilo</label>
-                                <select 
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                                    value={product.estilo?.nombre_estilo}
-                                    disabled
-                                >
-                                    <option>{product.estilo?.nombre_estilo}</option>
-                                </select>
-                            </div>
-                        )}
+                                <div className="border-t pt-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-600">Precio por metro:</span>
+                                        <span className="font-medium">RD${product.precio.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-600">Metros por caja:</span>
+                                        <span className="font-medium">{product.metros_por_caja} m²</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-600">Piezas por caja:</span>
+                                        <span className="font-medium">{piezasPorCaja} piezas</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Stock disponible:</span>
+                                        <span className="font-medium">{product.stock_actual} cajas</span>
+                                    </div>
+                                </div>
 
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={!product.disponibilidad}
-                            className={`w-full py-2 px-4 rounded-lg ${
-                                product.disponibilidad 
-                                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
-                        >
-                            {product.disponibilidad 
-                                ? `AGREGAR AL CARRITO (${cajasDeseadas} ${cajasDeseadas === 1 ? 'caja' : 'cajas'} - ${metrosDeseados.toFixed(2)} m²)` 
-                                : 'SIN STOCK'
-                            }
-                        </button>
+                                <div className="border-t pt-4">
+                                    <div className="flex gap-4 mb-4">
+                                        <button
+                                            onClick={() => setSelectionMode('metros')}
+                                            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                                                selectionMode === 'metros'
+                                                    ? 'bg-amber-500 text-white shadow-md'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Por metros
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectionMode('cajas')}
+                                            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                                                selectionMode === 'cajas'
+                                                    ? 'bg-amber-500 text-white shadow-md'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Por cajas
+                                        </button>
+                                    </div>
+
+                                    {selectionMode === 'metros' ? (
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                ¿Cuántos metros cuadrados necesitas?
+                                                <span className="text-sm text-gray-500 ml-2">
+                                                    (Máximo: {metrosMaximos.toFixed(2)} m²)
+                                                </span>
+                                            </label>
+                                            <div className="flex items-center mt-2">
+                                                <button 
+                                                    onClick={() => handleMetrosChange(metrosDeseados - product.metros_por_caja)}
+                                                    className="px-3 py-1 border rounded-l bg-white hover:bg-gray-100 transition-colors"
+                                                    disabled={cajasDeseadas <= 1}
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    type="number"
+                                                    value={metrosDeseados.toFixed(2)}
+                                                    onChange={(e) => handleMetrosChange(parseFloat(e.target.value) || product.metros_por_caja)}
+                                                    className="w-24 text-center border-y bg-white"
+                                                    min={product.metros_por_caja}
+                                                    max={metrosMaximos}
+                                                    step={product.metros_por_caja}
+                                                />
+                                                <button 
+                                                    onClick={() => handleMetrosChange(metrosDeseados + product.metros_por_caja)}
+                                                    className="px-3 py-1 border rounded-r bg-white hover:bg-gray-100 transition-colors"
+                                                    disabled={cajasDeseadas >= product.stock_actual}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gray-50 p-4 rounded-lg">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                ¿Cuántas cajas necesitas?
+                                                <span className="text-sm text-gray-500 ml-2">
+                                                    (Stock disponible: {product.stock_actual} cajas)
+                                                </span>
+                                            </label>
+                                            <div className="flex items-center mt-2">
+                                                <button 
+                                                    onClick={() => handleCajasChange(cajasDeseadas - 1)}
+                                                    className="px-3 py-1 border rounded-l bg-white hover:bg-gray-100 transition-colors"
+                                                    disabled={cajasDeseadas <= 1}
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    type="number"
+                                                    value={cajasDeseadas}
+                                                    onChange={(e) => handleCajasChange(parseInt(e.target.value) || 1)}
+                                                    className="w-24 text-center border-y bg-white"
+                                                    min={1}
+                                                    max={product.stock_actual}
+                                                />
+                                                <button 
+                                                    onClick={() => handleCajasChange(cajasDeseadas + 1)}
+                                                    className="px-3 py-1 border rounded-r bg-white hover:bg-gray-100 transition-colors"
+                                                    disabled={cajasDeseadas >= product.stock_actual}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                                        <p>Total de cajas: <span className="font-medium">{cajasDeseadas}</span></p>
+                                        <p>Total de metros cuadrados: <span className="font-medium">{metrosDeseados.toFixed(2)} m²</span></p>
+                                        <div className="mt-2">
+                                            <p className="text-gray-600 font-medium">Precio por caja: RD${product.precio.toFixed(2)}</p>
+                                            <p className="text-gray-600 text-sm">Metros cuadrados por caja: {product.metros_por_caja} m²</p>
+                                            <p className="text-gray-600 text-sm">Piezas por caja: {piezasPorCaja} piezas</p>
+                                            {product.descuento && product.descuento > 0 && (
+                                                <p className="text-green-600">Descuento: {product.descuento}%</p>
+                                            )}
+                                            <p className="font-medium text-lg mt-1 text-amber-600">
+                                                Total: RD${calcularPrecioTotal().toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleAddToCart}
+                                        className="w-full mt-6 bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+                                    >
+                                        {isUpdating ? 'Actualizar carrito' : 'Agregar al carrito'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

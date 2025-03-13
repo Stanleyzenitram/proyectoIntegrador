@@ -78,9 +78,11 @@ export interface  Categoria {
 
 export interface CartItem extends Producto {
     quantity: number;
-<<<<<<< HEAD
+    metrosCuadrados?: number;
+    cajasNecesarias?: number;
+    metrosReales?: number;
+    precioTotal?: number;
 }
-
 
 export interface Cliente {
     nombre: string;
@@ -93,9 +95,3 @@ export interface Cliente {
     numero_documento: string;
     email: string;
 }
-=======
-    metrosCuadrados: number;  // Metros cuadrados solicitados
-    cajasNecesarias: number;  // Número de cajas calculado
-    metrosReales: number;     // Metros cuadrados reales (basado en cajas completas)
-}
->>>>>>> 1f1cd32 (Carrito y home para agregar la compra por metros y cajas)

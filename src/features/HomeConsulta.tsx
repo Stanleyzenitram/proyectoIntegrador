@@ -47,6 +47,14 @@ export default function Home() {
         return { text: 'Disponible', color: 'text-green-600' };
     };
 
+    const calcularPiezasPorCaja = (formato: string | undefined, metrosPorCaja: number): number => {
+        if (!formato) return 0;
+        const [ancho, largo] = formato.split('x').map(Number);
+        if (!ancho || !largo) return 0;
+        const metrosPorPieza = (ancho * largo) / 10000;
+        return Math.round(metrosPorCaja / metrosPorPieza);
+    };
+
     useEffect(() => {
         fetchProductos();
         fetchCategories();
@@ -238,6 +246,7 @@ export default function Home() {
                             {productos.map((producto) => {
                                 const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
                                 const stockStatus = getStockStatus(producto.stock_actual);
+                                const piezasPorCaja = calcularPiezasPorCaja(producto.formato, producto.metros_por_caja || 0);
 
                                 return (
                                     <div 
@@ -268,23 +277,28 @@ export default function Home() {
                                         <div>
                                             <div className="mb-4">
                                                 <div className="flex justify-between items-start">
-                                                    {producto.descuento ? (
-                                                        <div className="flex flex-col">
-                                                            <span className="text-gray-500 line-through text-sm">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm text-gray-500">
+                                                            Precio por caja ({producto.metros_por_caja} m² - {piezasPorCaja} piezas)
+                                                        </span>
+                                                        {producto.descuento ? (
+                                                            <>
+                                                                <span className="text-gray-500 line-through text-sm">
+                                                                    RD${producto.precio.toFixed(2)}
+                                                                </span>
+                                                                <span className="font-bold text-red-600">
+                                                                    RD${precioFinal.toFixed(2)}
+                                                                </span>
+                                                                <span className="text-xs text-green-600 font-medium">
+                                                                    {producto.descuento}% OFF
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="font-bold">
                                                                 RD${producto.precio.toFixed(2)}
                                                             </span>
-                                                            <span className="font-bold text-red-600">
-                                                                RD${precioFinal.toFixed(2)}
-                                                            </span>
-                                                            <span className="text-xs text-green-600 font-medium">
-                                                                {producto.descuento}% OFF
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="font-bold">
-                                                            RD${producto.precio.toFixed(2)}
-                                                        </span>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                     <span className={`text-sm ${stockStatus.color}`}>
                                                         {stockStatus.text}
                                                     </span>

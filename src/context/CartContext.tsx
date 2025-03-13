@@ -133,21 +133,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const total = items.reduce((sum, item) => {
-        if (item.unidadMedida === 'metro' && item.metrosReales) {
-            return sum + (item.precio * item.metrosReales);
-        }
-        return sum + (item.precio * item.quantity);
+        const precioBase = item.precio * item.quantity;
+        return sum + precioBase;
     }, 0);
 
     const totalWithDiscount = items.reduce((sum, item) => {
-        let itemTotal;
-        if (item.unidadMedida === 'metro' && item.metrosReales) {
-            itemTotal = item.precio * item.metrosReales;
-        } else {
-            itemTotal = item.precio * item.quantity;
-        }
-        const discount = item.descuento ? (itemTotal * item.descuento) / 100 : 0;
-        return sum + (itemTotal - discount);
+        const precioBase = item.precio * item.quantity;
+        const discount = item.descuento ? (precioBase * item.descuento) / 100 : 0;
+        return sum + (precioBase - discount);
     }, 0);
     
     const tax = totalWithDiscount * 0.18;
@@ -155,7 +148,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const clearCart = () => {
         setItems([]);
-        localStorage.removeItem('cart'); // Limpiar localStorage
+        localStorage.removeItem('cart');
     };
 
     const value = {

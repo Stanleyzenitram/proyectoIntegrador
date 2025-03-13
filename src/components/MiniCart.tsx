@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-
+import { CartItem } from '../types';
 
 interface MiniCartProps {
     onClose: () => void;
@@ -23,6 +24,20 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                 (checkoutBtn as HTMLElement).click();
             }
         }, 100);
+    };
+
+    const getDisplayQuantity = (item: CartItem) => {
+        if (item.metros_por_caja) {
+            return `${item.quantity} cajas (${(item.metrosReales || 0).toFixed(2)} m²)`;
+        }
+        return `${item.quantity} unid.`;
+    };
+
+    const getItemTotal = (item: CartItem) => {
+        if (item.metros_por_caja && item.metrosReales) {
+            return item.precio * item.metrosReales;
+        }
+        return item.precio * item.quantity;
     };
 
     return (
@@ -50,11 +65,11 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                                 <div className="flex-1">
                                     <h4 className="font-medium text-amber-900">{item.nombre_producto}</h4>
                                     <p className="text-sm text-amber-700">
-                                        {itemCount} Cajas
+                                        {getDisplayQuantity(item)}
                                     </p>
                                 </div>
                                 <p className="font-medium text-amber-900">
-                                    RD${(total).toFixed(2)}
+                                    RD${getItemTotal(item).toFixed(2)}
                                 </p>
                                 {/*Elimiinar item */}
                                 <button
@@ -66,7 +81,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 pt-4 border-t">
                       
                         <button
                             onClick={handleCheckout}

@@ -8,19 +8,61 @@ interface CartItemProps {
 }
 
 export default function CartItem({ item }: CartItemProps) {
-    const { updateItemQuantity, removeItem } = useCart();
+    const { updateQuantity, removeItem } = useCart();
     const [showModal, setShowModal] = useState(false);
+    const [displayMode, setDisplayMode] = useState<'cajas' | 'metros'>('cajas');
 
     const handleQuantityChange = (newQuantity: number) => {
         if (newQuantity >= 1 && newQuantity <= item.stock_actual) {
-            const metrosReales = newQuantity * item.metros_por_caja;
-            updateItemQuantity(item.id_producto, {
-                quantity: newQuantity,
-                metrosCuadrados: metrosReales,
-                cajasNecesarias: newQuantity,
-                metrosReales: metrosReales
-            });
+            if (item.metros_por_caja) {
+                const metrosReales = newQuantity * (item.metros_por_caja || 0);
+                updateQuantity(item.id_producto, newQuantity, {
+                    metrosCuadrados: metrosReales,
+                    cajasNecesarias: newQuantity,
+                    metrosReales: metrosReales
+                });
+            } else {
+                updateQuantity(item.id_producto, newQuantity);
+            }
         }
+    };
+
+    const getDisplayQuantity = () => {
+        if (item.metros_por_caja) {
+            if (displayMode === 'metros') {
+                return `${(item.metrosReales || 0).toFixed(2)} m²`;
+            }
+            return `${item.quantity} cajas`;
+        }
+        return item.quantity;
+    };
+
+    const getUOM = () => {
+        if (item.metros_por_caja) {
+            return (
+                <select
+                    value={displayMode}
+                    onChange={(e) => setDisplayMode(e.target.value as 'cajas' | 'metros')}
+                    className="bg-white border rounded px-2 py-1 text-sm"
+                >
+                    <option value="cajas">Cajas</option>
+                    <option value="metros">Metros²</option>
+                </select>
+            );
+        }
+        return "Unidad";
+    };
+
+    const getTotal = () => {
+        // El precio es por caja, así que multiplicamos directamente por la cantidad de cajas
+        const precioBase = item.precio * item.quantity;
+        
+        // Aplicar descuento si existe
+        if (item.descuento && item.descuento > 0) {
+            const descuento = (precioBase * item.descuento) / 100;
+            return precioBase - descuento;
+        }
+        return precioBase;
     };
 
     return (
@@ -45,7 +87,7 @@ export default function CartItem({ item }: CartItemProps) {
                                 onClick={() => setShowModal(true)}
                                 className="text-blue-500 hover:text-blue-700"
                             >
-                                View
+                                Ver detalles
                             </button>
                             <button
                                 onClick={() => removeItem(item.id_producto)}
@@ -60,24 +102,49 @@ export default function CartItem({ item }: CartItemProps) {
                 {/* PRECIO */}
                 <div className="text-center">
                     <p>RD$ {item.precio.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">por caja</p>
+                    {item.descuento > 0 && (
+                        <p className="text-green-600 text-xs">-{item.descuento}%</p>
+                    )}
                 </div>
 
                 {/* CANTIDAD */}
                 <div className="text-center">
-                    <p>{item.metrosReales.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">
-                        (STOCK: {item.stock_actual})
+                    <div className="flex items-center justify-center gap-2">
+                        <button
+                            onClick={() => handleQuantityChange(item.quantity - 1)}
+                            className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={item.quantity <= 1}
+                        >
+                            -
+                        </button>
+                        <span>{getDisplayQuantity()}</span>
+                        <button
+                            onClick={() => handleQuantityChange(item.quantity + 1)}
+                            className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={item.quantity >= item.stock_actual}
+                        >
+                            +
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                        (STOCK: {item.stock_actual} cajas)
                     </p>
+                    {item.metros_por_caja && displayMode === 'cajas' && (
+                        <p className="text-xs text-gray-500">
+                            ({(item.metrosReales || 0).toFixed(2)} m² totales)
+                        </p>
+                    )}
                 </div>
 
                 {/* UOM */}
                 <div className="text-center">
-                    <p>Metro cuadrado</p>
+                    {getUOM()}
                 </div>
 
                 {/* TOTAL */}
                 <div className="text-right">
-                    <p>RD$ {(item.precio * item.metrosReales).toFixed(2)}</p>
+                    <p>RD$ {getTotal().toFixed(2)}</p>
                 </div>
             </div>
 
