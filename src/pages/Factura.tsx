@@ -39,6 +39,7 @@ export default function Factura() {
     return (
         <div className="container mx-auto px-6 md:p-10">
             <div className="bg-white shadow-lg rounded-md px-6 md:p-5 w-full max-w-3xl mx-auto">
+                <p className="font-light text-[0.7rem]">No. {facturaId}</p>
                 <div className="flex flex-col justify-center items-center text-center mb-6">
                     <div className="">
                         <img
