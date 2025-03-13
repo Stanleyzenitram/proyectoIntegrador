@@ -18,6 +18,7 @@ export default function Payment() {
         tax,
         totalAmount,
         totalWithDiscount,
+        subtotal,
         clearCart,
     } = useCart();
     const [selectedPayment, setSelectedPayment] = useState(null);
@@ -342,18 +343,20 @@ export default function Payment() {
                             Subtotal
                         </h3>
                         <p className="text-sm md:text-base text-gray-700">
-                            RD${total.toFixed(2)}
+                            RD${subtotal.toFixed(2)}
                         </p>
                     </div>
 
-                    <div className="flex justify-between p-1 w-full">
-                        <h3 className="text-sm md:text-base text-gray-700">
-                            Descuento
-                        </h3>
-                        <p className="text-sm md:text-base text-gray-700">
-                            RD${(total - totalWithDiscount).toFixed(2)}
-                        </p>
-                    </div>
+                    {items.some(item => item.descuento && item.descuento > 0) && (
+                        <div className="flex justify-between p-1 w-full">
+                            <h3 className="text-sm md:text-base text-gray-700">
+                                Descuento
+                            </h3>
+                            <p className="text-sm md:text-base text-gray-700">
+                                -RD${(subtotal - total).toFixed(2)}
+                            </p>
+                        </div>
+                    )}
 
                     <div className="flex justify-between p-1 w-full">
                         <h3 className="text-sm md:text-base text-gray-700">

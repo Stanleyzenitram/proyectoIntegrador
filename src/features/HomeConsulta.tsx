@@ -278,9 +278,6 @@ export default function Home() {
                                             <div className="mb-4">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm text-gray-500">
-                                                            Precio por caja ({producto.metros_por_caja} m² - {piezasPorCaja} piezas)
-                                                        </span>
                                                         {producto.descuento ? (
                                                             <>
                                                                 <span className="text-gray-500 line-through text-sm">
@@ -293,11 +290,11 @@ export default function Home() {
                                                                     {producto.descuento}% OFF
                                                                 </span>
                                                             </>
-                                                        ) : (
+                                                        ) :
                                                             <span className="font-bold">
                                                                 RD${producto.precio.toFixed(2)}
                                                             </span>
-                                                        )}
+                                                        }
                                                     </div>
                                                     <span className={`text-sm ${stockStatus.color}`}>
                                                         {stockStatus.text}

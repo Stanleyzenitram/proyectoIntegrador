@@ -34,10 +34,15 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
     };
 
     const getItemTotal = (item: CartItem) => {
-        if (item.metros_por_caja && item.metrosReales) {
-            return item.precio * item.metrosReales;
+        // El precio es por caja, así que multiplicamos directamente por la cantidad de cajas
+        const precioBase = item.precio * item.quantity;
+        
+        // Aplicar descuento si existe
+        if (item.descuento && item.descuento > 0) {
+            const descuento = (precioBase * item.descuento) / 100;
+            return precioBase - descuento;
         }
-        return item.precio * item.quantity;
+        return precioBase;
     };
 
     return (

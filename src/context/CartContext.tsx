@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { Producto, CartItem } from '../types';
 import { supabase } from '../services/supabase';
 
@@ -15,6 +15,7 @@ interface CartContextType {
         cajasNecesarias?: number;
         metrosReales?: number;
     }) => void;
+    subtotal: number;
     total: number;
     tax: number;
     totalAmount: number;
@@ -132,19 +133,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
     };
 
-    const total = items.reduce((sum, item) => {
-        const precioBase = item.precio * item.quantity;
-        return sum + precioBase;
-    }, 0);
+    const subtotal = useMemo(() => {
+        return items.reduce((acc, item) => {
+            // El precio es por caja, así que multiplicamos directamente por la cantidad de cajas
+            return acc + (item.precio * item.quantity);
+        }, 0);
+    }, [items]);
 
-    const totalWithDiscount = items.reduce((sum, item) => {
-        const precioBase = item.precio * item.quantity;
-        const discount = item.descuento ? (precioBase * item.descuento) / 100 : 0;
-        return sum + (precioBase - discount);
-    }, 0);
-    
-    const tax = totalWithDiscount * 0.18;
-    const totalAmount = totalWithDiscount + tax;
+    const total = useMemo(() => {
+        return items.reduce((acc, item) => {
+            // El precio es por caja, así que multiplicamos directamente por la cantidad de cajas
+            const precioBase = item.precio * item.quantity;
+            
+            // Aplicar descuento si existe
+            if (item.descuento && item.descuento > 0) {
+                const descuento = (precioBase * item.descuento) / 100;
+                return acc + (precioBase - descuento);
+            }
+            return acc + precioBase;
+        }, 0);
+    }, [items]);
+
+    const totalWithDiscount = useMemo(() => {
+        return total; // El total ya incluye el descuento
+    }, [total]);
+
+    const tax = useMemo(() => {
+        return total * 0.18; // Calculamos el ITBIS sobre el total con descuento
+    }, [total]);
+
+    const totalAmount = useMemo(() => {
+        return total + tax; // Sumamos el ITBIS al total con descuento
+    }, [total, tax]);
 
     const clearCart = () => {
         setItems([]);
@@ -156,6 +176,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addItem,
         removeItem,
         updateQuantity,
+        subtotal,
         total,
         tax,
         totalAmount,
