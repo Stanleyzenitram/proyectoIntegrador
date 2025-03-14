@@ -1,7 +1,6 @@
 import { supabase } from "../services/supabase";
 import { crearPedido } from "../api/pedidos";
 
-
 // Función para obtener el id_cliente basado en el uuid
 export const obtenerIdClientePorUuid = async (uuid: string) => {
     try {
@@ -40,7 +39,7 @@ export const obtenerIdClientePorUuid = async (uuid: string) => {
 };
 
 // Función para crear la factura
-export const crearFactura = async (datosFactura: any) => {
+export const crearFactura = async (datosFactura: any, direccionPedido: any) => {
     const { id, fechaActual, descuento, productos } = datosFactura;
     
     // Obtener el id_cliente por uuid
@@ -94,11 +93,9 @@ export const crearFactura = async (datosFactura: any) => {
         metodoPago: datosFactura.metodoPago,
         id_factura: idFactura,
     };
-        
 
-   // console.log('Datos del pedido:', datosPedido); // Depuración de los datos del pedido
     // Crear el pedido en la tabla 'pedidos'
-    await crearPedido( datosPedido );
+    await crearPedido(datosPedido, direccionPedido);
 
     return { success: true, idFactura };
 };
@@ -109,12 +106,34 @@ export const obtenerFacturaPorId = async (idFactura: number) => {
         // Obtener la información de la factura
         const { data: facturaData, error: facturaError } = await supabase
             .from('facturas')
-            .select('id_factura, id_cliente, fecha_venta, descuento_total, total,sub_total, estado')
+            .select('id_factura, id_cliente, fecha_venta, descuento_total, total, sub_total, estado')
             .eq('id_factura', idFactura)
             .single();  // Usamos .single() porque esperamos un solo resultado
 
         if (facturaError) {
             throw new Error(`Error al obtener la factura: ${facturaError.message}`);
+        }
+
+        // Obtener el id_pedido asociado a la factura
+        const { data: pedidoData, error: pedidoError } = await supabase
+            .from('pedidos')
+            .select('id_pedido')
+            .eq('id_factura', idFactura)
+            .single();
+
+        if (pedidoError) {
+            throw new Error(`Error al obtener el pedido: ${pedidoError.message}`);
+        }
+
+        // Obtener la dirección de pedido asociada al id_pedido
+        const { data: direccionData, error: direccionError } = await supabase
+            .from('direcciones_pedidos')
+            .select('calle, ciudad, provincia, codigo_postal, referencia, pais')
+            .eq('id_pedido', pedidoData.id_pedido)
+            .single();
+
+        if (direccionError) {
+            throw new Error(`Error al obtener la dirección de pedido: ${direccionError.message}`);
         }
 
         // Obtener los detalles de la factura
@@ -133,8 +152,6 @@ export const obtenerFacturaPorId = async (idFactura: number) => {
             .select('nombre, email, telefono, direccion')
             .eq('id_cliente', facturaData.id_cliente)
             .single();
-
-        console.log('Datos del cliente:', clienteData); // Depuración de los datos del cliente
 
         if (clienteError) {
             throw new Error(`Error al obtener los datos del cliente: ${clienteError.message}`);
@@ -159,7 +176,7 @@ export const obtenerFacturaPorId = async (idFactura: number) => {
             subtotal: detalle.subtotal,
         }));
 
-        // Construir la factura con los detalles y la información del cliente
+        // Construir la factura con los detalles, la información del cliente y la dirección de pedido
         const factura = {
             idFactura: facturaData.id_factura,
             cliente: {
@@ -174,6 +191,7 @@ export const obtenerFacturaPorId = async (idFactura: number) => {
             total: facturaData.total,
             estado: facturaData.estado,
             productos: productosConDetalles,
+            direccionPedido: direccionData,  // Agregar la dirección de pedido
         };
 
         return factura;

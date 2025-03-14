@@ -29,6 +29,7 @@ const CheckoutForm = ({
     descuento,
     subtotal,
     itbis,
+    direccionPedido,
 }: CheckoutFormProps) => {
     const stripe = useStripe();
     const elements = useElements();
@@ -55,6 +56,15 @@ const CheckoutForm = ({
             subtotal: (item.precio * item.quantity).toFixed(2),
         })),
         metodoPago: metodo_Pago,
+    };
+
+    const isDireccionCompleta = () => {
+        return (
+            direccionPedido.calle.trim() !== "" &&
+            direccionPedido.ciudad.trim() !== "" &&
+            direccionPedido.provincia.trim() !== "" &&
+            direccionPedido.codigo_postal.trim() !== ""
+        );
     };
 
     console.log("Datos para crear la factura: ", datosFactura);
@@ -149,7 +159,7 @@ const CheckoutForm = ({
                     setLoading(false);
                     
                     //CREAR FACTURA
-                    const result = await crearFactura(datosFactura);
+                    const result = await crearFactura(datosFactura, direccionPedido);
                     if (result.success) {
                         console.log("Factura creada con éxito, ID:", result.idFactura);
                     } else {
@@ -193,9 +203,9 @@ const CheckoutForm = ({
                     Total: {total} DOP
                 </span>
                 <button
-                    className="bg-amber-900 hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-md transition-all"
+                    className="bg-amber-900 cursor-pointer disabled:bg-gray-300 disabled:cursor-default  hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-md transition-all"
                     type="submit"
-                    disabled={loading || paymentCompleted}
+                    disabled={loading || paymentCompleted || !isDireccionCompleta()}
                 >
                     {loading
                         ? "Procesando..."

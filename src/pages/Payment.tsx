@@ -29,6 +29,34 @@ export default function Payment() {
         cvv: "",
     });
     const [paymentError, setPaymentError] = useState(""); // Para manejar errores de pago
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const [direccion, setDireccion] = useState({
+        calle: "",
+        ciudad: "",
+        provincia: "",
+        codigo_postal: "",
+        referencia: "",
+        pais: "Republica Dominicana",
+    });
+
+       // Función para manejar cambios en los campos del formulario
+       const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setDireccion({
+            ...direccion,
+            [name]: value,
+        });
+    };
+
+    // Función para manejar el envío del formulario
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        console.log("Dirección guardada:", direccion);
+        setIsModalOpen(false); // Cerrar el modal después de guardar
+    };
+
+
 
     function getAccessToken() {
         for (let i = 0; i < localStorage.length; i++) {
@@ -103,6 +131,7 @@ export default function Payment() {
         }
         return true;
     };
+
 
     const handlePayment = async () => {
         if (!selectedPayment) return;
@@ -337,7 +366,139 @@ export default function Payment() {
                         </div>
                     ))}
                     <hr className="w-full border-t border-gray-200 my-4" />
+                    <div className="flex justify-between items-center p-3 w-full bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-base md:text-lg font-medium text-gray-800">
+                                    Dirección
+                                </h3>
+                                {/* <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-semibold">
+                                    Predeterminada
+                                </span> */}
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Calle {direccion.calle} , Ciudad {direccion.ciudad} , Provincia {direccion.provincia}.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="px-4 py-2 bg-white cursor-pointer text-indigo-600 text-sm font-medium rounded-md border border-indigo-300 hover:bg-indigo-50 transition-colors duration-200"
+                        >
+                            Elegir
+                        </button>
 
+                        {/* VENTANA MODAL PARA DIRECCIONES */}
+                        {isModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+                    onClick={() => setIsModalOpen(false)} // Cerrar al hacer clic fuera
+                >
+                    <div
+                        className="bg-white rounded-lg p-6 w-full max-w-md"
+                        onClick={(e) => e.stopPropagation()} // Evitar que el clic se propague al overlay
+                    >
+                        <h2 className="text-xl font-semibold mb-4">Dirección</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4">
+                                {/* Campo: Calle */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Calle
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="calle"
+                                        value={direccion.calle}
+                                        onChange={handleInputChange}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Campo: Ciudad */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Ciudad
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="ciudad"
+                                        value={direccion.ciudad}
+                                        onChange={handleInputChange}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Campo: Provincia */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Provincia
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="provincia"
+                                        value={direccion.provincia}
+                                        onChange={handleInputChange}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Campo: Código Postal */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Código Postal
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="codigo_postal"
+                                        value={direccion.codigo_postal}
+                                        onChange={handleInputChange}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Campo: Referencia */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Referencia
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="referencia"
+                                        value={direccion.referencia}
+                                        onChange={handleInputChange}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+
+                            </div>
+
+                            {/* Botones del formulario */}
+                            <div className="mt-6 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+                    </div>
+                    <hr className="w-full border-t border-gray-200 my-4" />
                     <div className="flex justify-between p-1 w-full">
                         <h3 className="text-sm md:text-base text-gray-700">
                             Subtotal
@@ -347,7 +508,9 @@ export default function Payment() {
                         </p>
                     </div>
 
-                    {items.some(item => item.descuento && item.descuento > 0) && (
+                    {items.some(
+                        (item) => item.descuento && item.descuento > 0
+                    ) && (
                         <div className="flex justify-between p-1 w-full">
                             <h3 className="text-sm md:text-base text-gray-700">
                                 Descuento
@@ -388,6 +551,7 @@ export default function Payment() {
                                     descuento={total - totalWithDiscount}
                                     subtotal={total}
                                     itbis={tax}
+                                    direccionPedido={direccion}
                                 />
                             </Elements>
                         </div>
