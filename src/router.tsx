@@ -7,6 +7,9 @@ import Profile from "./pages/Profile";
 import PrivateRoute from "./components/PrivateRoute";
 import Register from "./pages/Register";
 import { ChatPage } from "./pages/ChatPage";
+import Pedidos from "./pages/Pedidos";
+import PedidosMant from "./pages/PedidosMant";
+import HistorialPedido from "./pages/HistorialPedido";
 
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
@@ -50,6 +53,8 @@ export default function AppRouter() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/factura/:id" element={<Factura />} />
+                    <Route path="/pedidos" element={<Pedidos />} />
+                    <Route path="/pedido/:id/historial" element={<HistorialPedido />} />
 
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />
@@ -57,6 +62,7 @@ export default function AppRouter() {
                     <Route path="/proveedores" element={<Proveedor />} />
                     <Route path="/productos" element={<Productos />} />
                     <Route path="/estilos" element={<Estilos />} />
+                    <Route path="/pedidos-mant" element={<PedidosMant />} />
                     <Route path="/inventario" element={<Inventario />} />
                     <Route path="/compras" element={<CompraProductos />} />
                     <Route

@@ -72,8 +72,8 @@ export default function MenuMant() {
                             <div className="space-y-2">
                                 <NavLink to="/stock" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Stock</NavLink>
                                 <NavLink to="/proveedores" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
-                               
                                 <NavLink to="/compras" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Compras</NavLink>
+                                <NavLink to="/pedidos-mant" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Pedidos</NavLink>
                             </div>
                         </details>
 
@@ -114,6 +114,7 @@ export default function MenuMant() {
                         <NavLink to="/proveedores" className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
                         <NavLink to="/inventario" className="block px-4 py-2 hover:bg-gray-200">Inventario</NavLink>
                         <NavLink to="/compras" className="block px-4 py-2 hover:bg-gray-200">Compras</NavLink>
+                        <NavLink to="/pedidos-mant" className="block px-4 py-2 hover:bg-gray-200">Pedidos</NavLink>
                     </div>
                 </div>
 
@@ -130,6 +131,6 @@ export default function MenuMant() {
                     </div>
                 </div>
             </nav>
-        </div>
-    );
+        </div>
+    );
 }

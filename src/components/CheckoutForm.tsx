@@ -1,8 +1,26 @@
 import { useState } from "react";
 import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
-import { useNavigate } from "react-router-dom"; // Importa useNavigate
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { crearFactura } from "../api/factura";
+
+interface CartItem {
+    id_producto: string;
+    quantity: number;
+    precio: number;
+    descuento?: number;
+    nombre_producto: string;
+    imagen?: string;
+}
+
+interface CheckoutFormProps {
+    total: number;
+    orderItems: CartItem[];
+    clearCart: () => void;
+    descuento: number;
+    subtotal: number;
+    itbis: number;
+}
 
 const CheckoutForm = ({
     total,
@@ -11,20 +29,20 @@ const CheckoutForm = ({
     descuento,
     subtotal,
     itbis,
-}) => {
+}: CheckoutFormProps) => {
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [paymentCompleted, setPaymentCompleted] = useState(false); // Nuevo estado para controlar el estado de la compra
-    const navigate = useNavigate(); // Usamos useNavigate para la redirección
+    const [paymentCompleted, setPaymentCompleted] = useState(false);
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [metodo_Pago, setMetodoPago] = useState("Tarjeta de Crédito o debito");
 
     // Datos para la factura
     const datosFactura = {
         id: user?.id,
-        fechaActual: new Date().toISOString().split("T")[0], // Formato YYYY-MM-DD
+        fechaActual: new Date().toISOString().split("T")[0],
         descuento: (descuento).toFixed(2),
         estado: "valida",
         subtotal: subtotal,
@@ -119,7 +137,7 @@ const CheckoutForm = ({
                             Authorization: `Bearer ${token}`,
                         },
                         body: JSON.stringify({
-                            orderItems, // Enviar los productos comprados para actualizar el stock
+                            orderItems,
                         }),
                     }
                 );
