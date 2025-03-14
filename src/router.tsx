@@ -35,7 +35,7 @@ export default function AppRouter() {
                 <Route path="/" element={<HomePage />} index />
 
                 <Route path="/register" element={<Register />} />
-                <Route path="/SobreNosotros" element={<Empleados />} />
+                <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
                 <Route path="/reset-password" element={<PasswordReset />} />
                 <Route path="/chat" element={<ChatPage />} />
                 <Route path="/payment" element={<Payment />} />
