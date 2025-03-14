@@ -40,7 +40,7 @@ export default function Header() {
                 <div className="flex items-center">
                     <NavLink to="/">
                         <img
-                            src="/src/assets/images/icon.png"
+                            src="https://pdokbwzmygythqtjroje.supabase.co/storage/v1/object/public/imagenes/assets/icon.png"
                             alt="icon"
                             className="h-14 md:h-20 mr-3"
                         />

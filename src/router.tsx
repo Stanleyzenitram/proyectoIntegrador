@@ -49,7 +49,7 @@ export default function AppRouter() {
                 <Route element={<PrivateRoute />}>
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/factura" element={<Factura />} />
+                    <Route path="/factura/:id" element={<Factura />} />
 
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />

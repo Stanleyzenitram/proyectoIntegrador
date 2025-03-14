@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { obtenerFacturaPorId } from "../api/factura";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { obtenerFacturaPorId } from "../api/factura";
 
 export default function Factura() {
     const { id } = useParams<{ id: string }>();
@@ -93,6 +96,7 @@ export default function Factura() {
         return `${year}-${month}-${day}`;
     };
 
+    console.log(factura);
     return (
         <div className="container mx-auto px-6 md:p-10">
             {/* 🔹 Contenido imprimible */}
