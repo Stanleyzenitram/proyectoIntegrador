@@ -134,7 +134,9 @@ export default function Factura() {
                         </div>
                         <div>
                             <p className="font-semibold">Dirección:</p>
-                            <p className="text-gray-900">{factura.cliente.direccion}</p>
+                            <p className="text-gray-900">
+                                {factura.direccionPedido.provincia}, {factura.direccionPedido.ciudad}, calle:{factura.direccionPedido.calle}
+                                </p>
                         </div>
                     </div>
                 </div>
