@@ -18,6 +18,7 @@ export default function Payment() {
         tax,
         totalAmount,
         totalWithDiscount,
+        subtotal,
         clearCart,
     } = useCart();
     const [selectedPayment, setSelectedPayment] = useState(null);

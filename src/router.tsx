@@ -22,7 +22,7 @@ import PrivateLogin from "./components/PrivateLogin";
 import Inventario from "./features/mantenimientos/Inventario";
 import CompraProductos from "./features/mantenimientos/CompraProductos";
 import ListaProveedores from "./features/mantenimientos/ListaProveedores";
-import ReporteCompras from './features/reportes/ReporteCompras';
+import ReporteCompras from "./features/reportes/ReporteCompras";
 import Factura from "./pages/Factura";
 
 export default function AppRouter() {
@@ -59,17 +59,20 @@ export default function AppRouter() {
                     <Route path="/estilos" element={<Estilos />} />
                     <Route path="/inventario" element={<Inventario />} />
                     <Route path="/compras" element={<CompraProductos />} />
-                    <Route path="/proveedores-lista" element={<ListaProveedores />} />
+                    <Route
+                        path="/proveedores-lista"
+                        element={<ListaProveedores />}
+                    />
 
-                   <Route path="/stock" element={<Inventario />} />
-
-                  
+                    <Route path="/stock" element={<Inventario />} />
 
                     {/* Inventario */}
 
                     {/* Reportes */}
-      <Route path="/reportes/compras" element={<ReporteCompras />} />
-      
+                    <Route
+                        path="/reportes/compras"
+                        element={<ReporteCompras />}
+                    />
                 </Route>
             </Route>
         </Routes>

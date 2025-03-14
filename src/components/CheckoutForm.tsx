@@ -3,8 +3,6 @@ import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom"; // Importa useNavigate
 import { useAuth } from "../hooks/useAuth";
 import { crearFactura } from "../api/factura";
-import { useAuth } from "../hooks/useAuth";
-import { crearFactura } from "../api/factura";
 
 const CheckoutForm = ({
     total,
