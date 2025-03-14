@@ -96,11 +96,9 @@ export const crearFactura = async (datosFactura: any) => {
     };
         
 
-    console.log('Datos del pedido:', datosPedido); // Depuración de los datos del pedido
+   // console.log('Datos del pedido:', datosPedido); // Depuración de los datos del pedido
     // Crear el pedido en la tabla 'pedidos'
-    await crearPedido({ datosPedido     
-    });
-     
+    await crearPedido( datosPedido );
 
     return { success: true, idFactura };
 };
