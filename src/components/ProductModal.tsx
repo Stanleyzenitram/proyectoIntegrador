@@ -177,7 +177,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                 <div className="border-t pt-4">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-gray-600">Precio por metro:</span>
-                                        <span className="font-medium">RD${product.precio.toFixed(2)}</span>
+                                        <span className="font-medium">RD${(product.precio / product.metros_por_caja).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-gray-600">Metros por caja:</span>

@@ -38,17 +38,16 @@ const CheckoutForm = ({
     const [paymentCompleted, setPaymentCompleted] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [metodo_Pago, setMetodoPago] = useState("Tarjeta de Crédito o debito");
+    const [metodo_Pago, setMetodoPago] = useState("Tarjeta de Crédito o Débito");
 
-    // Datos para la factura
     const datosFactura = {
         id: user?.id,
         fechaActual: new Date().toISOString().split("T")[0],
-        descuento: (descuento).toFixed(2),
+        descuento: descuento.toFixed(2),
         estado: "valida",
-        subtotal: subtotal,
-        itbis: itbis,
-        total: total,
+        subtotal,
+        itbis,
+        total,
         productos: orderItems.map((item) => ({
             idProducto: item.id_producto,
             cantidad: item.quantity,
@@ -67,8 +66,6 @@ const CheckoutForm = ({
         );
     };
 
-    console.log("Datos para crear la factura: ", datosFactura);
-
     function getAccessToken() {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -78,9 +75,7 @@ const CheckoutForm = ({
                 if (parsedItem && parsedItem.access_token) {
                     return parsedItem.access_token;
                 }
-            } catch (error) {
-                // Ignorar JSON inválido
-            }
+            } catch (error) {}
         }
         console.log("No se encontró ningún token en localStorage.");
         return null;
@@ -93,14 +88,12 @@ const CheckoutForm = ({
         if (!stripe || !elements) return;
 
         setLoading(true);
+        setError(null);
 
         const cardElement = elements.getElement(CardElement);
 
         try {
-            // Multiplicar el total por 100 para convertirlo en centavos
             const amountInCents = Math.round(total * 100);
-
-            // Crear el PaymentIntent en el backend
             const response = await fetch(
                 "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-payment-intent",
                 {
@@ -109,10 +102,7 @@ const CheckoutForm = ({
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                        amount: amountInCents,
-                        currency: "dop",
-                    }),
+                    body: JSON.stringify({ amount: amountInCents, currency: "dop" }),
                 }
             );
 
@@ -121,23 +111,18 @@ const CheckoutForm = ({
             }
 
             const { clientSecret } = await response.json();
-
-            // Confirmar el pago con Stripe
             const { error, paymentIntent } = await stripe.confirmCardPayment(
                 clientSecret,
-                {
-                    payment_method: {
-                        card: cardElement,
-                    },
-                }
+                { payment_method: { card: cardElement } }
             );
 
             if (error) {
-                setError(error.message);
-            } else if (paymentIntent.status === "succeeded") {
+                throw new Error(error.message);
+            }
+
+            if (paymentIntent.status === "succeeded") {
                 console.log("Pago exitoso!");
 
-                // Actualizar el stock después de un pago exitoso
                 const updateResponse = await fetch(
                     "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/update-stock",
                     {
@@ -146,72 +131,54 @@ const CheckoutForm = ({
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${token}`,
                         },
-                        body: JSON.stringify({
-                            orderItems,
-                        }),
+                        body: JSON.stringify({ orderItems }),
                     }
                 );
 
-                if (updateResponse.ok) {
-                    console.log("Stock actualizado correctamente");
-                    clearCart();
-                    setPaymentCompleted(true);
-                    setLoading(false);
-                    
-                    //CREAR FACTURA
-                    const result = await crearFactura(datosFactura, direccionPedido);
-                    if (result.success) {
-                        console.log("Factura creada con éxito, ID:", result.idFactura);
-                    } else {
-                        console.error("Error al crear la factura.");
-                    }
-                    // Redirigir a la página de éxito después de un pago y actualización exitosos
+                if (!updateResponse.ok) {
+                    throw new Error("Error al actualizar el stock");
+                }
+
+                console.log("Stock actualizado correctamente");
+                clearCart();
+                setPaymentCompleted(true);
+                setLoading(false);
+
+                const result = await crearFactura(datosFactura, direccionPedido);
+                if (result.success) {
+                    console.log("Factura creada con éxito, ID:", result.idFactura);
                     navigate(`/factura/${result.idFactura}`);
                 } else {
-                    console.error("Error al actualizar el stock");
-                    setLoading(false);
+                    throw new Error("Error al crear la factura.");
                 }
             }
         } catch (error) {
-            console.error("Error al procesar el pago:", error);
-            setError("Ocurrió un error al procesar el pago.");
+            console.error("Error en el pago:", error);
+            setError(error.message || "Ocurrió un error en el proceso de pago.");
             setLoading(false);
         }
     };
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="max-w-lg mx-auto p-8 bg-white rounded-lg shadow-lg"
-        >
-            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-                Formulario de Pago
-            </h2>
+        <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-8 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Formulario de Pago</h2>
 
             <div className="mb-4">
                 <CardElement className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500" />
             </div>
 
             {error && (
-                <div className="text-red-600 text-sm mt-2 text-center">
-                    {error}
-                </div>
+                <div className="text-red-600 text-sm mt-2 text-center">{error}</div>
             )}
 
             <div className="flex justify-between items-center mt-4">
-                <span className="text-xl font-semibold text-gray-800">
-                    Total: {total} DOP
-                </span>
+                <span className="text-xl font-semibold text-gray-800">Total: {total} DOP</span>
                 <button
-                    className="bg-amber-900 cursor-pointer disabled:bg-gray-300 disabled:cursor-default  hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-md transition-all"
+                    className="bg-amber-900 cursor-pointer disabled:bg-gray-300 disabled:cursor-default hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-md transition-all"
                     type="submit"
                     disabled={loading || paymentCompleted || !isDireccionCompleta()}
                 >
-                    {loading
-                        ? "Procesando..."
-                        : paymentCompleted
-                        ? "Pago completado"
-                        : "Pagar"}
+                    {loading ? "Procesando..." : paymentCompleted ? "Pago completado" : "Pagar"}
                 </button>
             </div>
         </form>
