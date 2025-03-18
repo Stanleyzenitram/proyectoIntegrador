@@ -27,6 +27,10 @@ import CompraProductos from "./features/mantenimientos/CompraProductos";
 import ListaProveedores from "./features/mantenimientos/ListaProveedores";
 import ReporteCompras from "./features/reportes/ReporteCompras";
 import Factura from "./pages/Factura";
+import ReporteProductos from "./features/reportes/ReporteProductos";
+import ReportePedidos from "./features/reportes/ReportePedidos";
+import ReporteClientes from "./features/reportes/ReporteClientes";
+import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -78,6 +82,22 @@ export default function AppRouter() {
                     <Route
                         path="/reportes/compras"
                         element={<ReporteCompras />}
+                    />
+                    <Route
+                        path="/reportes/pedidos"
+                        element={<ReportePedidos />}
+                    />
+                    <Route
+                        path="/reportes/productos"
+                        element={<ReporteProductos />}
+                    />
+                    <Route
+                        path="/reportes/clientes"
+                        element={<ReporteClientes />}
+                    />
+                    <Route
+                        path="/reportes/empleados"
+                        element={<ReporteEmpleados />}
                     />
                 </Route>
             </Route>
