@@ -3,7 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
 
-export default function PrivateLogin() {
+export default function AdminRoute() {
     const { user } = useAuth();
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     
@@ -41,5 +41,5 @@ export default function PrivateLogin() {
         return <div>Cargando...</div>;
     }
 
-    return user ? <Navigate to={isAdmin ? "/inventario" : "/"} replace /> : <Outlet />;
-}
+    return isAdmin ? <Navigate to="/inventario" replace /> : <Outlet />;
+} 

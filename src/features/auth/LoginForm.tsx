@@ -5,6 +5,7 @@ import { signIn } from "../../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { supabase } from "../../services/supabase";
 
 export default function LoginForm() {
     const navigate = useNavigate();
@@ -30,8 +31,31 @@ export default function LoginForm() {
         try {
             // Llamar a la API para iniciar sesión
             await signIn(data.email, data.password);
-            alert("Inicio de sesión exitoso");
-            navigate("/profile");
+            
+            // Obtener el rol del usuario
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("No se pudo obtener el usuario");
+
+            const { data: userData, error: roleError } = await supabase
+                .from("usuarios")
+                .select("rol")
+                .eq("uuid", user.id)
+                .single();
+
+            if (roleError) {
+                console.error("Error al obtener el rol:", roleError);
+                // Si hay error al obtener el rol, redirigir al home
+                navigate("/");
+                return;
+            }
+
+            // Redirigir según el rol
+            if (userData?.rol === "admin") {
+                window.location.href = "/inventario";
+            } else {
+                alert("Inicio de sesión exitoso");
+                window.location.href = "/";
+            }
         } catch (error) {
             alert("Credenciales incorrectas");
             console.error("Error en el inicio de sesión:", error);

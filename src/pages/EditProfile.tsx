@@ -9,8 +9,11 @@ interface UserProfile {
     apellido: string;
     email: string;
     telefono: string;
-    direccion: string;
-    rnc: string;
+    tipo_documento: string;
+    numero_documento: string;
+    sector: string;
+    detalles_direccion: string;
+    codigo_postal: string;
     fecha_registro: string;
 }
 
@@ -25,98 +28,89 @@ export default function EditProfile() {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                // Verificar el email guardado
-                const pendingEmail = localStorage.getItem('editProfileEmail');
-                const pendingEdit = localStorage.getItem('pendingProfileEdit');
-
-                if (!pendingEdit || !pendingEmail) {
-                    console.log('No hay edición pendiente');
-                    navigate('/profile');
-                    return;
-                }
-
                 // Obtener la sesión actual
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-                // Verificar que el email coincida
-                if (!session || session.user.email !== pendingEmail) {
-                    console.log('Sesión inválida o email no coincide');
+                if (sessionError) {
+                    console.error('Error al obtener la sesión:', sessionError);
                     navigate('/profile');
                     return;
                 }
 
-                // Limpiar el estado pendiente
-                localStorage.removeItem('pendingProfileEdit');
-                localStorage.removeItem('editProfileEmail');
+                if (!session) {
+                    console.log('No hay sesión activa');
+                    navigate('/profile');
+                    return;
+                }
 
                 // Cargar el perfil
-                await fetchProfile();
+                const { data: profileData, error: profileError } = await supabase
+                    .from('clientes')
+                    .select('*')
+                    .eq('uuid', session.user.id)
+                    .single();
+
+                if (profileError) {
+                    console.error('Error al cargar el perfil:', profileError);
+                    setError('Error al cargar el perfil');
+                    return;
+                }
+
+                if (!profileData) {
+                    console.error('No se encontró el perfil');
+                    setError('No se encontró el perfil');
+                    return;
+                }
+
+                console.log('Perfil cargado:', profileData);
+                setEditedProfile(profileData);
+                setLoading(false);
 
             } catch (err) {
                 console.error('Error de autenticación:', err);
+                setError('Error al cargar el perfil');
                 navigate('/profile');
             }
         };
 
         checkAuth();
-    }, []);
+    }, [navigate]);
 
-    const fetchProfile = async () => {
-        if (!user) {
-            console.log('No hay usuario para cargar el perfil');
+    const handleSaveChanges = async () => {
+        if (!editedProfile) {
+            console.log('No hay perfil para guardar');
             return;
         }
 
         try {
             setLoading(true);
-            console.log('Intentando cargar perfil para usuario:', user.id);
-            
-            const { data, error } = await supabase
-                .from('clientes')
-                .select('*')
-                .eq('uuid', user.id.toString())
-                .single();
-
-            if (error) {
-                console.error('Error al cargar datos:', error);
-                throw error;
-            }
-
-            console.log('Perfil cargado:', data);
-            setEditedProfile(data);
-        } catch (err) {
-            console.error('Error al cargar el perfil:', err);
-            setError(err instanceof Error ? err.message : 'Error al cargar el perfil');
-            navigate('/profile');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSaveChanges = async () => {
-        if (!editedProfile || !user) {
-            console.log('No hay perfil para guardar o usuario no autenticado', { editedProfile, user });
-            return;
-        }
-
-        try {
             console.log('Perfil a actualizar:', editedProfile);
             
             const updateData = {
                 nombre: editedProfile.nombre,
                 apellido: editedProfile.apellido,
                 telefono: editedProfile.telefono,
-                direccion: editedProfile.direccion,
-                rnc: editedProfile.rnc
+                tipo_documento: editedProfile.tipo_documento,
+                numero_documento: editedProfile.numero_documento,
+                sector: editedProfile.sector,
+                detalles_direccion: editedProfile.detalles_direccion,
+                codigo_postal: editedProfile.codigo_postal
             };
 
+            // Obtener la sesión actual
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session) {
+                throw new Error('No hay sesión activa');
+            }
+
             console.log('Datos a enviar:', updateData);
-            console.log('UUID del usuario:', user.id);
+            console.log('UUID del usuario:', session.user.id);
 
             const { data, error } = await supabase
                 .from('clientes')
                 .update(updateData)
-                .eq('uuid', user.id.toString())
+                .eq('uuid', session.user.id)
                 .select('*');
 
             if (error) {
@@ -138,6 +132,8 @@ export default function EditProfile() {
             console.error("Error detallado al actualizar perfil:", err);
             setError(err instanceof Error ? err.message : "Error al actualizar el perfil");
             alert("Error al actualizar el perfil. Por favor, intenta de nuevo.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -148,8 +144,13 @@ export default function EditProfile() {
                 
                 {loading ? (
                     <div>Cargando...</div>
+                ) : error ? (
+                    <div className="text-red-500">{error}</div>
                 ) : (
-                    <form className="grid grid-cols-1 gap-6">
+                    <form onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSaveChanges();
+                    }} className="grid grid-cols-1 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-orange-600">Nombre*</label>
                             <input
@@ -181,38 +182,66 @@ export default function EditProfile() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-orange-600">Dirección*</label>
+                            <label className="block text-sm font-medium text-orange-600">Tipo de Documento*</label>
                             <input
                                 type="text"
-                                value={editedProfile?.direccion || ''}
-                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, direccion: e.target.value} : null)}
+                                value={editedProfile?.tipo_documento || ''}
+                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, tipo_documento: e.target.value} : null)}
                                 className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-orange-600">RNC*</label>
+                            <label className="block text-sm font-medium text-orange-600">Número de Documento*</label>
                             <input
                                 type="text"
-                                value={editedProfile?.rnc || ''}
-                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, rnc: e.target.value} : null)}
+                                value={editedProfile?.numero_documento || ''}
+                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, numero_documento: e.target.value} : null)}
                                 className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
                                 required
                             />
                         </div>
-                        
-                        <div className="flex justify-end gap-4 mt-4">
+                        <div>
+                            <label className="block text-sm font-medium text-orange-600">Sector*</label>
+                            <input
+                                type="text"
+                                value={editedProfile?.sector || ''}
+                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, sector: e.target.value} : null)}
+                                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-orange-600">Detalles de Dirección*</label>
+                            <input
+                                type="text"
+                                value={editedProfile?.detalles_direccion || ''}
+                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, detalles_direccion: e.target.value} : null)}
+                                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-orange-600">Código Postal*</label>
+                            <input
+                                type="text"
+                                value={editedProfile?.codigo_postal || ''}
+                                onChange={(e) => setEditedProfile(prev => prev ? {...prev, codigo_postal: e.target.value} : null)}
+                                className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end space-x-4 mt-6">
                             <button
                                 type="button"
                                 onClick={() => navigate('/profile')}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                             >
                                 Cancelar
                             </button>
                             <button
-                                type="button"
-                                onClick={handleSaveChanges}
-                                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700"
+                                type="submit"
+                                className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
                             >
                                 Guardar Cambios
                             </button>

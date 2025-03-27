@@ -46,7 +46,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
     };
 
     return (
-        <div className="absolute right-0 mt-2 w-xl bg-white rounded-lg shadow-xl z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl z-50 p-4 min-w-[400px] max-w-[500px]">
             <h3 className="text-lg font-bold text-amber-900 mb-4 border-b pb-2">
                 ÚLTIMOS PRODUCTOS AGREGADOS A SU CARRITO DE COMPRAS
             </h3>
@@ -59,7 +59,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                 <>
                     <div className="max-h-64 overflow-auto space-y-4">
                         {items.slice(-3).map((item) => (
-                            <div key={item.id_producto} className="flex items-center gap-4 py-2">
+                            <div key={item.id_producto} className="flex items-center gap-4 py-2 hover:bg-gray-50 rounded-lg px-2">
                                 {item.imagen && (
                                     <img 
                                         src={item.imagen} 
@@ -67,30 +67,30 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                                         className="w-16 h-16 object-cover rounded"
                                     />
                                 )}
-                                <div className="flex-1">
-                                    <h4 className="font-medium text-amber-900">{item.nombre_producto}</h4>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-amber-900 truncate">{item.nombre_producto}</h4>
                                     <p className="text-sm text-amber-700">
                                         {getDisplayQuantity(item)}
                                     </p>
                                 </div>
-                                <p className="font-medium text-amber-900">
-                                    RD${getItemTotal(item).toFixed(2)}
-                                </p>
-                                {/*Elimiinar item */}
-                                <button
-                                    onClick={() => removeItem(item.id_producto)}
-                                    className="text-red-700 pr-3 cursor-pointer"
-                                >
-                                    X
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <p className="font-medium text-amber-900 whitespace-nowrap">
+                                        RD${getItemTotal(item).toFixed(2)}
+                                    </p>
+                                    <button
+                                        onClick={() => removeItem(item.id_producto)}
+                                        className="text-red-700 hover:text-red-800 p-1"
+                                    >
+                                        X
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
                     <div className="mt-4 pt-4 border-t">
-                      
                         <button
                             onClick={handleCheckout}
-                            className="w-full bg-amber-500 hover:cursor-pointer text-white py-2 px-4 rounded hover:bg-amber-600 transition-colors text-center"
+                            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 px-4 rounded transition-colors"
                         >
                             VER CARRITO DE COMPRAS
                         </button>

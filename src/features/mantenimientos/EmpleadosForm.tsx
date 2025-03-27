@@ -179,6 +179,7 @@ export default function EmpleadosForm() {
                         <option value="">Selecciona un rol</option>
                         <option value="admin">Administrador</option>
                         <option value="user">Usuario</option>
+                        <option value="mantenimiento">Mantenimiento</option>
                     </select>
 
                     <button

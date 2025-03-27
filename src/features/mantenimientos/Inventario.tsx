@@ -138,7 +138,6 @@ export default function Inventario() {
         } catch (error) {
             console.error('Error detallado:', error);
             setProductos([]);
-            alert('Error al cargar el inventario. Por favor, verifica tu conexión e inténtalo de nuevo.');
         } finally {
             setLoading(false);
         }
@@ -186,7 +185,7 @@ export default function Inventario() {
                             setShowProveedores(true);
                             fetchProveedores();
                         }}
-                        className="flex items-center px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                        className="flex items-center px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors h-10"
                     >
                         <ShoppingCart className="w-5 h-5 mr-2" />
                         Solicitar Productos
@@ -206,7 +205,7 @@ export default function Inventario() {
                     <select
                         value={filterStock}
                         onChange={(e) => setFilterStock(e.target.value as 'todos' | 'bajo' | 'agotado')}
-                        className="p-2 border rounded-lg bg-white"
+                        className="p-2 border rounded-lg bg-white h-10"
                     >
                         <option value="todos">Todos los productos</option>
                         <option value="bajo">Stock bajo</option>
@@ -214,7 +213,7 @@ export default function Inventario() {
                     </select>
                     <button
                         onClick={fetchInventario}
-                        className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                        className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors h-10"
                     >
                         Recargar Inventario
                     </button>
@@ -238,7 +237,7 @@ export default function Inventario() {
                             return (
                                 <div
                                     key={producto.id_producto}
-                                    className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300"
+                                    className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300 flex flex-col"
                                 >
                                     <div className="relative h-48 bg-gray-200">
                                         {producto.imagen ? (
@@ -265,7 +264,7 @@ export default function Inventario() {
                                         </div>
                                     </div>
                                     
-                                    <div className="p-4">
+                                    <div className="p-4 flex flex-col flex-1">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <h3 className="text-lg font-semibold text-gray-900 mb-1">
@@ -289,7 +288,7 @@ export default function Inventario() {
                                             </p>
                                         )}
 
-                                        <div className="mt-4 flex justify-end">
+                                        <div className="mt-auto">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -297,7 +296,7 @@ export default function Inventario() {
                                                     setShowProveedores(true);
                                                     fetchProveedores();
                                                 }}
-                                                className="inline-flex items-center px-3 py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 transition-colors w-full justify-center"
+                                                className="inline-flex items-center px-3 py-2 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 transition-colors w-full justify-center h-10"
                                             >
                                                 <ShoppingCart className="w-4 h-4 mr-2" />
                                                 Ver Proveedores
@@ -369,7 +368,7 @@ export default function Inventario() {
                                                         onClick={() => setSelectedProveedor(
                                                             selectedProveedor?.id_proveedor === proveedor.id_proveedor ? null : proveedor
                                                         )}
-                                                        className={`p-2 rounded-lg transition-colors
+                                                        className={`p-2 rounded-lg transition-colors h-10 flex items-center justify-center
                                                             ${selectedProveedor?.id_proveedor === proveedor.id_proveedor
                                                                 ? 'bg-amber-100 text-amber-600'
                                                                 : 'bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600'
@@ -388,7 +387,7 @@ export default function Inventario() {
                                                         <div className="flex items-center gap-4">
                                                             <a
                                                                 href={`tel:${proveedor.telefono}`}
-                                                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors flex-1"
+                                                                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors flex-1 h-10"
                                                             >
                                                                 <Phone className="w-4 h-4" />
                                                                 <span>{proveedor.telefono}</span>
@@ -398,7 +397,7 @@ export default function Inventario() {
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 onClick={(e) => e.stopPropagation()}
-                                                                className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-700 transition-colors flex-1"
+                                                                className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-700 transition-colors flex-1 h-10"
                                                             >
                                                                 <Mail className="w-4 h-4" />
                                                                 <span>Enviar correo</span>

@@ -15,22 +15,73 @@ export default function Header() {
     const cartRef = useRef<HTMLDivElement>(null);
     const [showMiniCart, setShowMiniCart] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isModalLocked, setIsModalLocked] = useState(false);
+    const miniCartRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (cartRef.current && !cartRef.current.contains(event.target as Node)) {
                 setIsCartOpen(false);
+                setIsModalLocked(false);
+            }
+            if (showMiniCart && miniCartRef.current && !miniCartRef.current.contains(event.target as Node)) {
+                setShowMiniCart(false);
             }
         }
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [showMiniCart]);
+
+    const handleModalOpen = (modalType: 'cart' | 'menu' | 'user') => {
+        if (isModalLocked) return;
+        
+        setIsModalLocked(true);
+        switch (modalType) {
+            case 'cart':
+                setIsCartOpen(true);
+                break;
+            case 'menu':
+                setIsMenuOpen(true);
+                break;
+            case 'user':
+                // Aquí puedes agregar la lógica para el menú de usuario si lo necesitas
+                break;
+        }
+    };
+
+    const handleModalClose = (modalType: 'cart' | 'menu' | 'user') => {
+        switch (modalType) {
+            case 'cart':
+                setIsCartOpen(false);
+                break;
+            case 'menu':
+                setIsMenuOpen(false);
+                break;
+            case 'user':
+                // Aquí puedes agregar la lógica para el menú de usuario si lo necesitas
+                break;
+        }
+        setIsModalLocked(false);
+    };
 
     const handleLogout = async () => {
         await logout();
         navigate('/login');
+    };
+
+    const handleMouseEnter = () => {
+        if (!isModalLocked && !isCartOpen) {
+            setShowMiniCart(true);
+        }
+    };
+
+    const handleMouseLeave = (event: React.MouseEvent) => {
+        const relatedTarget = event.relatedTarget as HTMLElement;
+        if (!miniCartRef.current?.contains(relatedTarget)) {
+            setShowMiniCart(false);
+        }
     };
 
     return (
@@ -52,7 +103,7 @@ export default function Header() {
 
                 {/* Botón menú hamburguesa (móvil) */}
                 <button 
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    onClick={() => handleModalOpen('menu')}
                     className="sm:hidden text-2xl text-amber-900 hover:text-amber-600 transition"
                 >
                     <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} />
@@ -67,8 +118,8 @@ export default function Header() {
                     <div className="relative" ref={cartRef}>
                         <button 
                             id="cart-button"
-                            onClick={() => setIsCartOpen(!isCartOpen)}
-                            onMouseEnter={() => setShowMiniCart(true)}
+                            onClick={() => handleModalOpen('cart')}
+                            onMouseEnter={handleMouseEnter}
                             className="relative w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition"
                         >
                             <FontAwesomeIcon icon={faShoppingCart} />
@@ -78,17 +129,24 @@ export default function Header() {
                                 </span>
                             )}
                         </button>
-                        {showMiniCart && !isCartOpen && (
-                            <div onMouseLeave={() => setShowMiniCart(false)}>
+                        {showMiniCart && !isCartOpen && !isModalLocked && (
+                            <div 
+                                ref={miniCartRef}
+                                onMouseLeave={handleMouseLeave}
+                                className="absolute right-0 mt-2"
+                            >
                                 <MiniCart onClose={() => setShowMiniCart(false)} />
                             </div>
                         )}
-                        {isCartOpen && <Cart onClose={() => setIsCartOpen(false)} />}
+                        {isCartOpen && <Cart onClose={() => handleModalClose('cart')} />}
                     </div>
 
                     {/* Menú de usuario */}
                     <div className="group relative">
-                        <button className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition ${user ? 'text-amber-200' : 'text-amber-900'}`}>
+                        <button 
+                            onClick={() => handleModalOpen('user')}
+                            className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:text-amber-600 transition ${user ? 'text-amber-200' : 'text-amber-900'}`}
+                        >
                             <FontAwesomeIcon icon={faUser} />
                         </button>
                         <div className="absolute right-0 w-44 bg-amber-400 shadow-lg py-2 text-gray-800 hidden group-hover:block z-10 rounded-lg">
@@ -112,18 +170,18 @@ export default function Header() {
             {/* Menú desplegable (móvil) */}
             {isMenuOpen && (
                 <nav className="sm:hidden bg-amber-300 py-4 px-6 space-y-4 font-medium text-amber-900 uppercase">
-                    <NavLink to="/" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => setIsMenuOpen(false)}>Inicio</NavLink>
-                    <NavLink to="/sobreNosotros" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => setIsMenuOpen(false)}>Sobre nosotros</NavLink>
+                    <NavLink to="/" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => handleModalClose('menu')}>Inicio</NavLink>
+                    <NavLink to="/sobreNosotros" className={({ isActive }) => isActive ? "block text-amber-600 underline" : "block hover:text-amber-600 transition"} onClick={() => handleModalClose('menu')}>Sobre nosotros</NavLink>
                     {user ? (
                         <>
-                            <NavLink to="/profile" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Perfil</NavLink>
-                            <NavLink to="/pedidos" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Pedidos</NavLink>
-                            <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="w-full text-left hover:cursor-pointer hover:text-amber-600  hover:cursor-pointertransition">Cerrar Sesión</button>
+                            <NavLink to="/profile" className="block hover:text-amber-600 transition" onClick={() => handleModalClose('menu')}>Perfil</NavLink>
+                            <NavLink to="/pedidos" className="block hover:text-amber-600 transition" onClick={() => handleModalClose('menu')}>Pedidos</NavLink>
+                            <button onClick={() => { handleLogout(); handleModalClose('menu'); }} className="w-full text-left hover:cursor-pointer hover:text-amber-600 transition">Cerrar Sesión</button>
                         </>
                     ) : (
                         <>
-                            <NavLink to="/login" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Iniciar sesión</NavLink>
-                            <NavLink to="/register" className="block hover:text-amber-600 transition" onClick={() => setIsMenuOpen(false)}>Registrarse</NavLink>
+                            <NavLink to="/login" className="block hover:text-amber-600 transition" onClick={() => handleModalClose('menu')}>Iniciar sesión</NavLink>
+                            <NavLink to="/register" className="block hover:text-amber-600 transition" onClick={() => handleModalClose('menu')}>Registrarse</NavLink>
                         </>
                     )}
                 </nav>

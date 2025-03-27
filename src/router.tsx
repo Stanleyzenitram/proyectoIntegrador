@@ -10,6 +10,8 @@ import { ChatPage } from "./pages/ChatPage";
 import Pedidos from "./pages/Pedidos";
 import PedidosMant from "./pages/PedidosMant";
 import HistorialPedido from "./pages/HistorialPedido";
+import EditProfile from "./pages/EditProfile";
+import AdminRoute from "./components/AdminRoute";
 
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
@@ -39,7 +41,9 @@ export default function AppRouter() {
         <Routes>
             <Route path="/update-password" element={<UpdatePassword />} />
             <Route element={<Layout />}>
-                <Route path="/" element={<HomePage />} index />
+                <Route element={<AdminRoute />}>
+                    <Route path="/" element={<HomePage />} index />
+                </Route>
 
                 <Route path="/register" element={<Register />} />
                 <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
@@ -55,6 +59,7 @@ export default function AppRouter() {
 
                 <Route element={<PrivateRoute />}>
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/edit-profile" element={<EditProfile />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/factura/:id" element={<Factura />} />
                     <Route path="/pedidos" element={<Pedidos />} />

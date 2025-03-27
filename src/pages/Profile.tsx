@@ -170,10 +170,6 @@ export default function Profile() {
             
             if (error) throw error;
             
-            // Guardar en localStorage
-            localStorage.setItem('pendingProfileEdit', 'true');
-            localStorage.setItem('editProfileEmail', user.email || '');
-            
             alert("Se ha enviado un enlace a tu correo. Por favor, haz clic en el enlace para editar tu perfil.");
         } catch (err) {
             if (err instanceof Error && err.message.includes('security purposes')) {

@@ -4,6 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { crearFactura } from "../api/factura";
 
+interface DireccionPedido {
+    calle: string;
+    ciudad: string;
+    provincia: string;
+    codigo_postal: string;
+}
+
 interface CartItem {
     id_producto: string;
     quantity: number;
@@ -20,6 +27,7 @@ interface CheckoutFormProps {
     descuento: number;
     subtotal: number;
     itbis: number;
+    direccionPedido: DireccionPedido;
 }
 
 const CheckoutForm = ({
@@ -34,7 +42,7 @@ const CheckoutForm = ({
     const stripe = useStripe();
     const elements = useElements();
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [paymentCompleted, setPaymentCompleted] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -83,17 +91,52 @@ const CheckoutForm = ({
 
     const token = getAccessToken();
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!stripe || !elements) return;
+        if (!stripe || !elements) {
+            setError("No se pudo inicializar el formulario de pago");
+            return;
+        }
+
+        if (!token) {
+            setError("No se encontró el token de autenticación");
+            return;
+        }
 
         setLoading(true);
         setError(null);
 
         const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+            setError("No se encontró el elemento de tarjeta");
+            setLoading(false);
+            return;
+        }
 
         try {
             const amountInCents = Math.round(total * 100);
+            console.log("Iniciando solicitud de pago...", { 
+                amount: amountInCents,
+                currency: "dop",
+                userId: user?.id,
+                tokenExists: !!token,
+                tokenLength: token?.length
+            });
+            
+            // Verificar que el monto sea válido
+            if (amountInCents <= 0) {
+                throw new Error("El monto del pago debe ser mayor a 0");
+            }
+
+            const paymentData = {
+                amount: amountInCents,
+                currency: "dop",
+                userId: user?.id,
+                description: `Pago de orden - ${new Date().toISOString()}`
+            };
+
+            console.log("Enviando datos de pago:", paymentData);
+            
             const response = await fetch(
                 "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/create-payment-intent",
                 {
@@ -102,22 +145,50 @@ const CheckoutForm = ({
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ amount: amountInCents, currency: "dop" }),
+                    body: JSON.stringify(paymentData),
                 }
             );
 
+            let errorMessage = "Error al obtener el clientSecret";
+            
             if (!response.ok) {
-                throw new Error("Error al obtener el clientSecret");
+                const errorData = await response.text();
+                console.error("Error en la respuesta del servidor:", {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorData,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+
+                if (response.status === 500) {
+                    errorMessage = "Error interno del servidor. Por favor, inténtalo más tarde.";
+                } else if (response.status === 401) {
+                    errorMessage = "Error de autenticación. Por favor, inicia sesión nuevamente.";
+                } else if (response.status === 400) {
+                    errorMessage = "Datos de pago inválidos. Verifica la información e intenta nuevamente.";
+                }
+
+                throw new Error(`${errorMessage}: ${response.status} ${errorData}`);
             }
 
-            const { clientSecret } = await response.json();
-            const { error, paymentIntent } = await stripe.confirmCardPayment(
-                clientSecret,
+            const data = await response.json();
+            console.log("Respuesta del servidor recibida:", { 
+                success: !!data.clientSecret,
+                dataKeys: Object.keys(data)
+            });
+
+            if (!data.clientSecret) {
+                throw new Error("No se recibió el clientSecret del servidor");
+            }
+
+            console.log("ClientSecret obtenido correctamente");
+            const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+                data.clientSecret,
                 { payment_method: { card: cardElement } }
             );
 
-            if (error) {
-                throw new Error(error.message);
+            if (confirmError) {
+                throw new Error(confirmError.message);
             }
 
             if (paymentIntent.status === "succeeded") {
@@ -136,7 +207,8 @@ const CheckoutForm = ({
                 );
 
                 if (!updateResponse.ok) {
-                    throw new Error("Error al actualizar el stock");
+                    const updateErrorData = await updateResponse.text();
+                    throw new Error(`Error al actualizar el stock: ${updateErrorData}`);
                 }
 
                 console.log("Stock actualizado correctamente");
@@ -152,9 +224,9 @@ const CheckoutForm = ({
                     throw new Error("Error al crear la factura.");
                 }
             }
-        } catch (error) {
-            console.error("Error en el pago:", error);
-            setError(error.message || "Ocurrió un error en el proceso de pago.");
+        } catch (err) {
+            console.error("Error en el pago:", err);
+            setError(err instanceof Error ? err.message : "Ocurrió un error en el proceso de pago.");
             setLoading(false);
         }
     };
