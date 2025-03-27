@@ -34,7 +34,7 @@ export interface Proveedor {
 }
 
 export interface Producto {
-    id_producto: string;
+    id_producto?: number;
     nombre_producto: string;
     descripcion: string;
     precio: number;
@@ -43,20 +43,11 @@ export interface Producto {
     descuento?: number;
     metros_por_caja: number;
     disponibilidad: boolean;
-    color: string;
     formato: string;
-    estilo: {
-        id_estilo: string;
-        nombre_estilo: string;
-    };
-    material?: {
-        id_materiales: string;
-        nombre_materiales: string;
-    };
-    categoria?: {
-        id_categoria: string;
-        nombre_categoria: string;
-    };
+    piezas_por_caja: number;
+    id_estilo: number;
+    id_materiales: number;
+    id_categoria: number;
 }
 
 export interface Estilo {

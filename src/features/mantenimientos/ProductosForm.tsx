@@ -1,499 +1,452 @@
-    import { useState, useEffect } from "react";
-    import { supabase } from "../../services/supabase";
-    import { PencilIcon } from "@heroicons/react/24/solid";
-    import { Categoria, Estilo, Material } from "../../types";
+import { useEffect, useState } from "react";
+import type { Producto, Categoria, Estilo, Material } from "../../types/index";
+import { crearProducto, fetchProductos, uploadImage, actualizarProducto } from "../../api/productos";
+import { PencilIcon } from "@heroicons/react/24/solid";
+import { supabase } from "../../services/supabase";
 
-    interface Producto {
-        id_producto?: number;
-        nombre_producto: string; // NO SE PUEDE MOVER AL INDEX PORQUE SE LE FALTAN LOS ID DE LOS FORAIN KEY 
-        id_categoria: number;
-        id_estilo: number; 
-        id_materiales: number; 
-        descripcion: string;
-        precio: number;
-        stock_actual: number;
-        descuento: number;
-        disponibilidad: boolean;
-        estado: boolean;
-        imagen?: string | null;
-        formato: string;  // Nuevo campo
-        metros_por_caja: number;  // Nuevo campo
-        piezas_por_caja: number;  // Nuevo campo
-        categoria?: { nombre_categoria: string };
-        estilo?: { nombre_estilo: string }; 
-        material?: { nombre_materiales: string }; // Relación con la tabla de materiales
-    }
+export default function ProductosForm() {
+    const [formData, setFormData] = useState<Partial<Producto>>({
+        nombre_producto: "",
+        descripcion: "",
+        precio: 0,
+        stock_actual: 0,
+        imagen: "",
+        descuento: 0,
+        metros_por_caja: 0,
+        disponibilidad: true,
+        formato: "",
+        id_categoria: 0,
+        id_estilo: 0,
+        id_materiales: 0,
+        piezas_por_caja: 0
+    });
 
+    const [productos, setProductos] = useState<Producto[]>([]);
+    const [categorias, setCategorias] = useState<Categoria[]>([]);
+    const [estilos, setEstilos] = useState<Estilo[]>([]);
+    const [materiales, setMateriales] = useState<Material[]>([]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
 
-    export default function ProductoForm() {
-        const [formData, setFormData] = useState<Producto>({
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [productosData, categoriasData, estilosData, materialesData] = await Promise.all([
+                    fetchProductos(),
+                    supabase.from("categorias").select("*"),
+                    supabase.from("estilos").select("*"),
+                    supabase.from("materiales").select("*")
+                ]);
+
+                setProductos(productosData);
+                setCategorias(categoriasData.data || []);
+                setEstilos(estilosData.data || []);
+                setMateriales(materialesData.data || []);
+            } catch (error) {
+                console.error("❌ Error al cargar datos:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+    
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
+        const { name, value, type } = e.target;
+        const newValue = type === 'number' ? Number(value) : value;
+        
+        setFormData(prev => {
+            const updatedData = {
+                ...prev,
+                [name]: newValue
+            };
+
+            // Calcular metros por caja cuando cambie piezas_por_caja o formato
+            if (name === 'piezas_por_caja' || name === 'formato') {
+                const piezas = name === 'piezas_por_caja' ? Number(newValue) : prev.piezas_por_caja;
+                const formato = name === 'formato' ? newValue : prev.formato;
+                
+                if (piezas && formato && typeof formato === 'string') {
+                    // Convertir el formato (ej: "30x30") a dimensiones en metros
+                    const [largo, ancho] = formato.split('x').map(Number);
+                    if (!isNaN(largo) && !isNaN(ancho)) {
+                        const metrosPorPieza = (largo * ancho) / 10000; // Convertir cm² a m²
+                        updatedData.metros_por_caja = Number((metrosPorPieza * piezas).toFixed(2));
+                    }
+                }
+            }
+
+            return updatedData;
+        });
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploading(true);
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
+
+            const imageUrl = await uploadImage(file);
+            setFormData(prev => ({
+                ...prev,
+                imagen: imageUrl
+            }));
+        } catch (error) {
+            console.error("Error al subir la imagen:", error);
+            alert("Error al subir la imagen. Por favor, intente nuevamente.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        try {
+            if (isEditing && formData.id_producto) {
+                await actualizarProducto(formData as Producto);
+                alert("Producto actualizado exitosamente");
+            } else {
+                await crearProducto(formData as Producto);
+                alert("Producto registrado exitosamente");
+            }
+            const data = await fetchProductos();
+            setProductos(data);
+            resetForm();
+        } catch (err) {
+            alert(isEditing ? "Error al actualizar el producto." : "Error en el registro del producto.");
+            console.error(err);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
             nombre_producto: "",
-            id_categoria: 0,
-            id_estilo: 0,
-            id_materiales: 0,
             descripcion: "",
             precio: 0,
             stock_actual: 0,
+            imagen: "",
             descuento: 0,
+            metros_por_caja: 0,
             disponibilidad: true,
-            estado: true,
-            formato: "",  // Inicialización del nuevo campo
-            metros_por_caja: 0,  // Inicialización del nuevo campo
-            piezas_por_caja: 0,  // Inicialización del nuevo campo
+            formato: "",
+            id_categoria: 0,
+            id_estilo: 0,
+            id_materiales: 0,
+            piezas_por_caja: 0
         });
-        const [productos, setProductos] = useState<Producto[]>([]);
-        const [categorias, setCategorias] = useState<Categoria[]>([]);
-        const [isEditing, setIsEditing] = useState(false);
-        const [estilos, setEstilos] = useState<Estilo[]>([]);
-        const [materiales, setMateriales] = useState<Material[]>([]);
+        setImagePreview(null);
+        setIsEditing(false);
+    };
 
-
-        useEffect(() => {
-            fetchProductos();
-            fetchCategorias();
-            fetchEstilos();
-            fetchMateriales();
-        }, []);
-        
-const fetchEstilos = async () => {
-    const { data, error } = await supabase.from("estilos").select("*");
-    if (error) {
-        console.error("❌ Error obteniendo estilos:", error.message);
-    } else {
-        setEstilos(data || []);
-    }
-};
-
-const fetchMateriales = async () => {
-    const { data, error } = await supabase.from("materiales").select("*");
-    if (error) {
-        console.error("❌ Error obteniendo materiales:", error.message);
-    } else {
-        console.log("✅ Materiales obtenidos:", data); // <-- Verifica qué datos llegan
-        setMateriales(data || []);
-    }
-};
-
-const fetchProductos = async () => {
-    const { data, error } = await supabase
-        .from("productos")
-        .select(`
-            *,
-            categoria:categorias(nombre_categoria),
-            estilo:estilos(nombre_estilo), 
-            material:materiales(nombre_materiales)
-        `);
-
-    if (error) {
-        console.error("❌ Error obteniendo productos:", error.message);
-    } else {
-        console.log("✅ Productos obtenidos:", data); // Verifica si llegan los datos correctos
-        setProductos(data || []);
-    }
-};
-
-
-        const fetchCategorias = async () => {
-            const { data, error } = await supabase.from("categorias").select("*");
-
-            if (error) {
-                console.error("❌ Error obteniendo categorías:", error.message);
-            } else {
-                setCategorias(data || []);
-            }
-        };
-
-        // Función para calcular metros por caja automáticamente
-        const calcularMetrosPorCaja = (formato: string, piezas: number): number => {
-            const [ancho, largo] = formato.split('x').map(Number);
-            if (!ancho || !largo || !piezas) return 0;
-            const metrosPorPieza = (ancho * largo) / 10000; // convertir de cm² a m²
-            return metrosPorPieza * piezas;
-        };
-
-        // Modificar el handleChange para calcular metros_por_caja automáticamente
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-            const { name, value } = e.target;
-            
-            setFormData(prev => {
-                const newData = {
-                    ...prev,
-                    [name]: name === "id_categoria" || name === "piezas_por_caja" ? parseInt(value) : value,
-                };
-
-                // Si se cambió el formato o las piezas por caja, recalcular metros_por_caja
-                if (name === "formato" || name === "piezas_por_caja") {
-                    newData.metros_por_caja = calcularMetrosPorCaja(
-                        name === "formato" ? value : prev.formato,
-                        name === "piezas_por_caja" ? parseInt(value) : prev.piezas_por_caja
-                    );
-                }
-
-                return newData;
-            });
-        };
-
-        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0] || null;
-            if (file) {
-                setFormData({ ...formData, imagen: file.name });
-                uploadImage(file);
-            }
-        };
-        const uploadImage = async (file: File) => {
-            const fileExt = file.name.split(".").pop(); // Obtener extensión
-            const fileName = `${Date.now()}.${fileExt}`; // Generar nombre único
-            const filePath = `productos/${fileName}`; // Ruta dentro de Supabase
-        
-            try {
-                console.log("📤 Subiendo imagen a:", filePath);
-        
-                // Subir la imagen a Supabase Storage
-                const { data, error } = await supabase.storage
-                    .from("imagenes") // Asegúrate de que "imagenes" es el bucket correcto
-                    .upload(filePath, file, { cacheControl: "3600", upsert: false });
-        
-                if (error) {
-                    console.error("❌ Error subiendo imagen:", error.message);
-                    alert("Error al subir la imagen: " + error.message);
-                    return;
-                }
-        
-                if (!data) {
-                    console.error("❌ No se recibió respuesta de Supabase Storage.");
-                    alert("Error inesperado al subir la imagen.");
-                    return;
-                }
-        
-                console.log("✅ Imagen subida con éxito:", data.path);
-        
-                // Obtener la URL pública del archivo cargado
-                const { data: publicUrlData } = supabase.storage.from("imagenes").getPublicUrl(filePath);
-        
-                if (publicUrlData?.publicUrl) {
-                    console.log("🔗 URL pública obtenida:", publicUrlData.publicUrl);
-                    setFormData((prev) => ({ ...prev, imagen: publicUrlData.publicUrl }));
-                } else {
-                    console.error("❌ No se pudo obtener la URL pública de la imagen.");
-                    alert("No se pudo obtener la URL de la imagen.");
-                }
-            } catch (err) {
-                console.error("❌ Error en la carga de la imagen:", err);
-                alert("Hubo un problema al subir la imagen.");
-            }
-        };
-        
-        
-        const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-            e.preventDefault();
-
-            // Validación de los valores
-            if (!formData.nombre_producto || !formData.descripcion || formData.precio <= 0 || formData.precio > 999999 || formData.stock_actual < 0 || formData.stock_actual > 100000 || formData.id_categoria === 0) {
-                alert("Por favor, complete todos los campos obligatorios correctamente.");
-                return;
-            }
-
-            try {
-                if (isEditing && formData.id_producto) {
-                    const { error } = await supabase
-                    .from("productos")
-                    .update({
-                        nombre_producto: formData.nombre_producto,
-                        id_categoria: formData.id_categoria,
-                        id_estilo: formData.id_estilo, // Agregar id_estilo
-                        id_materiales: formData.id_materiales, // Agregar id_material
-                        descripcion: formData.descripcion,
-                        precio: formData.precio,
-                        stock_actual: formData.stock_actual,
-                        descuento: formData.descuento,
-                        estado: formData.estado,
-                        imagen: formData.imagen,
-                        formato: formData.formato,
-                        metros_por_caja: formData.metros_por_caja,
-                        piezas_por_caja: formData.piezas_por_caja
-                    })
-                    .eq("id_producto", formData.id_producto);
-                
-
-                    if (error) {
-                        console.error("❌ Error actualizando producto:", error.message);
-                        alert(`Error actualizando producto: ${error.message}`);
-                    } else {
-                        alert("Producto actualizado correctamente");
-                        setIsEditing(false);
-                        fetchProductos();
-                    }
-                } else {
-                    const { data, error } = await supabase.from("productos").insert([{
-                        nombre_producto: formData.nombre_producto,
-                        id_categoria: formData.id_categoria,
-                        id_estilo: formData.id_estilo, // Agregar id_estilo
-                        id_materiales: formData.id_materiales, // Agregar id_material
-                        descripcion: formData.descripcion,
-                        precio: formData.precio,
-                        stock_actual: formData.stock_actual,
-                        descuento: formData.descuento,
-                        estado: formData.estado,
-                        imagen: formData.imagen,
-                        formato: formData.formato,
-                        metros_por_caja: formData.metros_por_caja,
-                        piezas_por_caja: formData.piezas_por_caja
-                    }]);
-                    
-                    if (error) {
-                        console.error("Error insertando producto:", error.message);
-                        alert(`Error insertando producto: ${error.message}`);
-                    } else {
-                        alert("Producto insertado correctamente");
-                        fetchProductos();
-                    }
-                }
-            } catch (err) {
-                console.error("❌Error en la solicitud:", err);
-                alert(`Error en la solicitud: ${err}`);
-            }
-
-            // Reset the form data
-            setFormData({
-                nombre_producto: "",
-                id_categoria: 0,
-                id_estilo: 0,
-                id_materiales: 0,
-                descripcion: "",
-                precio: 0,
-                stock_actual: 0,
-                descuento: 0,
-                disponibilidad: true,
-                estado: true,
-                formato: "",
-                metros_por_caja: 0,
-                piezas_por_caja: 0
-            });
-        };
-
-        const handleEdit = (producto: Producto) => {
-            setFormData(producto);
-            setIsEditing(true);
-        };
-
-        // Función helper para formatear números
-        const formatNumber = (value: number | null | undefined): string => {
-            if (value === null || value === undefined) return '0.00';
-            return value.toFixed(2);
-        };
-
-        return (
-            <div className="flex space-x-4 pt-65 p-4">
+    const handleEdit = (producto: Producto) => {
+        setFormData(producto);
+        setImagePreview(producto.imagen || null);
+        setIsEditing(true);
+    };
+    
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Formulario */}
-                <div className="w-1/2 p-4 border rounded-lg shadow-lg overflow-y: scroll;">
-                    <h2 className="text-xl font-bold mb-4">{isEditing ? "Editar Producto" : "Registrar Producto"}</h2>
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                        {isEditing ? "Editar Producto" : "Registrar Producto"}
+                    </h2>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <input
-                            type="text"
-                            name="nombre_producto" 
-                            placeholder="Nombre"
-                            value={formData.nombre_producto} 
-                            onChange={handleChange}
-                            required
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-                        <select
-                            name="id_categoria"
-                            value={formData.id_categoria}
-                            onChange={handleChange}
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                            required
-                        >
-                            <option value={0} disabled>Seleccionar categoría</option>
-                            {categorias.map((categoria) => (
-                                <option key={categoria.id_categoria} value={categoria.id_categoria}>
-                                    {categoria.nombre_categoria}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-    name="id_estilo"
-    value={formData.id_estilo}
-    onChange={handleChange}
-    className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-    required
->
-    <option value={0} disabled>Seleccionar estilo</option>
-    {estilos.map((estilo) => (
-        <option key={estilo.id_estilo} value={estilo.id_estilo}>
-            {estilo.nombre_estilo}
-        </option>
-    ))}
-</select>
-
-<select
-    name="id_materiales"  // <-- Cambiar a "id_materiales"
-    value={formData.id_materiales}
-    onChange={handleChange}
-    className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-    required
->
-    <option value={0} disabled>Seleccionar material</option>
-    {materiales.map((material) => (
-        <option key={material.id_materiales} value={material.id_materiales}>
-            {material.nombre_materiales}
-        </option>
-    ))}
-</select>
-
-                        <textarea
-                            name="descripcion"
-                            placeholder="Descripción"
-                            value={formData.descripcion}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-
-                        <input
-                            type="number"
-                            name="precio"
-                            placeholder="Precio"
-                            value={formData.precio || ""}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-
-                        <input
-                            type="number"
-                            name="stock_actual"
-                            placeholder="Stock Actual"
-                            value={formData.stock_actual || ""}
-                            onChange={handleChange}
-                            required
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-
-                        <input
-                            type="number"
-                            name="descuento"
-                            placeholder="Descuento"
-                            value={formData.descuento || ""}
-                            onChange={handleChange}
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                        />
-
-                        {/* Mostrar la imagen si ya está cargada */}
-                        {formData.imagen && (
-                <div className="my-2">
-                    <img src={formData.imagen} alt="Imagen del producto" className="w-24 h-24 object-cover" />
-                        </div>
-    )}
-                        
-
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Formato (ejemplo: 30x60)
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
                             <input
                                 type="text"
-                                name="formato"
-                                value={formData.formato}
+                                name="nombre_producto"
+                                value={formData.nombre_producto}
                                 onChange={handleChange}
-                                placeholder="30x60"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
                                 required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Piezas por caja
-                            </label>
-                            <input
-                                type="number"
-                                name="piezas_por_caja"
-                                value={formData.piezas_por_caja}
-                                onChange={handleChange}
-                                min="1"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                                required
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                                <select
+                                    name="id_categoria"
+                                    value={formData.id_categoria}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                >
+                                    <option value={0}>Seleccionar categoría</option>
+                                    {categorias.map((categoria) => (
+                                        <option key={categoria.id_categoria} value={categoria.id_categoria}>
+                                            {categoria.nombre_categoria}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Estilo</label>
+                                <select
+                                    name="id_estilo"
+                                    value={formData.id_estilo}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                >
+                                    <option value={0}>Seleccionar estilo</option>
+                                    {estilos.map((estilo) => (
+                                        <option key={estilo.id_estilo} value={estilo.id_estilo}>
+                                            {estilo.nombre_estilo}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+                                <select
+                                    name="id_materiales"
+                                    value={formData.id_materiales}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                >
+                                    <option value={0}>Seleccionar material</option>
+                                    {materiales.map((material) => (
+                                        <option key={material.id_materiales} value={material.id_materiales}>
+                                            {material.nombre_materiales}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Metros cuadrados por caja (calculado)
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                            <textarea
+                                name="descripcion"
+                                value={formData.descripcion}
+                                onChange={handleChange}
+                                required
+                                rows={3}
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                                <input
+                                    type="number"
+                                    name="precio"
+                                    value={formData.precio}
+                                    onChange={handleChange}
+                                    required
+                                    min="0"
+                                    step="0.01"
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
+                                <input
+                                    type="number"
+                                    name="stock_actual"
+                                    value={formData.stock_actual}
+                                    onChange={handleChange}
+                                    required
+                                    min="0"
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Imagen del Producto</label>
+                            <div className="mt-1 flex items-center space-x-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        disabled={uploading}
+                                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    />
+                                </div>
+                                {uploading && (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-500"></div>
+                                )}
+                            </div>
+                            {imagePreview && (
+                                <div className="mt-2">
+                                    <img
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        className="h-32 w-32 object-cover rounded-lg"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descuento (%)</label>
+                                <input
+                                    type="number"
+                                    name="descuento"
+                                    value={formData.descuento}
+                                    onChange={handleChange}
+                                    min="0"
+                                    max="100"
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Piezas por Caja</label>
+                                <input
+                                    type="number"
+                                    name="piezas_por_caja"
+                                    value={formData.piezas_por_caja}
+                                    onChange={handleChange}
+                                    required
+                                    min="1"
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                                <input
+                                    type="text"
+                                    name="formato"
+                                    value={formData.formato}
+                                    onChange={handleChange}
+                                    required
+                                    placeholder="Ej: 30x30"
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Ingrese el formato en centímetros (ej: 30x30)</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Metros por Caja</label>
                             <input
                                 type="number"
                                 name="metros_por_caja"
-                                value={formatNumber(formData.metros_por_caja)}
+                                value={formData.metros_por_caja}
+                                onChange={handleChange}
+                                required
+                                min="0"
+                                step="0.01"
                                 readOnly
-                                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm"
+                                className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                             />
-                            <p className="text-sm text-gray-500 mt-1">
-                                Este valor se calcula automáticamente basado en el formato y las piezas por caja
-                            </p>
+                            <p className="text-xs text-gray-500 mt-1">Calculado automáticamente según el formato y piezas por caja</p>
                         </div>
 
-                        <button type="submit" className="bg-orange-500 text-white p-2 rounded w-full">
-                            {isEditing ? "Actualizar" : "Guardar"}
-                        </button>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Disponibilidad</label>
+                            <select
+                                name="disponibilidad"
+                                value={formData.disponibilidad ? "true" : "false"}
+                                onChange={(e) => setFormData(prev => ({ ...prev, disponibilidad: e.target.value === "true" }))}
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            >
+                                <option value="true">Disponible</option>
+                                <option value="false">No Disponible</option>
+                            </select>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                type="submit"
+                                className="flex-1 bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors duration-200 font-medium"
+                            >
+                                {isEditing ? "Actualizar" : "Guardar"}
+                            </button>
+                            {isEditing && (
+                                <button
+                                    type="button"
+                                    onClick={resetForm}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
+                        </div>
                     </form>
                 </div>
 
-        
-    <div className="w-1/2 p-4 border rounded-lg  shadow-lg">
-        <h2 className="text-xl font-bold mb-4">Productos Registrados</h2>
-        <div className="max-h-96 overflow-y-auto"> 
-            <ul>
-                {productos.map((producto) => (
-                    <li key={producto.id_producto} className="flex justify-between items-center p-2 border-b">
-                        <div>
-                            <p className="font-semibold">{producto.nombre_producto}</p>
-                            <p className="text-sm text-gray-600">{producto.descripcion}</p>
-                            <p className="text-xs text-gray-500">
-                                Precio: RD$ {formatNumber(producto.precio)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Stock: {formatNumber(producto.stock_actual)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Metros por caja: {formatNumber(producto.metros_por_caja)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Categoría: {producto.categoria?.nombre_categoria || "N/A"}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Estilo: {producto.estilo?.nombre_estilo || "N/A"}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                Material: {producto.material?.nombre_materiales || "N/A"}
-                            </p>
-
-                            {producto.imagen && (
-                                <img 
-                                    src={producto.imagen} 
-                                    alt={producto.nombre_producto} 
-                                    className="w-16 h-16 object-cover rounded" 
-                                />
-                            )}
+                {/* Lista de Productos */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Productos Registrados</h2>
+                    {loading ? (
+                        <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
                         </div>
-                        <button 
-                            onClick={() => handleEdit(producto)} 
-                            className="text-blue-500"
-                        >
-                            <PencilIcon className="w-5 h-5" />
-                        </button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    </div>
+                    ) : productos.length === 0 ? (
+                        <p className="text-gray-500 text-center py-4">No hay productos registrados</p>
+                    ) : (
+                        <div className="max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+                            <div className="space-y-4">
+                                {productos.map((producto) => (
+                                    <div key={producto.id_producto} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-start gap-4">
+                                                    {producto.imagen && (
+                                                        <img
+                                                            src={producto.imagen}
+                                                            alt={producto.nombre_producto}
+                                                            className="w-20 h-20 object-cover rounded-lg"
+                                                        />
+                                                    )}
+                                                    <div>
+                                                        <h3 className="font-semibold text-lg text-gray-800">{producto.nombre_producto}</h3>
+                                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{producto.descripcion}</p>
+                                                        <div className="flex gap-2 mt-2">
+                                                            <span className="text-sm font-medium text-amber-600">${producto.precio}</span>
+                                                            <span className="text-sm text-gray-500">Stock: {producto.stock_actual}</span>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2 mt-2">
+                                                            <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-800 bg-amber-100 rounded-full">
+                                                                {producto.formato}
+                                                            </span>
+                                                            <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                                                                producto.disponibilidad 
+                                                                    ? "text-green-800 bg-green-100" 
+                                                                    : "text-red-800 bg-red-100"
+                                                            }`}>
+                                                                {producto.disponibilidad ? "Disponible" : "No Disponible"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleEdit(producto)} 
+                                                className="text-amber-500 hover:text-amber-600 transition-colors duration-200 ml-4"
+                                            >
+                                                <PencilIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-        );
-    }
+        </div>
+    );
+}

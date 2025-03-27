@@ -75,6 +75,7 @@ export default function Home() {
                 estilos(id_estilo, nombre_estilo),
                 materiales(id_materiales, nombre_materiales)
             `)
+            .eq("disponibilidad", true)  // Only show available products
             .order("precio", { ascending: orderAsc });
 
         if (selectedCategory) query = query.eq("id_categoria", selectedCategory);

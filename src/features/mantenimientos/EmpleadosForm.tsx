@@ -15,18 +15,32 @@ export default function EmpleadosForm() {
         rol: "",
     });
 
-    
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [isEditing, setIsEditing] = useState(false);
-
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true);
                 const data = await fetchEmpleados();
-                setEmpleados(data);
+                // Mapear los datos de la base de datos al formato del frontend
+                const mappedData = data.map(empleado => ({
+                    id_usuario: empleado.id_usuario,
+                    name: empleado.nombre,
+                    lastName: empleado.apellido,
+                    cedula: empleado.cedula,
+                    email: empleado.correo,
+                    phoneNumber: empleado.telefono,
+                    rol: empleado.rol,
+                    password: "",
+                    confirmPassword: ""
+                }));
+                setEmpleados(mappedData);
             } catch (error) {
-                console.error("❌ Error al cargar proveedores:", error);
+                console.error("❌ Error al cargar empleados:", error);
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -34,11 +48,8 @@ export default function EmpleadosForm() {
     }, []);
     
     const handleChange = (
-        e:
-            | React.ChangeEvent<HTMLInputElement>
-            | React.ChangeEvent<HTMLSelectElement>
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
-        console.log("Cambiando", e.target.value);
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
@@ -54,9 +65,21 @@ export default function EmpleadosForm() {
 
         try {
             await crearEmpleado(formData);
-            alert(
-                "Registro exitoso, confirme su correo electrónico antes de iniciar sesion."
-            ); 
+            alert("Registro exitoso, confirme su correo electrónico antes de iniciar sesion.");
+            // Refresh the list after successful creation
+            const data = await fetchEmpleados();
+            const mappedData = data.map(empleado => ({
+                id_usuario: empleado.id_usuario,
+                name: empleado.nombre,
+                lastName: empleado.apellido,
+                cedula: empleado.cedula,
+                email: empleado.correo,
+                phoneNumber: empleado.telefono,
+                rol: empleado.rol,
+                password: "",
+                confirmPassword: ""
+            }));
+            setEmpleados(mappedData);
         } catch (err) {
             alert("Error en el registro.");
             console.error(err);
@@ -75,139 +98,174 @@ export default function EmpleadosForm() {
 
     const handleEdit = (empleado: Empleado) => {
         setFormData({
-            name: empleado.nombre || "",
-            lastName: empleado.apellido || "",
+            name: empleado.name || "",
+            lastName: empleado.lastName || "",
             cedula: empleado.cedula || "",
-            email: empleado.correo || "",
-            password: "", // No mostramos la contraseña existente por seguridad
-            confirmPassword: "", // No mostramos la contraseña existente por seguridad
-            phoneNumber: empleado.telefono || "",
+            email: empleado.email || "",
+            password: "",
+            confirmPassword: "",
+            phoneNumber: empleado.phoneNumber || "",
             rol: empleado.rol || "",
         });
         setIsEditing(true);
     };
     
-    console.log(empleados);
     return (
-        <div className="flex space-x-4 p-4 pt-40">
-            {/* Formulario */}
-            <div className="w-1/2 p-4 border rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4 uppercase">
-                    {isEditing ? "Editar Empleado" : "Registrar Empleado"}
-                </h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Nombre */}
-                    <input
-                        type="text"
-                        name="name"
-                        placeholder="Nombre"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Apellido */}
-                    <input
-                        type="text"
-                        name="lastName"
-                        placeholder="Apellido"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-
-                    {/* Cédula */}
-                    <input
-                        type="text"
-                        name="cedula"
-                        placeholder="Cédula"
-                        value={formData.cedula}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Correo */}
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Correo Electrónico"
-                        value={formData.email}
-                        onChange={handleChange}
-                        disabled={isEditing}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Contraseña */}
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Contraseña"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Confirmar Contraseña */}
-                    <input
-                        type="password"
-                        name="confirmPassword"
-                        placeholder="Confirmar Contraseña"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Teléfono */}
-                    <input
-                        type="tel"
-                        name="phoneNumber"
-                        placeholder="Teléfono"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    {/* Rol */}
-                    <select
-                        name="rol"
-                        value={formData.rol}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    >
-                        <option value="">Selecciona un rol</option>
-                        <option value="admin">Administrador</option>
-                        <option value="user">Usuario</option>
-                        <option value="mantenimiento">Mantenimiento</option>
-                    </select>
-
-                    <button
-                        type="submit"
-                        className="bg-orange-500 text-white p-2 rounded w-full hover:bg-orange-600 cursor-pointer"
-                    >
-                        {isEditing ? "Actualizar" : "Guardar"}
-                    </button>
-                </form>
-            </div>
-
-             {/* Lista de Empleados */}
-             <div className="w-1/2 p-4 border rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4">Empleados Registrados</h2>
-                <ul>
-                    {empleados.map((empleado) => (
-                        <li key={empleado.id_usuario} className="flex justify-between items-center p-2 border-b">
+        <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Formulario */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                        {isEditing ? "Editar Empleado" : "Registrar Empleado"}
+                    </h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <p className="font-semibold">{empleado.nombre}</p>
-                                <p className="text-sm text-gray-600">{empleado.apellido} - {empleado.telefono}</p>
-                                <p className="text-sm text-gray-600">{empleado.correo}</p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
                             </div>
-                            <button onClick={() => handleEdit(empleado)} className="text-blue-500 hover:text-blue-700 cursor-pointer">
-                                <PencilIcon className="w-5 h-5" />
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                                <input
+                                    type="text"
+                                    name="lastName"
+                                    value={formData.lastName}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
+                            <input
+                                type="text"
+                                name="cedula"
+                                value={formData.cedula}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                disabled={isEditing}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required={!isEditing}
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Contraseña</label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    required={!isEditing}
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                            <input
+                                type="tel"
+                                name="phoneNumber"
+                                value={formData.phoneNumber}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                            <select
+                                name="rol"
+                                value={formData.rol}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            >
+                                <option value="">Selecciona un rol</option>
+                                <option value="admin">Administrador</option>
+                                <option value="user">Usuario</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                            </select>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="w-full bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors duration-200 font-medium"
+                        >
+                            {isEditing ? "Actualizar" : "Guardar"}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Lista de Empleados */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Empleados Registrados</h2>
+                    {loading ? (
+                        <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+                        </div>
+                    ) : empleados.length === 0 ? (
+                        <p className="text-gray-500 text-center py-4">No hay empleados registrados</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {empleados.map((empleado) => (
+                                <div key={empleado.id_usuario} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-semibold text-lg text-gray-800">{empleado.name} {empleado.lastName}</h3>
+                                            <p className="text-sm text-gray-600 mt-1">{empleado.phoneNumber}</p>
+                                            <p className="text-sm text-gray-600">{empleado.email}</p>
+                                            <p className="text-sm text-gray-500 mt-1">Cédula: {empleado.cedula}</p>
+                                            <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-800 bg-amber-100 rounded-full mt-2">
+                                                {empleado.rol}
+                                            </span>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleEdit(empleado)} 
+                                            className="text-amber-500 hover:text-amber-600 transition-colors duration-200"
+                                        >
+                                            <PencilIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

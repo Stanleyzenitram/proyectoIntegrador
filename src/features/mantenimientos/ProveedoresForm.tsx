@@ -92,81 +92,115 @@ export default function ProveedorForm() {
     };
 
     return (
-        <div className="flex space-x-4 p-4">
-            {/* Formulario */}
-            <div className="w-1/2 p-4 border rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4">{isEditing ? "Editar Proveedor" : "Registrar Proveedor"}</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <input
-                        type="text"
-                        name="nombre_proveedor"
-                        placeholder="Nombre"
-                        value={formData.nombre_proveedor}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    <input
-                        type="text"
-                        name="contacto"
-                        placeholder="Contacto"
-                        value={formData.contacto}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    <input
-                        type="text"
-                        name="telefono"
-                        placeholder="Teléfono"
-                        value={formData.telefono}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    <input
-                        type="email"
-                        name="correo"
-                        placeholder="Correo Electrónico"
-                        value={formData.correo}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    <input
-                        type="text"
-                        name="direccion"
-                        placeholder="Dirección"
-                        value={formData.direccion}
-                        onChange={handleChange}
-                        required
-                        className="w-full p-2 border-b-2 border-gray-400 focus:border-amber-500 focus:outline-none"
-                    />
-                    <button
-                        type="submit"
-                        className="bg-orange-500 text-white p-2 rounded w-full"
-                    >
-                        {isEditing ? "Actualizar" : "Guardar"}
-                    </button>
-                </form>
-            </div>
+        <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Formulario */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                        {isEditing ? "Editar Proveedor" : "Registrar Proveedor"}
+                    </h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Proveedor</label>
+                            <input
+                                type="text"
+                                name="nombre_proveedor"
+                                value={formData.nombre_proveedor}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
 
-            {/* Lista de Proveedores */}
-            <div className="w-1/2 p-4 border rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4">Proveedores Registrados</h2>
-                <ul>
-                    {proveedores.map((proveedor) => (
-                        <li key={proveedor.id_proveedor} className="flex justify-between items-center p-2 border-b">
-                            <div>
-                                <p className="font-semibold">{proveedor.nombre_proveedor}</p>
-                                <p className="text-sm text-gray-600">{proveedor.contacto} - {proveedor.telefono}</p>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
+                            <input
+                                type="text"
+                                name="contacto"
+                                value={formData.contacto}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                            <input
+                                type="text"
+                                name="telefono"
+                                value={formData.telefono}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
+                            <input
+                                type="email"
+                                name="correo"
+                                value={formData.correo}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                            <input
+                                type="text"
+                                name="direccion"
+                                value={formData.direccion}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="w-full bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors"
+                        >
+                            {isEditing ? "Actualizar Proveedor" : "Registrar Proveedor"}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Lista de Proveedores */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Proveedores Registrados</h2>
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                        {proveedores.map((proveedor) => (
+                            <div
+                                key={proveedor.id_proveedor}
+                                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                                onClick={() => handleEdit(proveedor)}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-semibold text-lg text-gray-800">{proveedor.nombre_proveedor}</h3>
+                                        <p className="text-sm text-gray-600">Contacto: {proveedor.contacto}</p>
+                                        <p className="text-sm text-gray-600">Tel: {proveedor.telefono}</p>
+                                        <p className="text-sm text-gray-600">Email: {proveedor.correo}</p>
+                                        <p className="text-sm text-gray-600">Dirección: {proveedor.direccion}</p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEdit(proveedor);
+                                        }}
+                                        className="text-amber-600 hover:text-amber-700"
+                                    >
+                                        <PencilIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
-                            <button onClick={() => handleEdit(proveedor)} className="text-blue-500">
-                                <PencilIcon className="w-5 h-5" />
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );

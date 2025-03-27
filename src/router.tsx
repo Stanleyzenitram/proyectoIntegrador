@@ -27,12 +27,14 @@ import PrivateLogin from "./components/PrivateLogin";
 import Inventario from "./features/mantenimientos/Inventario";
 import CompraProductos from "./features/mantenimientos/CompraProductos";
 import ListaProveedores from "./features/mantenimientos/ListaProveedores";
+import ProveedoresForm from "./features/mantenimientos/ProveedoresForm";
 import ReporteCompras from "./features/reportes/ReporteCompras";
 import Factura from "./pages/Factura";
 import ReporteProductos from "./features/reportes/ReporteProductos";
 import ReportePedidos from "./features/reportes/ReportePedidos";
 import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
+import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -69,7 +71,9 @@ export default function AppRouter() {
                     <Route path="/empleados" element={<Empleados />} />
                     <Route path="/clientes" element={<Clientes />} />
                     <Route path="/proveedores" element={<Proveedor />} />
+                    <Route path="/proveedores-form" element={<ProveedoresForm />} />
                     <Route path="/productos" element={<Productos />} />
+                    <Route path="/materiales" element={<EstiloMaterialForm />} />
                     <Route path="/estilos" element={<Estilos />} />
                     <Route path="/pedidos-mant" element={<PedidosMant />} />
                     <Route path="/inventario" element={<Inventario />} />

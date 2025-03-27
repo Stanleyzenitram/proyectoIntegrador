@@ -61,10 +61,8 @@ export default function MenuMant() {
                             <div className="space-y-2">
                                 <NavLink to="/empleados" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Empleados</NavLink>
                                 <NavLink to="/productos" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Productos</NavLink>
-                                <NavLink to="/proveedores" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
+                                <NavLink to="/proveedores-form" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
                                 <NavLink to="/materiales" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Materiales</NavLink>
-                                <NavLink to="/estilos" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Estilos</NavLink>
-                                <NavLink to="/categorias" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Categorías</NavLink>
                             </div>
                         </details>
 
@@ -155,10 +153,8 @@ export default function MenuMant() {
                     <div className="absolute left-0 w-48 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
                         <NavLink to="/empleados" className="block px-4 py-2 hover:bg-gray-200">Empleados</NavLink>
                         <NavLink to="/productos" className="block px-4 py-2 hover:bg-gray-200">Productos</NavLink>
-                        <NavLink to="/proveedores" className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
+                        <NavLink to="/proveedores-form" className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
                         <NavLink to="/materiales" className="block px-4 py-2 hover:bg-gray-200">Materiales</NavLink>
-                        <NavLink to="/estilos" className="block px-4 py-2 hover:bg-gray-200">Estilos</NavLink>
-                        <NavLink to="/categorias" className="block px-4 py-2 hover:bg-gray-200">Categorías</NavLink>
                     </div>
                 </div>
 
