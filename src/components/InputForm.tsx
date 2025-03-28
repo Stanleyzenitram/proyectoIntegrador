@@ -19,7 +19,7 @@ export default function InputForm({
             </div>
             <div>
                 <input
-                    className=" border-b mb-5 border-amber-900 ml-35 focus:outline-none"
+                    className=" border-b mb-5 border-amber-900 ml-5 focus:outline-none"
                     name={name}
                     type={type}
                     placeholder={placeholder}

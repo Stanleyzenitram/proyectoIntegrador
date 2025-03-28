@@ -119,8 +119,8 @@ export default function Home() {
     };
 
     return (
-        <div className="h-screen">
-            <div className="container mx-auto px-4">
+        <div className="h-screen w-screen">
+            <div className="container mx-auto px-2">
                 {/* Barra superior con búsqueda y ordenamiento */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                     <form onSubmit={handleSearch} className="relative flex-1 max-w-xl w-full">
