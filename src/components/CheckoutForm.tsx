@@ -3,6 +3,8 @@ import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { crearFactura } from "../api/factura";
+import { emailService } from "../services/emailService";
+import { supabase } from "../services/supabase";
 
 interface DireccionPedido {
     calle: string;
@@ -12,7 +14,7 @@ interface DireccionPedido {
 }
 
 interface CartItem {
-    id_producto: string;
+    id_producto: number;
     quantity: number;
     precio: number;
     descuento?: number;
@@ -48,23 +50,6 @@ const CheckoutForm = ({
     const { user } = useAuth();
     const [metodo_Pago, setMetodoPago] = useState("Tarjeta de Crédito o Débito");
 
-    const datosFactura = {
-        id: user?.id,
-        fechaActual: new Date().toISOString().split("T")[0],
-        descuento: descuento.toFixed(2),
-        estado: "valida",
-        subtotal,
-        itbis,
-        total,
-        productos: orderItems.map((item) => ({
-            idProducto: item.id_producto,
-            cantidad: item.quantity,
-            precioUnit: item.precio,
-            subtotal: (item.precio * item.quantity).toFixed(2),
-        })),
-        metodoPago: metodo_Pago,
-    };
-
     const isDireccionCompleta = () => {
         return (
             direccionPedido.calle.trim() !== "" &&
@@ -93,27 +78,55 @@ const CheckoutForm = ({
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!stripe || !elements) {
-            setError("No se pudo inicializar el formulario de pago");
-            return;
-        }
-
-        if (!token) {
-            setError("No se encontró el token de autenticación");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-            setError("No se encontró el elemento de tarjeta");
-            setLoading(false);
-            return;
-        }
+        if (!stripe || !elements) return;
 
         try {
+            setLoading(true);
+            setError(null);
+
+            const cardElement = elements.getElement(CardElement);
+            if (!cardElement) {
+                setError("No se encontró el elemento de tarjeta");
+                setLoading(false);
+                return;
+            }
+
+            if (!user?.id) {
+                throw new Error("Usuario no autenticado");
+            }
+
+            // Verificar si el usuario existe en la tabla clientes y obtener sus datos
+            const { data: clienteData, error: clienteError } = await supabase
+                .from("clientes")
+                .select("*")
+                .eq("uuid", user.id)
+                .single();
+
+            if (clienteError || !clienteData) {
+                throw new Error("No se encontró el registro del cliente");
+            }
+
+            // Usar el id_cliente y los datos del cliente
+            const datosFactura = {
+                id: clienteData.id_cliente,
+                fechaActual: new Date().toISOString().split("T")[0],
+                descuento_total: Number(descuento.toFixed(2)),
+                estado: "valida",
+                sub_total: Number(subtotal),
+                total: Number(total),
+                productos: orderItems.map((item) => ({
+                    idProducto: Number(item.id_producto),
+                    cantidad: Number(item.quantity),
+                    precioUnit: Number(item.precio),
+                    subtotal: Number((item.precio * item.quantity).toFixed(2)),
+                    nombre_producto: item.nombre_producto
+                })),
+                metodoPago: metodo_Pago,
+                nombre_cliente: clienteData.nombre,
+                email_cliente: clienteData.email,
+                telefono_cliente: clienteData.telefono
+            };
+
             const amountInCents = Math.round(total * 100);
             console.log("Iniciando solicitud de pago...", { 
                 amount: amountInCents,
@@ -219,6 +232,20 @@ const CheckoutForm = ({
                 const result = await crearFactura(datosFactura, direccionPedido);
                 if (result.success) {
                     console.log("Factura creada con éxito, ID:", result.idFactura);
+                    
+                    // Enviar la factura por correo
+                    if (!user.email) {
+                        console.warn("No se encontró email del usuario");
+                        return;
+                    }
+
+                    await emailService.sendInvoice(
+                        user.email,
+                        result.idFactura.toString(),
+                        result.pdfContent
+                    );
+                    console.log("Factura enviada por correo exitosamente");
+
                     navigate(`/factura/${result.idFactura}`);
                 } else {
                     throw new Error("Error al crear la factura.");

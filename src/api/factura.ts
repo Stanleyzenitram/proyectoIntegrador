@@ -1,5 +1,14 @@
 import { supabase } from "../services/supabase";
 import { crearPedido } from "../api/pedidos";
+import { generateInvoicePDF } from "../utils/pdfGenerator";
+
+// Definir la interfaz para el producto en los datos de la factura
+interface ProductoFactura {
+    nombre_producto: string;
+    cantidad: string;
+    precioUnit: number;
+    idProducto: string;
+}
 
 // Función para obtener el id_cliente basado en el uuid
 export const obtenerIdClientePorUuid = async (uuid: string) => {
@@ -40,64 +49,96 @@ export const obtenerIdClientePorUuid = async (uuid: string) => {
 
 // Función para crear la factura
 export const crearFactura = async (datosFactura: any, direccionPedido: any) => {
-    const { id, fechaActual, descuento, productos } = datosFactura;
-    
-    // Obtener el id_cliente por uuid
-    const id_cliente = await obtenerIdClientePorUuid(id);
+    try {
+        // Crear la factura en la base de datos
+        const { data: facturaData, error: facturaError } = await supabase
+            .from("facturas")
+            .insert([{
+                id_cliente: datosFactura.id,
+                fecha_venta: datosFactura.fechaActual,
+                descuento_total: datosFactura.descuento_total || 0.00,
+                total: datosFactura.total,
+                estado: datosFactura.estado,
+                sub_total: datosFactura.sub_total
+            }])
+            .select()
+            .single();
 
-    // Calcular el total de la factura
-    const total = datosFactura.total;
+        if (facturaError) throw facturaError;
 
-    // Insertar la factura en la tabla 'facturas'
-    const { data: facturaData, error: facturaError } = await supabase
-        .from('facturas')
-        .insert([
-            {
-                id_cliente: id_cliente,
-                fecha_venta: fechaActual,
-                descuento_total: descuento,
-                total: total,
-                sub_total: datosFactura.subtotal,
-                estado: datosFactura.estado,  
+        // Crear el pedido con la dirección
+        const pedidoResult = await crearPedido({
+            idCliente: datosFactura.id,
+            fechaActual: datosFactura.fechaActual,
+            total: datosFactura.total,
+            metodoPago: datosFactura.metodoPago,
+            id_factura: facturaData.id_factura,
+            estado: "pendiente"
+        }, direccionPedido);
+
+        if (!pedidoResult || !pedidoResult.success) {
+            throw new Error("Error al crear el pedido");
+        }
+
+        // Insertar los productos en detalles_factura
+        const detallesFactura = datosFactura.productos.map((producto: any) => ({
+            id_factura: facturaData.id_factura,
+            id_producto: parseInt(producto.idProducto),
+            cantidad: parseInt(producto.cantidad),
+            precio_unitario: Number(producto.precioUnit),
+            descuento: 0.00
+        }));
+
+        const { error: detallesError } = await supabase
+            .from("detalles_factura")
+            .insert(detallesFactura);
+
+        if (detallesError) {
+            console.error("Error al insertar detalles:", detallesError);
+            throw detallesError;
+        }
+
+        // Generar el PDF con el ITBIS calculado
+        const pdfContent = await generateInvoicePDF({
+            id: facturaData.id_factura.toString(),
+            numero_factura: facturaData.numero_factura || facturaData.id_factura.toString(),
+            fecha: datosFactura.fechaActual,
+            productos: datosFactura.productos.map((producto: ProductoFactura) => ({
+                nombre_producto: producto.nombre_producto,
+                cantidad: parseInt(producto.cantidad),
+                precio_unitario: Number(producto.precioUnit),
+                subtotal: Number(producto.cantidad) * Number(producto.precioUnit)
+            })),
+            subtotal: Number(datosFactura.sub_total),
+            descuento: Number(datosFactura.descuento_total),
+            itbis: Number(datosFactura.sub_total) * 0.18,
+            total: Number(datosFactura.total),
+            direccion: {
+                calle: direccionPedido.calle,
+                ciudad: direccionPedido.ciudad,
+                provincia: direccionPedido.provincia,
+                codigo_postal: direccionPedido.codigo_postal
             },
-        ])
-        .select('id_factura'); // Obtener el id de la factura
+            cliente: {
+                nombre: datosFactura.nombre_cliente,
+                email: datosFactura.email_cliente,
+                telefono: datosFactura.telefono_cliente
+            }
+        });
 
-    if (facturaError) {
-        throw new Error(`Error al crear la factura: ${facturaError.message}`);
+        return {
+            success: true,
+            idFactura: facturaData.id_factura,
+            numeroFactura: facturaData.numero_factura,
+            pdfContent: pdfContent
+        };
+    } catch (error) {
+        console.error("Error al crear la factura:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Error al crear la factura"
+        };
     }
-
-    const idFactura = facturaData[0]?.id_factura;
-
-    // Insertar los detalles de la factura en la tabla 'detalles_factura'
-    const detalles = productos.map((producto: any) => ({
-        id_factura: idFactura, // Relacionar con la factura
-        id_producto: producto.idProducto,
-        cantidad: producto.cantidad,
-        precio_unitario: producto.precioUnit,
-    }));
-
-    const { error: detallesError } = await supabase
-        .from('detalles_factura')
-        .insert(detalles);
-
-    if (detallesError) {
-        throw new Error(`Error al crear los detalles de la factura: ${detallesError.message}`);
-    }
-
-    const datosPedido = {
-        idCliente: id_cliente,
-        fechaActual: fechaActual,
-        total: total,
-        estado: datosFactura.estado,
-        metodoPago: datosFactura.metodoPago,
-        id_factura: idFactura,
-    };
-
-    // Crear el pedido en la tabla 'pedidos'
-    await crearPedido(datosPedido, direccionPedido);
-
-    return { success: true, idFactura };
 };
 
 // Función para obtener los datos de una factura por su ID
