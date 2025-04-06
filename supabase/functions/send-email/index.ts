@@ -2,64 +2,58 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Max-Age': '86400',
 };
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const RESEND_API_KEY = 're_StZEWnjA_CKBroGopk5JGntfknH1ymhdM';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    if (!RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY is not set');
-    }
-
     const { to, subject, html, attachments } = await req.json();
-    console.log('Received request:', { to, subject, hasAttachments: !!attachments });
 
-    const res = await fetch('https://api.resend.com/emails', {
+    // Enviar correo usando la API de Resend directamente
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         from: 'Venta Cerámicas <onboarding@resend.dev>',
-        to,
-        subject,
-        html,
-        attachments: attachments?.map(attachment => ({
-          filename: attachment.filename,
-          content: attachment.content
-        }))
-      }),
+        to: ['josuemorel58@gmail.com'], // Siempre enviamos a tu correo en desarrollo
+        subject: '[TEST] ' + subject,
+        html: html,
+        attachments: attachments
+      })
     });
 
-    const data = await res.json();
-    console.log('Resend API response:', data);
+    const result = await response.json();
 
-    if (!res.ok) {
-      throw new Error(data.message || 'Failed to send email');
+    if (!response.ok) {
+      throw new Error(result.message || 'Error al enviar el correo');
     }
 
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify(result),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    );
+
   } catch (error) {
-    console.error('Error in send-email function:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      stack: error.stack 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    });
+    console.error('Error al enviar correo:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
+    );
   }
 }); 

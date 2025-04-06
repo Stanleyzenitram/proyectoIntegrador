@@ -15,23 +15,27 @@ interface SendEmailParams {
 class EmailService {
     async sendEmail(params: SendEmailParams) {
         try {
-            const { data, error } = await supabase.rpc('send_email', {
-                to_email: params.to,
-                email_subject: params.subject,
-                html_content: params.html,
-                attachment_name: params.attachments?.[0]?.filename,
-                attachment_content: params.attachments?.[0]?.content
+            console.log('Intentando enviar correo a:', params.to);
+            
+            const { data, error } = await supabase.functions.invoke('send-email', {
+                body: {
+                    to: params.to,
+                    subject: params.subject,
+                    html: params.html,
+                    attachments: params.attachments
+                }
             });
 
             if (error) {
-                console.error('Error sending email:', error);
-                throw error;
+                console.error('Error detallado al enviar correo:', error);
+                throw new Error(`Error al enviar correo: ${error.message}`);
             }
 
+            console.log('Correo enviado exitosamente:', data);
             return data;
-        } catch (error) {
-            console.error('Email service error:', error);
-            throw error;
+        } catch (error: any) {
+            console.error('Error en el servicio de correo:', error);
+            throw new Error(`Error en el servicio de correo: ${error.message || 'Error desconocido'}`);
         }
     }
 
