@@ -485,6 +485,12 @@ export default function Payment() {
                             {selectedPayment === "PayPal" ? (
                                 <PaypalButton 
                                 amountDOP={totalAmount.toFixed(2)}
+                                orderItems={items}
+                                clearCart={clearCart}
+                                descuento={total - totalWithDiscount}
+                                subtotal={total}
+                                itbis={tax}
+                                direccionPedido={direccion}
                             />
                             ) : (
                                 ""
