@@ -24,7 +24,7 @@ const getAccessToken = async () => {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-      }np
+      }
     );
     return response.data.access_token;
   } catch (error) {
@@ -76,6 +76,13 @@ const createOrder = async (accessToken: string, amountDOP: number) => {
             description: "Compra en mi tienda",
           },
         ],
+        application_context: {
+          brand_name: "Tiles Import", // Personalizable
+          landing_page: "BILLING", // O "BILLING"
+          user_action: "PAY_NOW",
+          return_url: "http://localhost:5173/success",  // <--- agrega tu URL aquí
+          cancel_url: "http://localhost:5173/failed",   // <--- opcional pero recomendado
+        },
       },
       {
         headers: {

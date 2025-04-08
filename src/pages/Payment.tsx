@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import CheckoutForm from "../components/CheckoutForm";
+import PaypalButton from "../components/PaypalButton";
 
 // Cargar la clave pública de Stripe
 const stripePromise = loadStripe(
@@ -137,96 +138,11 @@ export default function Payment() {
         if (!selectedPayment) return;
 
         if (selectedPayment === "PayPal") {
-            try {
-                const width = 600;
-                const height = 700;
-                const left = (window.innerWidth - width) / 2;
-                const top = (window.innerHeight - height) / 2;
-                const newWindow = window.open(
-                    "",
-                    "PayPalPopup",
-                    `width=${width},height=${height},top=${top},left=${left},resizable=no,scrollbars=yes`
-                );
-
-                const response = await fetch(PAYPAL_FUNCTION_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify({ amount: totalAmount.toFixed(2) }),
-                });
-
-                if (!response.ok) {
-                    throw new Error("Error al crear la orden de PayPal");
-                }
-
-                const data = await response.json();
-                const approveLink = data.links.find(
-                    (link) => link.rel === "approve"
-                )?.href;
-                const orderId = data.id;
-                console.log("Order ID recibido:", orderId); // Verifica que el orderId sea correcto
-                if (approveLink && newWindow) {
-                    newWindow.location.href = approveLink;
-                    newWindow.focus();
-
-                    // Esperar que el pago sea aprobado
-                    newWindow.onload = async () => {
-                        try {
-                            const capturePaymentResponse = await fetch(
-                                "https://pdokbwzmygythqtjroje.supabase.co/functions/v1/capture-paypal-payment",
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        Authorization: `Bearer ${accessToken}`,
-                                    },
-                                    body: JSON.stringify({
-                                        orderId: orderId,
-                                        orderItems: items,
-                                    }),
-                                }
-                            );
-
-                            if (!capturePaymentResponse.ok) {
-                                throw new Error("Error al capturar el pago");
-                            }
-
-                            const captureData =
-                                await capturePaymentResponse.json();
-                            if (captureData.error) {
-                                throw new Error(captureData.error);
-                            } else {
-                                console.log(
-                                    "Pago capturado correctamente:",
-                                    captureData
-                                );
-                                alert("Pago con PayPal realizado con éxito");
-                                clearCart(); // Vaciar el carrito después del pago
-                            }
-                        } catch (error) {
-                            console.error(
-                                "Error al capturar el pago:",
-                                error.message
-                            );
-                            setPaymentError(
-                                "Error al procesar el pago con PayPal. Inténtelo de nuevo."
-                            );
-                        }
-                    };
-                } else {
-                    throw new Error(
-                        "No se encontró el enlace de aprobación de PayPal."
-                    );
-                }
-            } catch (error) {
-                console.error("Error en el pago:", error.message || error);
-                setPaymentError(
-                    "Error al procesar el pago con PayPal. Inténtelo de nuevo."
-                );
-            }
-        } else if (selectedPayment === "Card") {
+            // Procesar el pago con PayPal
+            console.log("Procesando pago con PayPal...");
+            
+        }
+         else if (selectedPayment === "Card") {
             if (!validateCardData()) return; // Validar los datos de la tarjeta
 
             // Simular el procesamiento del pago con tarjeta
@@ -566,31 +482,13 @@ export default function Payment() {
 
                     {/* Botón de continuar */}
                     <div className="flex justify-center mt-6">
-                        <button
-                            className={`w-full md:w-1/2 h-12 rounded-lg transition-colors cursor-pointer ${
-                                selectedPayment === "PayPal"
-                                    ? "bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
-                                    : selectedPayment === "Card"
-                                    ? "hidden"
-                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            }`}
-                            onClick={handlePayment}
-                            disabled={!selectedPayment}
-                        >
                             {selectedPayment === "PayPal" ? (
-                                <>
-                                    <img
-                                        src="https://rappicard.mx/wp-content/uploads/2024/10/logo-paypal.png"
-                                        width="64"
-                                        height="20"
-                                        alt="PayPal"
-                                    />
-                                    Continuar con PayPal
-                                </>
+                                <PaypalButton 
+                                amountDOP={totalAmount.toFixed(2)}
+                            />
                             ) : (
-                                "Continuar"
+                                ""
                             )}
-                        </button>
                     </div>
                 </div>
             </div>
