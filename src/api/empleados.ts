@@ -10,6 +10,15 @@ export const crearEmpleado = async (empleado: Empleado) => {
         const { data, error } = await supabase.auth.signUp({
             email: empleado.email,
             password: empleado.password,
+            options: {
+                data: {
+                    name: empleado.name,
+                    lastName: empleado.lastName,
+                    phoneNumber: empleado.phoneNumber,
+                    rol: empleado.rol,
+                    cedula: empleado.cedula
+                }
+            }
         });
 
         if (error) {
@@ -23,6 +32,9 @@ export const crearEmpleado = async (empleado: Empleado) => {
 
         const userId = data.user.id;
         console.log("✅ Usuario creado en Auth con UUID:", userId);
+
+        // Esperar un momento para asegurar que el usuario de auth esté completamente creado
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log("📝 Insertando usuario en la tabla usuarios...");
         const { error: empleadoError } = await supabase
@@ -42,12 +54,14 @@ export const crearEmpleado = async (empleado: Empleado) => {
 
         if (empleadoError) {
             console.error("❌ Error al insertar en usuarios:", empleadoError.message);
+            // Si hay error al insertar, intentamos eliminar el usuario de auth
+            await supabase.auth.admin.deleteUser(userId);
             throw new Error("Hubo un problema al registrar el empleado.");
         }
 
         console.log("✅ Usuario registrado correctamente en empleados.");
         return data.user;
-    } catch (err) {
+    } catch (err: any) {
         console.error("🚨 Error en el registro:", err.message || err);
         throw err;
     }
@@ -66,7 +80,7 @@ export const fetchEmpleados = async () => {
         }
 
         return data || [];
-    } catch (err) {
+    } catch (err: any) {
         console.error("🚨 Error en fetchEmpleados:", err.message || err);
         throw err;
     }

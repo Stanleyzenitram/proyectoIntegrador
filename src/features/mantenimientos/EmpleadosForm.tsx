@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Empleado } from "../../types/index";
 import { crearEmpleado, fetchEmpleados } from "../../api/empleados";
 import { PencilIcon } from "@heroicons/react/24/solid";
+import { supabase } from "../../services/supabase";
 
 export default function EmpleadosForm() {
     const [formData, setFormData] = useState<Empleado>({
@@ -58,15 +59,38 @@ export default function EmpleadosForm() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (formData.password !== formData.confirmPassword) {
+        
+        // Only validate passwords when creating a new employee
+        if (!isEditing && formData.password !== formData.confirmPassword) {
             alert("Las contraseñas no coinciden.");
             return;
         }
 
         try {
-            await crearEmpleado(formData);
-            alert("Registro exitoso, confirme su correo electrónico antes de iniciar sesion.");
-            // Refresh the list after successful creation
+            if (isEditing && formData.id_usuario) {
+                // Actualizar empleado existente
+                const { error } = await supabase
+                    .from("usuarios")
+                    .update({
+                        nombre: formData.name,
+                        apellido: formData.lastName,
+                        telefono: formData.phoneNumber,
+                        rol: formData.rol,
+                        cedula: formData.cedula,
+                    })
+                    .eq("id_usuario", formData.id_usuario);
+
+                if (error) {
+                    throw new Error("Error al actualizar el empleado");
+                }
+                alert("Empleado actualizado correctamente");
+            } else {
+                // Crear nuevo empleado
+                await crearEmpleado(formData);
+                alert("Registro exitoso, confirme su correo electrónico antes de iniciar sesion.");
+            }
+
+            // Refresh the list after successful operation
             const data = await fetchEmpleados();
             const mappedData = data.map(empleado => ({
                 id_usuario: empleado.id_usuario,
@@ -80,24 +104,28 @@ export default function EmpleadosForm() {
                 confirmPassword: ""
             }));
             setEmpleados(mappedData);
-        } catch (err) {
-            alert("Error en el registro.");
+            
+            // Reset form
+            setFormData({
+                name: "",
+                lastName: "",
+                cedula: "",
+                email: "",
+                password: "",
+                confirmPassword: "",
+                phoneNumber: "",
+                rol: "",
+            });
+            setIsEditing(false);
+        } catch (err: any) {
+            alert(err.message || "Error en el registro.");
             console.error(err);
         }
-        setFormData({
-            name: "",
-            lastName: "",
-            cedula: "",
-            email: "",
-            password: "",
-            confirmPassword: "",
-            phoneNumber: "",
-            rol: "",
-        });
     };
 
     const handleEdit = (empleado: Empleado) => {
         setFormData({
+            id_usuario: empleado.id_usuario,
             name: empleado.name || "",
             lastName: empleado.lastName || "",
             cedula: empleado.cedula || "",
