@@ -6,25 +6,60 @@ import type { Producto } from "../types/index";
  */
 export const uploadImage = async (file: File): Promise<string> => {
     try {
+        // Validar el archivo
+        if (!file) {
+            throw new Error('No se seleccionó ningún archivo');
+        }
+
+        // Validar tipo de archivo
+        if (!file.type.startsWith('image/')) {
+            throw new Error('El archivo debe ser una imagen');
+        }
+
+        // Validar tamaño (máximo 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            throw new Error('La imagen debe ser menor a 5MB');
+        }
+
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         const filePath = `productos/${fileName}`;
 
+        console.log('🔄 Subiendo imagen:', fileName);
+
+        console.log('🔄 Intentando subir imagen a bucket "imagenes"...');
+        
         const { error: uploadError, data } = await supabase.storage
             .from('imagenes')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
 
         if (uploadError) {
-            throw new Error('Error al subir la imagen');
+            console.error('❌ Error al subir:', uploadError);
+            
+            // Mensajes de error más específicos
+            if (uploadError.message.includes('row-level security policy')) {
+                throw new Error('Error de permisos: Las políticas de seguridad están bloqueando la subida. Contacta al administrador.');
+            } else if (uploadError.message.includes('bucket')) {
+                throw new Error('Error: El bucket de imágenes no existe o no está configurado correctamente.');
+            } else {
+                throw new Error(`Error al subir la imagen: ${uploadError.message}`);
+            }
         }
+
+        console.log('✅ Imagen subida exitosamente:', data?.path);
 
         const { data: { publicUrl } } = supabase.storage
             .from('imagenes')
             .getPublicUrl(filePath);
 
+        console.log('🔗 URL pública generada:', publicUrl);
+
         return publicUrl;
     } catch (error: any) {
-        console.error('Error en uploadImage:', error.message);
+        console.error('❌ Error en uploadImage:', error.message);
         throw error;
     }
 };

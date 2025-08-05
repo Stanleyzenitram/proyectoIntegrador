@@ -6,6 +6,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../services/supabase";
+import { getUserType } from "../../utils/userUtils";
 
 export default function LoginForm() {
     const navigate = useNavigate();
@@ -32,30 +33,32 @@ export default function LoginForm() {
             // Llamar a la API para iniciar sesión
             await signIn(data.email, data.password);
             
-            // Obtener el rol del usuario
+            // Obtener el usuario autenticado
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No se pudo obtener el usuario");
 
-            const { data: userData, error: roleError } = await supabase
-                .from("usuarios")
-                .select("rol")
-                .eq("uuid", user.id)
-                .single();
+            // Determinar el tipo de usuario
+            const userType = await getUserType(user.id);
 
-            if (roleError) {
-                console.error("Error al obtener el rol:", roleError);
-                // Si hay error al obtener el rol, redirigir al home
-                navigate("/");
-                return;
-            }
-
-            // Redirigir según el rol
-            if (userData?.rol === "admin") {
-                window.location.href = "/inventario";
-            } else {
+            if (userType.type === 'employee') {
+                // Es un empleado
+                if (userType.role === "admin") {
+                    window.location.href = "/inventario";
+                } else {
+                    alert("Inicio de sesión exitoso");
+                    window.location.href = "/";
+                }
+            } else if (userType.type === 'client') {
+                // Es un cliente
                 alert("Inicio de sesión exitoso");
                 window.location.href = "/";
+            } else {
+                // Usuario no encontrado en ninguna tabla
+                console.error("Usuario no encontrado en ninguna tabla");
+                alert("Error: Usuario no encontrado en el sistema");
+                await supabase.auth.signOut();
             }
+            
         } catch (error) {
             alert("Credenciales incorrectas");
             console.error("Error en el inicio de sesión:", error);

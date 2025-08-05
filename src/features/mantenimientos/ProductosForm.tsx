@@ -92,17 +92,26 @@ export default function ProductosForm() {
 
         try {
             setUploading(true);
+            setImagePreview(null); // Limpiar preview anterior
+            
+            // Crear preview inmediatamente
             const previewUrl = URL.createObjectURL(file);
             setImagePreview(previewUrl);
 
+            console.log('🔄 Iniciando subida de imagen...');
             const imageUrl = await uploadImage(file);
+            
+            console.log('✅ Imagen subida, actualizando formulario...');
             setFormData(prev => ({
                 ...prev,
                 imagen: imageUrl
             }));
-        } catch (error) {
-            console.error("Error al subir la imagen:", error);
-            alert("Error al subir la imagen. Por favor, intente nuevamente.");
+            
+            console.log('✅ Formulario actualizado con nueva imagen');
+        } catch (error: any) {
+            console.error("❌ Error al subir la imagen:", error);
+            setImagePreview(null);
+            alert(`Error al subir la imagen: ${error.message}`);
         } finally {
             setUploading(false);
         }
@@ -409,6 +418,11 @@ export default function ProductosForm() {
                                                             src={producto.imagen}
                                                             alt={producto.nombre_producto}
                                                             className="w-20 h-20 object-cover rounded-lg"
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCAyMEMyOS4wMDAxIDIwIDIwIDI5LjAwMDEgMjAgNDBDMjAgNTAuOTk5OSAyOS4wMDAxIDYwIDQwIDYwQzUwLjk5OTkgNjAgNjAgNTAuOTk5OSA2MCA0MEM2MCAyOS4wMDAxIDUwLjk5OTkgMjAgNDAgMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCAyNEMzMS4xNjM0IDI0IDI0IDMxLjE2MzQgMjQgNDBDMjQgNDguODM2NiAzMS4xNjM0IDU2IDQwIDU2QzQ4LjgzNjYgNTYgNTYgNDguODM2NiA1NiA0MEM1NiAzMS4xNjM0IDQ4LjgzNjYgMjQgNDAgMjRaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCAzMkMzNS41ODE3IDMyIDMyIDM1LjU4MTcgMzIgNDBDMzIgNDQuNDE4MyAzNS41ODE3IDQ4IDQwIDQ4QzQ0LjQxODMgNDggNDggNDQuNDE4MyA0OCA0MEM0OCAzNS41ODE3IDQ0LjQxODMgMzIgNDAgMzJaIiBmaWxsPSIjRjNGNEY2Ii8+Cjwvc3ZnPgo=';
+                                                                target.onerror = null;
+                                                            }}
                                                         />
                                                     )}
                                                     <div>

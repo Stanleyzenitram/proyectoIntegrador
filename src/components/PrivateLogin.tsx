@@ -1,45 +1,34 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useEffect, useState } from "react";
-import { supabase } from "../services/supabase";
+import { isAdmin } from "../utils/userUtils";
 
 export default function PrivateLogin() {
     const { user } = useAuth();
-    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [isAdminUser, setIsAdminUser] = useState<boolean | null>(null);
     
     useEffect(() => {
         const checkUserRole = async () => {
             if (!user) {
-                setIsAdmin(false);
+                setIsAdminUser(false);
                 return;
             }
 
             try {
-                const { data, error } = await supabase
-                    .from("usuarios")
-                    .select("rol")
-                    .eq("uuid", user.id)
-                    .single();
-
-                if (error) {
-                    console.error("Error al obtener el rol:", error);
-                    setIsAdmin(false);
-                    return;
-                }
-
-                setIsAdmin(data?.rol === "admin");
+                const adminStatus = await isAdmin(user.id);
+                setIsAdminUser(adminStatus);
             } catch (err) {
                 console.error("Error al verificar el rol:", err);
-                setIsAdmin(false);
+                setIsAdminUser(false);
             }
         };
 
         checkUserRole();
     }, [user]);
 
-    if (isAdmin === null) {
+    if (isAdminUser === null) {
         return <div>Cargando...</div>;
     }
 
-    return user ? <Navigate to={isAdmin ? "/inventario" : "/"} replace /> : <Outlet />;
+    return user ? <Navigate to={isAdminUser ? "/inventario" : "/"} replace /> : <Outlet />;
 }

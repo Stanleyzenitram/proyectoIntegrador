@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../services/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FileText } from 'lucide-react';
+import { FileText, Settings } from "lucide-react";
 
 export default function MenuMant() {
     const { user } = useAuth();
@@ -76,71 +76,87 @@ export default function MenuMant() {
                         </details>
 
                         {rol === "admin" && (
-                            <details className="group">
-                                <summary className="cursor-pointer px-4 py-2 hover:bg-amber-100 rounded">Reportes</summary>
-                                <div className="space-y-2">
-                                    <NavLink 
-                                        to="/reportes/compras" 
-                                        onClick={() => setIsMenuOpen(false)} 
-                                        className={({ isActive }) =>
-                                            `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                                isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                            }`
-                                        }
-                                    >
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Reporte de Compras
-                                    </NavLink>
-                                    <NavLink 
-                                        to="/reportes/pedidos" 
-                                        onClick={() => setIsMenuOpen(false)} 
-                                        className={({ isActive }) =>
-                                            `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                                isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                            }`
-                                        }
-                                    >
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Reporte de Pedidos
-                                    </NavLink>
-                                    <NavLink 
-                                        to="/reportes/productos" 
-                                        onClick={() => setIsMenuOpen(false)} 
-                                        className={({ isActive }) =>
-                                            `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                                isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                            }`
-                                        }
-                                    >
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Reporte de Productos
-                                    </NavLink>
-                                    <NavLink 
-                                        to="/reportes/clientes" 
-                                        onClick={() => setIsMenuOpen(false)} 
-                                        className={({ isActive }) =>
-                                            `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                                isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                            }`
-                                        }
-                                    >
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Reporte de Clientes
-                                    </NavLink>
-                                    <NavLink 
-                                        to="/reportes/empleados" 
-                                        onClick={() => setIsMenuOpen(false)} 
-                                        className={({ isActive }) =>
-                                            `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                                isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                            }`
-                                        }
-                                    >
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Reporte de Empleados
-                                    </NavLink>
-                                </div>
-                            </details>
+                            <>
+                                <details className="group">
+                                    <summary className="cursor-pointer px-4 py-2 hover:bg-amber-100 rounded">Sistema</summary>
+                                    <div className="space-y-2">
+                                        <NavLink 
+                                            to="/configuracion-relevancia" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className="flex items-center px-4 py-2 hover:bg-gray-200"
+                                        >
+                                            <Settings className="w-4 h-4 mr-2" />
+                                            Configuración Relevancia
+                                        </NavLink>
+                                    </div>
+                                </details>
+
+                                <details className="group">
+                                    <summary className="cursor-pointer px-4 py-2 hover:bg-amber-100 rounded">Reportes</summary>
+                                    <div className="space-y-2">
+                                        <NavLink 
+                                            to="/reportes/compras" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className={({ isActive }) =>
+                                                `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                                    isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <FileText className="w-5 h-5 mr-2" />
+                                            Reporte de Compras
+                                        </NavLink>
+                                        <NavLink 
+                                            to="/reportes/pedidos" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className={({ isActive }) =>
+                                                `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                                    isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <FileText className="w-5 h-5 mr-2" />
+                                            Reporte de Pedidos
+                                        </NavLink>
+                                        <NavLink 
+                                            to="/reportes/productos" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className={({ isActive }) =>
+                                                `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                                    isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <FileText className="w-5 h-5 mr-2" />
+                                            Reporte de Productos
+                                        </NavLink>
+                                        <NavLink 
+                                            to="/reportes/clientes" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className={({ isActive }) =>
+                                                `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                                    isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <FileText className="w-5 h-5 mr-2" />
+                                            Reporte de Clientes
+                                        </NavLink>
+                                        <NavLink 
+                                            to="/reportes/empleados" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className={({ isActive }) =>
+                                                `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                                    isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                                }`
+                                            }
+                                        >
+                                            <FileText className="w-5 h-5 mr-2" />
+                                            Reporte de Empleados
+                                        </NavLink>
+                                    </div>
+                                </details>
+                            </>
                         )}
                     </div>
                 </nav>
@@ -168,66 +184,81 @@ export default function MenuMant() {
                 </div>
 
                 {rol === "admin" && (
-                    <div className="relative group">
-                        <p className="cursor-pointer">Reportes</p>
-                        <div className="absolute left-0 w-40 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
-                            <NavLink 
-                                to="/reportes/compras" 
-                                className={({ isActive }) =>
-                                    `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                        isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                    }`
-                                }
-                            >
-                                <FileText className="w-5 h-5 mr-2" />
-                                Reporte de Compras
-                            </NavLink>
-                            <NavLink 
-                                to="/reportes/pedidos" 
-                                className={({ isActive }) =>
-                                    `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                        isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                    }`
-                                }
-                            >
-                                <FileText className="w-5 h-5 mr-2" />
-                                Reporte de Pedidos
-                            </NavLink>
-                            <NavLink 
-                                to="/reportes/productos" 
-                                className={({ isActive }) =>
-                                    `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                        isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                    }`
-                                }
-                            >
-                                <FileText className="w-5 h-5 mr-2" />
-                                Reporte de Productos
-                            </NavLink>
-                            <NavLink 
-                                to="/reportes/clientes" 
-                                className={({ isActive }) =>
-                                    `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                        isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                    }`
-                                }
-                            >
-                                <FileText className="w-5 h-5 mr-2" />
-                                Reporte de Clientes
-                            </NavLink>
-                            <NavLink 
-                                to="/reportes/empleados" 
-                                className={({ isActive }) =>
-                                    `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                                        isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
-                                    }`
-                                }
-                            >
-                                <FileText className="w-5 h-5 mr-2" />
-                                Reporte de Empleados
-                            </NavLink>
+                    <>
+                        <div className="relative group">
+                            <p className="cursor-pointer">Sistema</p>
+                            <div className="absolute left-0 w-48 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
+                                <NavLink 
+                                    to="/configuracion-relevancia" 
+                                    className="flex items-center px-4 py-2 hover:bg-gray-200"
+                                >
+                                    <Settings className="w-4 h-4 mr-2" />
+                                    Configuración Relevancia
+                                </NavLink>
+                            </div>
                         </div>
-                    </div>
+
+                        <div className="relative group">
+                            <p className="cursor-pointer">Reportes</p>
+                            <div className="absolute left-0 w-40 bg-white text-amber-900 rounded-lg shadow-lg py-2 hidden group-hover:block z-20">
+                                <NavLink 
+                                    to="/reportes/compras" 
+                                    className={({ isActive }) =>
+                                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                            isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Compras
+                                </NavLink>
+                                <NavLink 
+                                    to="/reportes/pedidos" 
+                                    className={({ isActive }) =>
+                                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                            isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Pedidos
+                                </NavLink>
+                                <NavLink 
+                                    to="/reportes/productos" 
+                                    className={({ isActive }) =>
+                                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                            isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Productos
+                                </NavLink>
+                                <NavLink 
+                                    to="/reportes/clientes" 
+                                    className={({ isActive }) =>
+                                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                            isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Clientes
+                                </NavLink>
+                                <NavLink 
+                                    to="/reportes/empleados" 
+                                    className={({ isActive }) =>
+                                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
+                                            isActive ? 'bg-amber-100 text-amber-700' : 'text-gray-700 hover:bg-gray-100'
+                                        }`
+                                    }
+                                >
+                                    <FileText className="w-5 h-5 mr-2" />
+                                    Reporte de Empleados
+                                </NavLink>
+                            </div>
+                        </div>
+                    </>
                 )}
             </nav>
         </div>

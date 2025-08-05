@@ -12,6 +12,7 @@ import PedidosMant from "./pages/PedidosMant";
 import HistorialPedido from "./pages/HistorialPedido";
 import EditProfile from "./pages/EditProfile";
 import AdminRoute from "./components/AdminRoute";
+import CreateTestUser from "./components/CreateTestUser";
 
 import Estilos from "./pages/Estilos";
 import Empleados from "./pages/Empleados";
@@ -35,6 +36,7 @@ import ReportePedidos from "./features/reportes/ReportePedidos";
 import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
+import ConfiguracionRelevancia from "./components/relevancia/ConfiguracionRelevancia";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -42,19 +44,17 @@ export default function AppRouter() {
     return (
         <Routes>
             <Route path="/update-password" element={<UpdatePassword />} />
+            <Route path="/create-test-user" element={<CreateTestUser />} />
             <Route element={<Layout />}>
-                <Route element={<AdminRoute />}>
-                    <Route path="/" element={<HomePage />} index />
-                </Route>
-
+                {/* Rutas públicas accesibles para todos los usuarios autenticados */}
+                <Route path="/" element={<HomePage />} index />
                 <Route path="/register" element={<Register />} />
                 <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
                 <Route path="/reset-password" element={<PasswordReset />} />
                 <Route path="/chat" element={<ChatPage />} />
                 <Route path="/payment" element={<Payment />} />
 
-                {/* Rutas protegidas */}
-
+                {/* Rutas protegidas para usuarios autenticados */}
                 <Route element={<PrivateLogin />}>
                     <Route path="/login" element={<LoginPage />} />
                 </Route>
@@ -66,8 +66,10 @@ export default function AppRouter() {
                     <Route path="/factura/:id" element={<Factura />} />
                     <Route path="/pedidos" element={<Pedidos />} />
                     <Route path="/pedido/:id/historial" element={<HistorialPedido />} />
+                </Route>
 
-                    {/* Mantenimientos */}
+                {/* Rutas solo para administradores */}
+                <Route element={<AdminRoute />}>
                     <Route path="/empleados" element={<Empleados />} />
                     <Route path="/clientes" element={<Clientes />} />
                     <Route path="/proveedores" element={<Proveedor />} />
@@ -82,10 +84,8 @@ export default function AppRouter() {
                         path="/proveedores-lista"
                         element={<ListaProveedores />}
                     />
-
                     <Route path="/stock" element={<Inventario />} />
-
-                    {/* Inventario */}
+                    <Route path="/configuracion-relevancia" element={<ConfiguracionRelevancia />} />
 
                     {/* Reportes */}
                     <Route

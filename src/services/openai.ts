@@ -1,9 +1,12 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+// Verificar si la API key está disponible
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+const openai = apiKey ? new OpenAI({
+  apiKey: apiKey,
   dangerouslyAllowBrowser: true
-});
+}) : null;
 
 const fallbackResponses = {
   greeting: "¡Hola! Soy el asistente virtual. En este momento estoy operando en modo limitado debido a problemas de conectividad con el servidor.",
@@ -13,6 +16,19 @@ const fallbackResponses = {
 };
 
 export const generateAIResponse = async (message: string) => {
+  // Si no hay API key, usar respuestas de fallback
+  if (!openai) {
+    const messageLower = message.toLowerCase();
+    if (messageLower.includes('hola') || messageLower.includes('buenos días') || messageLower.includes('buenas')) {
+      return fallbackResponses.greeting;
+    } else if (messageLower.includes('producto') || messageLower.includes('artículo')) {
+      return fallbackResponses.product;
+    } else if (messageLower.includes('ayuda') || messageLower.includes('ayudar')) {
+      return fallbackResponses.help;
+    }
+    return fallbackResponses.default;
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       messages: [

@@ -86,3 +86,6 @@ export interface Cliente {
     numero_documento: string;
     email: string;
 }
+
+// Exportar tipos del sistema de relevancia
+export * from './relevancia';
