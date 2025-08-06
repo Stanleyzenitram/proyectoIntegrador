@@ -249,8 +249,8 @@ class InteraccionesService {
           tiempo_vista,
           relevancia_calculada,
           productos (
-            id,
-            nombre,
+            id_producto,
+            nombre_producto,
             precio
           )
         `)
@@ -265,7 +265,7 @@ class InteraccionesService {
 
       return data?.map(item => ({
         id: item.id,
-        nombre: item.productos?.nombre || 'Producto no encontrado',
+        nombre: item.productos?.nombre_producto || 'Producto no encontrado',
         fecha: new Date(item.fecha_vista).toLocaleString('es-ES'),
         tiempo: `${Math.floor(item.tiempo_vista / 60)}:${(item.tiempo_vista % 60).toString().padStart(2, '0')}`,
         relevancia: item.relevancia_calculada
@@ -327,8 +327,8 @@ class InteraccionesService {
           cantidad,
           total_compra,
           productos (
-            id,
-            nombre
+            id_producto,
+            nombre_producto
           )
         `)
         .eq('usuario_id', user.id)
@@ -342,7 +342,7 @@ class InteraccionesService {
 
       return data?.map(item => ({
         id: item.id,
-        nombre: item.productos?.nombre || 'Producto no encontrado',
+        nombre: item.productos?.nombre_producto || 'Producto no encontrado',
         fecha: new Date(item.fecha_compra).toLocaleString('es-ES'),
         precio: item.precio_unitario,
         cantidad: item.cantidad
