@@ -167,7 +167,7 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {productosVistos.map((producto, index) => {
                     const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);
                     const stockStatus = getStockStatus(producto.stock_actual);
@@ -175,11 +175,11 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                     return (
                         <div 
                             key={producto.id_producto} 
-                            className="bg-white p-3 rounded-lg shadow-sm flex flex-col h-full justify-between hover:shadow-md transition-shadow relative"
+                            className="bg-white p-4 rounded-lg shadow-sm flex flex-col h-full justify-between hover:shadow-md transition-shadow relative"
                         >
                             {/* Badge de "Reciente" */}
-                            <div className="absolute top-1 left-1 bg-purple-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full z-10 flex items-center">
-                                <Clock className="h-3 w-3 mr-1" />
+                            <div className="absolute top-2 left-2 bg-purple-600 text-white text-sm font-bold px-2 py-1 rounded-full z-10 flex items-center">
+                                <Clock className="h-4 w-4 mr-1" />
                                 Reciente
                             </div>
 
@@ -192,14 +192,14 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                                         <img
                                             src={producto.imagen}
                                             alt={producto.nombre_producto}
-                                            className="w-full h-24 object-cover rounded"
+                                            className="w-full h-32 object-cover rounded"
                                         />
                                     </div>
                                 )}
                                 
                                 <h3 
                                     onClick={() => onProductClick(producto)}
-                                    className="text-xs font-medium mb-2 cursor-pointer hover:text-purple-500 line-clamp-2"
+                                    className="text-sm font-medium mb-3 cursor-pointer hover:text-purple-500 line-clamp-2"
                                 >
                                     {producto.nombre_producto}
                                 </h3>
@@ -211,23 +211,23 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                                         <div className="flex flex-col">
                                             {producto.descuento ? (
                                                 <>
-                                                    <span className="text-gray-500 line-through text-xs">
+                                                    <span className="text-gray-500 line-through text-sm">
                                                         RD${producto.precio.toFixed(2)}
                                                     </span>
-                                                    <span className="font-bold text-red-600 text-sm">
+                                                    <span className="font-bold text-red-600 text-base">
                                                         RD${precioFinal.toFixed(2)}
                                                     </span>
-                                                    <span className="text-xs text-green-600 font-medium">
+                                                    <span className="text-sm text-green-600 font-medium">
                                                         {producto.descuento}% OFF
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span className="font-bold text-sm">
+                                                <span className="font-bold text-base">
                                                     RD${producto.precio.toFixed(2)}
                                                 </span>
                                             )}
                                         </div>
-                                        <span className={`text-xs ${stockStatus.color}`}>
+                                        <span className={`text-sm ${stockStatus.color}`}>
                                             {stockStatus.text}
                                         </span>
                                     </div>
@@ -236,12 +236,12 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                                 {/* Información adicional */}
                                 <div className="mb-2">
                                     {producto.categorias?.nombre_categoria && (
-                                        <div className="text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded mb-1">
+                                        <div className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded mb-1">
                                             {producto.categorias.nombre_categoria}
                                         </div>
                                     )}
                                     {producto.materiales?.nombre_materiales && (
-                                        <div className="text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
+                                        <div className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded">
                                             {producto.materiales.nombre_materiales}
                                         </div>
                                     )}
@@ -250,7 +250,7 @@ const UltimosProductosVistos: React.FC<UltimosProductosVistosProps> = ({
                                 <button
                                     onClick={() => onProductClick(producto)}
                                     disabled={producto.stock_actual === 0}
-                                    className={`w-full py-1.5 px-2 rounded text-xs ${
+                                    className={`w-full py-2 px-3 rounded text-sm font-medium ${
                                         producto.stock_actual > 0
                                             ? 'bg-purple-500 hover:bg-purple-600 text-white'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
