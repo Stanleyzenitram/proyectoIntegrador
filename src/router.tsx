@@ -37,6 +37,10 @@ import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
 import ConfiguracionRelevancia from "./components/relevancia/ConfiguracionRelevancia";
+import HistorialInteracciones from "./components/relevancia/HistorialInteracciones";
+import MiHistorial from "./components/relevancia/MiHistorial";
+import MisPreferenciasRelevancia from "./components/relevancia/MisPreferenciasRelevancia";
+import RecomendacionesPersonalizadas from "./components/relevancia/RecomendacionesPersonalizadas";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -66,6 +70,10 @@ export default function AppRouter() {
                     <Route path="/factura/:id" element={<Factura />} />
                     <Route path="/pedidos" element={<Pedidos />} />
                     <Route path="/pedido/:id/historial" element={<HistorialPedido />} />
+                    
+                    {/* Rutas de relevancia para clientes */}
+                    <Route path="/mi-historial" element={<MiHistorial />} />
+                    <Route path="/recomendaciones" element={<RecomendacionesPersonalizadas />} />
                 </Route>
 
                 {/* Rutas solo para administradores */}
@@ -86,6 +94,7 @@ export default function AppRouter() {
                     />
                     <Route path="/stock" element={<Inventario />} />
                     <Route path="/configuracion-relevancia" element={<ConfiguracionRelevancia />} />
+                    <Route path="/historial-interacciones" element={<HistorialInteracciones />} />
 
                     {/* Reportes */}
                     <Route

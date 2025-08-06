@@ -1,82 +1,92 @@
-import React, { useState } from 'react';
-import { History, Eye, ShoppingCart, Search, Trash2, Calendar, Filter, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { History, Eye, ShoppingCart, Search, Trash2, Calendar, Filter, Download, Loader2 } from 'lucide-react';
+import { interaccionesService, ProductoVisto, BusquedaRealizada, ProductoComprado, EstadisticasUsuario } from '../../services/interaccionesService';
 
 const HistorialInteracciones: React.FC = () => {
   const [tabActivo, setTabActivo] = useState('vistos');
   const [filtroFecha, setFiltroFecha] = useState('30dias');
+  const [cargando, setCargando] = useState(true);
+  const [limpiando, setLimpiando] = useState(false);
+  const [exportando, setExportando] = useState(false);
 
-  const [productosVistos] = useState([
-    {
-      id: 1,
-      nombre: 'Cerámica Porcelana Blanca',
-      fecha: '2024-01-15 14:30',
-      tiempo: '2 minutos',
-      relevancia: 95
-    },
-    {
-      id: 2,
-      nombre: 'Cerámica Mármol Gris',
-      fecha: '2024-01-15 14:25',
-      tiempo: '1 minuto',
-      relevancia: 87
-    },
-    {
-      id: 3,
-      nombre: 'Cerámica Gres Antracita',
-      fecha: '2024-01-15 14:20',
-      tiempo: '3 minutos',
-      relevancia: 92
-    }
-  ]);
+  const [productosVistos, setProductosVistos] = useState<ProductoVisto[]>([]);
+  const [busquedasRealizadas, setBusquedasRealizadas] = useState<BusquedaRealizada[]>([]);
+  const [estadisticas, setEstadisticas] = useState<EstadisticasUsuario>({
+    total_productos_vistos: 0,
+    total_busquedas: 0,
+    total_compras: 0,
+    total_clics: 0,
+    tasa_conversion: 0,
+    categoria_mas_visitada: 'N/A',
+    rango_precio_preferido: 'N/A'
+  });
 
-  const [productosComprados] = useState([
-    {
-      id: 4,
-      nombre: 'Cerámica Porcelana Blanca',
-      fecha: '2024-01-14 16:45',
-      precio: 150.00,
-      cantidad: 2
-    },
-    {
-      id: 5,
-      nombre: 'Cerámica Mármol Gris',
-      fecha: '2024-01-12 11:20',
-      precio: 200.00,
-      cantidad: 1
-    }
-  ]);
-
-  const [busquedasRealizadas] = useState([
-    {
-      id: 6,
-      termino: 'cerámica baño',
-      fecha: '2024-01-15 14:25',
-      resultados: 45
-    },
-    {
-      id: 7,
-      termino: 'porcelana blanca',
-      fecha: '2024-01-15 14:20',
-      resultados: 23
-    },
-    {
-      id: 8,
-      termino: 'mármol gris',
-      fecha: '2024-01-14 16:40',
-      resultados: 18
-    }
-  ]);
-
-  const handleLimpiarHistorial = () => {
-    if (confirm('¿Estás seguro de que quieres limpiar todo el historial? Esta acción no se puede deshacer.')) {
-      console.log('Historial limpiado');
-      alert('Historial limpiado exitosamente');
+  // Función para obtener el número de días según el filtro
+  const obtenerDias = (filtro: string): number => {
+    switch (filtro) {
+      case '7dias': return 7;
+      case '30dias': return 30;
+      case '90dias': return 90;
+      case '1año': return 365;
+      default: return 30;
     }
   };
 
-  const handleExportar = () => {
-    console.log('Exportando historial...');
-    alert('Historial exportado exitosamente');
+  // Cargar datos del historial
+  const cargarHistorial = async () => {
+    try {
+      setCargando(true);
+      const dias = obtenerDias(filtroFecha);
+
+      const [vistos, busquedas, stats] = await Promise.all([
+        interaccionesService.obtenerProductosVistos(dias),
+        interaccionesService.obtenerBusquedas(dias),
+        interaccionesService.obtenerEstadisticas()
+      ]);
+
+      setProductosVistos(vistos);
+      setBusquedasRealizadas(busquedas);
+      setEstadisticas(stats);
+    } catch (error) {
+      console.error('Error al cargar historial:', error);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Cargar datos al montar el componente y cuando cambie el filtro
+  useEffect(() => {
+    cargarHistorial();
+  }, [filtroFecha]);
+
+  const handleLimpiarHistorial = async () => {
+    if (confirm('¿Estás seguro de que quieres limpiar todo el historial? Esta acción no se puede deshacer.')) {
+      try {
+        setLimpiando(true);
+        await interaccionesService.limpiarHistorial();
+        alert('Historial limpiado exitosamente');
+        // Recargar datos
+        await cargarHistorial();
+      } catch (error) {
+        console.error('Error al limpiar historial:', error);
+        alert('Error al limpiar el historial');
+      } finally {
+        setLimpiando(false);
+      }
+    }
+  };
+
+  const handleExportar = async () => {
+    try {
+      setExportando(true);
+      await interaccionesService.exportarHistorial();
+      alert('Historial exportado exitosamente');
+    } catch (error) {
+      console.error('Error al exportar historial:', error);
+      alert('Error al exportar el historial');
+    } finally {
+      setExportando(false);
+    }
   };
 
   const renderEstrellas = (porcentaje: number) => {
@@ -115,17 +125,27 @@ const HistorialInteracciones: React.FC = () => {
               </select>
               <button
                 onClick={handleExportar}
-                className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                disabled={exportando}
+                className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
               >
-                <Download className="h-4 w-4 mr-1" />
-                Exportar
+                {exportando ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-1" />
+                )}
+                {exportando ? 'Exportando...' : 'Exportar'}
               </button>
               <button
                 onClick={handleLimpiarHistorial}
-                className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                disabled={limpiando}
+                className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Limpiar
+                {limpiando ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-1" />
+                )}
+                {limpiando ? 'Limpiando...' : 'Limpiar'}
               </button>
             </div>
           </div>
@@ -178,8 +198,16 @@ const HistorialInteracciones: React.FC = () => {
         {/* Contenido de las pestañas */}
         <div className="bg-white rounded-lg shadow-sm border">
           
+          {/* Loading state */}
+          {cargando && (
+            <div className="p-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-amber-600" />
+              <p className="text-gray-600">Cargando historial...</p>
+            </div>
+          )}
+
           {/* Productos Vistos */}
-          {tabActivo === 'vistos' && (
+          {!cargando && tabActivo === 'vistos' && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Productos Vistos</h2>
@@ -221,49 +249,19 @@ const HistorialInteracciones: React.FC = () => {
             </div>
           )}
 
-          {/* Productos Comprados */}
-          {tabActivo === 'comprados' && (
+          {/* Productos Comprados - Deshabilitado */}
+          {!cargando && tabActivo === 'comprados' && (
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Productos Comprados</h2>
-                <span className="text-sm text-gray-500">{productosComprados.length} productos</span>
-              </div>
-              
-              <div className="space-y-4">
-                {productosComprados.map((producto) => (
-                  <div key={producto.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <ShoppingCart className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{producto.nombre}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {producto.fecha}
-                          </span>
-                          <span>Cantidad: {producto.cantidad}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-amber-600">${producto.precio.toFixed(2)}</p>
-                        <p className="text-sm text-gray-500">Total: ${(producto.precio * producto.cantidad).toFixed(2)}</p>
-                      </div>
-                      <button className="text-amber-600 hover:text-amber-700 text-sm font-medium">
-                        Ver factura
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8">
+                <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Registro de Compras Deshabilitado</h2>
+                <p className="text-gray-500">El registro de compras ha sido deshabilitado temporalmente.</p>
               </div>
             </div>
           )}
 
           {/* Búsquedas Realizadas */}
-          {tabActivo === 'busquedas' && (
+          {!cargando && tabActivo === 'busquedas' && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Búsquedas Realizadas</h2>
@@ -301,76 +299,72 @@ const HistorialInteracciones: React.FC = () => {
         </div>
 
         {/* Estadísticas del Historial */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mt-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Estadísticas del Historial</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{productosVistos.length}</div>
-              <div className="text-sm text-gray-600">Productos vistos</div>
-            </div>
+        {!cargando && (
+          <div className="bg-white rounded-lg shadow-sm border p-6 mt-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Estadísticas del Historial</h3>
             
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{productosComprados.length}</div>
-              <div className="text-sm text-gray-600">Productos comprados</div>
-            </div>
-            
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{busquedasRealizadas.length}</div>
-              <div className="text-sm text-gray-600">Búsquedas realizadas</div>
-            </div>
-            
-            <div className="text-center p-4 bg-amber-50 rounded-lg">
-              <div className="text-2xl font-bold text-amber-600">
-                {productosComprados.length > 0 ? Math.round((productosComprados.length / productosVistos.length) * 100) : 0}%
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{estadisticas.total_productos_vistos}</div>
+                <div className="text-sm text-gray-600">Productos vistos</div>
               </div>
-              <div className="text-sm text-gray-600">Tasa de conversión</div>
+              
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{estadisticas.total_clics}</div>
+                <div className="text-sm text-gray-600">Clics en productos</div>
+              </div>
+              
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{estadisticas.total_busquedas}</div>
+                <div className="text-sm text-gray-600">Búsquedas realizadas</div>
+              </div>
+              
+              <div className="text-center p-4 bg-amber-50 rounded-lg">
+                <div className="text-2xl font-bold text-amber-600">
+                  {estadisticas.tasa_conversion}%
+                </div>
+                <div className="text-sm text-gray-600">Tasa de conversión</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Información Adicional */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mt-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Adicional</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Categorías más visitadas</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Baño</span>
-                  <span className="text-sm font-medium text-gray-900">60%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Cocina</span>
-                  <span className="text-sm font-medium text-gray-900">25%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Piso</span>
-                  <span className="text-sm font-medium text-gray-900">15%</span>
+        {!cargando && (
+          <div className="bg-white rounded-lg shadow-sm border p-6 mt-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Adicional</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Categorías más visitadas</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">{estadisticas.categoria_mas_visitada}</span>
+                    <span className="text-sm font-medium text-gray-900">Más visitada</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total clics</span>
+                    <span className="text-sm font-medium text-gray-900">{estadisticas.total_clics}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Rango de precios preferido</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">$100 - $200</span>
-                  <span className="text-sm font-medium text-gray-900">45%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">$200 - $300</span>
-                  <span className="text-sm font-medium text-gray-900">35%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">$300+</span>
-                  <span className="text-sm font-medium text-gray-900">20%</span>
+              
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Rango de precios preferido</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Rango preferido</span>
+                    <span className="text-sm font-medium text-gray-900">{estadisticas.rango_precio_preferido}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Tasa de conversión</span>
+                    <span className="text-sm font-medium text-gray-900">{estadisticas.tasa_conversion}%</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

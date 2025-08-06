@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Producto } from '../types';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { useInteracciones } from '../hooks/useInteracciones';
 
 interface ProductModalProps {
     product: Producto;
@@ -17,6 +18,26 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     const [cajasDeseadas, setCajasDeseadas] = useState(1);
     const { addItem, updateQuantity } = useCart();
     const navigate = useNavigate();
+
+    // Hook para tracking de interacciones
+    const { registrarProductoVisto, registrarClic, registrarCompra } = useInteracciones({
+        productoId: product.id_producto,
+        tipo: 'producto'
+    });
+
+    // Registrar que se abrió el modal del producto
+    useEffect(() => {
+        const registrarAperturaModal = async () => {
+            try {
+                await registrarProductoVisto();
+                console.log('✅ Apertura de modal registrada en BD para:', product.nombre_producto);
+            } catch (error) {
+                console.error('❌ Error al registrar apertura de modal en BD:', error);
+            }
+        };
+        
+        registrarAperturaModal();
+    }, [product.id_producto]);
 
     // Función para calcular metros cuadrados por pieza con validación
     const calcularMetrosPorPieza = (formato: string | undefined): number => {
@@ -74,9 +95,12 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
         }
     };
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         const metrosReales = cajasDeseadas * (product.metros_por_caja || 0);
         const precioTotal = calcularPrecioTotal();
+        
+        // Ya no registramos compras, solo agregamos al carrito
+        console.log('🛒 Producto agregado al carrito:', product.nombre_producto, 'Cantidad:', cajasDeseadas);
         
         if (isUpdating) {
             updateQuantity(product.id_producto, cajasDeseadas, {

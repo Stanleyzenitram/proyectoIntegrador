@@ -16,6 +16,7 @@ const configuracionPorDefecto = {
     tiempoRespuesta: 2.5,
     precisionMinima: 85,
     maxResultados: 50,
+    maxRecomendacionesHome: 6,
     actualizacionAutomatica: true,
     loggingDetallado: false
   }
@@ -398,6 +399,26 @@ const ConfiguracionRelevancia: React.FC = () => {
                     }))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-amber-500 focus:border-amber-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Recomendaciones en Home
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={configuracionAvanzada.maxRecomendacionesHome}
+                    onChange={(e) => setConfiguracionAvanzada(prev => ({
+                      ...prev,
+                      maxRecomendacionesHome: Number(e.target.value)
+                    }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Número máximo de productos recomendados a mostrar en el home principal (1-12)
+                  </p>
                 </div>
 
                 <div className="flex items-center">

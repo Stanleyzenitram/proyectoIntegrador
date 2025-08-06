@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useRelevanciaStats } from "../hooks/useRelevanciaStats";
 import { supabase } from "../services/supabase";
-import { Cog6ToothIcon } from "@heroicons/react/24/solid";
+import { Cog6ToothIcon, UserIcon, ChartBarIcon, StarIcon, EyeIcon, CogIcon, ClockIcon } from "@heroicons/react/24/solid";
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface UserProfile {
@@ -18,6 +19,7 @@ interface UserProfile {
 
 export default function Profile() {
     const { user } = useAuth();
+    const { stats: relevanciaStats, loading: statsLoading } = useRelevanciaStats();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,21 @@ export default function Profile() {
     const location = useLocation();
     const navigate = useNavigate();
     const [lastOtpRequest, setLastOtpRequest] = useState<number>(0);
+
+    // Cerrar menú cuando se hace clic fuera
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element;
+            if (showConfigMenu && !target.closest('.config-menu')) {
+                setShowConfigMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showConfigMenu]);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
@@ -186,7 +203,7 @@ export default function Profile() {
             <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-amber-900">Perfil de Usuario</h1>
-                    <div className="relative">
+                    <div className="relative config-menu">
                         <button 
                             onClick={() => setShowConfigMenu(!showConfigMenu)}
                             className="text-gray-600 hover:text-gray-800"
@@ -195,19 +212,45 @@ export default function Profile() {
                         </button>
                         
                         {showConfigMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                {/* Sección de Perfil */}
+                                <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Perfil</h3>
+                                </div>
                                 <button
                                     onClick={handlePasswordChange}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 border-b border-gray-200"
+                                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 border-b border-gray-100"
                                 >
+                                    <UserIcon className="h-4 w-4 mr-2" />
                                     Cambiar Contraseña
                                 </button>
                                 <button
                                     onClick={handleProfileEdit}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100"
+                                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 border-b border-gray-200"
                                 >
+                                    <CogIcon className="h-4 w-4 mr-2" />
                                     Actualizar Datos
                                 </button>
+                                
+                                {/* Sección de Relevancia */}
+                                <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sistema de Relevancia</h3>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/mi-historial')}
+                                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 border-b border-gray-100"
+                                >
+                                    <EyeIcon className="h-4 w-4 mr-2" />
+                                    Mi Historial
+                                </button>
+                                <button
+                                    onClick={() => navigate('/recomendaciones')}
+                                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 border-b border-gray-100"
+                                >
+                                    <StarIcon className="h-4 w-4 mr-2" />
+                                    Recomendaciones
+                                </button>
+
                             </div>
                         )}
                     </div>
@@ -306,19 +349,80 @@ export default function Profile() {
                         </div>
                     </form>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {/* Display profile information */}
                         {profile && (
-                            <>
-                                <p><strong>Nombre:</strong> {profile.nombre}</p>
-                                <p><strong>Apellido:</strong> {profile.apellido}</p>
-                                <p><strong>Email:</strong> {profile.email}</p>
-                                <p><strong>Teléfono:</strong> {profile.telefono}</p>
-                                <p><strong>Documento:</strong> {profile.tipo_documento} - {profile.numero_documento}</p>
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-semibold text-amber-900 border-b border-amber-200 pb-2">Información Personal</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <p><strong>Nombre:</strong> {profile.nombre}</p>
+                                    <p><strong>Apellido:</strong> {profile.apellido}</p>
+                                    <p><strong>Email:</strong> {profile.email}</p>
+                                    <p><strong>Teléfono:</strong> {profile.telefono}</p>
+                                    <p><strong>Documento:</strong> {profile.tipo_documento} - {profile.numero_documento}</p>
+                                    <p><strong>Código Postal:</strong> {profile.codigo_postal}</p>
+                                </div>
                                 <p><strong>Dirección:</strong> {profile.detalles_direccion}, {profile.sector}</p>
-                                <p><strong>Código Postal:</strong> {profile.codigo_postal}</p>
-                            </>
+                            </div>
                         )}
+
+                        {/* Sistema de Relevancia */}
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-lg border border-amber-200">
+                            <h2 className="text-lg font-semibold text-amber-900 mb-4 flex items-center">
+                                <StarIcon className="h-5 w-5 mr-2" />
+                                Sistema de Relevancia Personalizada
+                            </h2>
+                            <p className="text-gray-700 mb-4">
+                                Accede a tu experiencia personalizada basada en tu actividad y preferencias.
+                            </p>
+                            
+                            {/* Estadísticas rápidas */}
+                            {!statsLoading && relevanciaStats && (
+                                <div className="mb-6 p-4 bg-white rounded-lg border border-amber-200">
+                                    <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center">
+                                        <ClockIcon className="h-4 w-4 mr-2" />
+                                        Tu Actividad Reciente
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                        <div>
+                                            <div className="text-2xl font-bold text-amber-600">{relevanciaStats.total_vistas}</div>
+                                            <div className="text-xs text-gray-600">Productos Vistos</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-bold text-amber-600">{relevanciaStats.total_busquedas}</div>
+                                            <div className="text-xs text-gray-600">Búsquedas</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-bold text-amber-600">{relevanciaStats.total_clics}</div>
+                                            <div className="text-xs text-gray-600">Clics</div>
+                                        </div>
+                                        <div>
+                                            <div className={`text-2xl font-bold ${relevanciaStats.tiene_preferencias ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {relevanciaStats.tiene_preferencias ? '✓' : '✗'}
+                                            </div>
+                                            <div className="text-xs text-gray-600">Preferencias</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => navigate('/mi-historial')}
+                                    className="flex items-center justify-center p-3 bg-white rounded-lg border border-amber-300 hover:bg-amber-50 transition-colors"
+                                >
+                                    <EyeIcon className="h-5 w-5 mr-2 text-amber-600" />
+                                    <span className="text-sm font-medium text-amber-900">Mi Historial</span>
+                                </button>
+                                <button
+                                    onClick={() => navigate('/recomendaciones')}
+                                    className="flex items-center justify-center p-3 bg-white rounded-lg border border-amber-300 hover:bg-amber-50 transition-colors"
+                                >
+                                    <StarIcon className="h-5 w-5 mr-2 text-amber-600" />
+                                    <span className="text-sm font-medium text-amber-900">Recomendaciones</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

@@ -21,6 +21,19 @@ export default function Menu() {
                     >
                         Pedidos
                     </NavLink>
+                    <NavLink
+                        to="/mi-historial"
+                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
+                    >
+                        Mi Historial
+                    </NavLink>
+                    <NavLink
+                        to="/recomendaciones"
+                        className="block px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"
+                    >
+                        Recomendaciones
+                    </NavLink>
+
                     <button
                         onClick={() => logout()}
                         className="block w-full text-left px-4 py-2 text-amber-900 font-bold uppercase hover:bg-amber-500"

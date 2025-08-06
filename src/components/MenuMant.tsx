@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../services/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FileText, Settings } from "lucide-react";
+import { FileText, Settings, History } from "lucide-react";
 
 export default function MenuMant() {
     const { user } = useAuth();
@@ -87,6 +87,14 @@ export default function MenuMant() {
                                         >
                                             <Settings className="w-4 h-4 mr-2" />
                                             Configuración Relevancia
+                                        </NavLink>
+                                        <NavLink 
+                                            to="/historial-interacciones" 
+                                            onClick={() => setIsMenuOpen(false)} 
+                                            className="flex items-center px-4 py-2 hover:bg-gray-200"
+                                        >
+                                            <History className="w-4 h-4 mr-2" />
+                                            Historial Interacciones
                                         </NavLink>
                                     </div>
                                 </details>
@@ -194,6 +202,13 @@ export default function MenuMant() {
                                 >
                                     <Settings className="w-4 h-4 mr-2" />
                                     Configuración Relevancia
+                                </NavLink>
+                                <NavLink 
+                                    to="/historial-interacciones" 
+                                    className="flex items-center px-4 py-2 hover:bg-gray-200"
+                                >
+                                    <History className="w-4 h-4 mr-2" />
+                                    Historial Interacciones
                                 </NavLink>
                             </div>
                         </div>
