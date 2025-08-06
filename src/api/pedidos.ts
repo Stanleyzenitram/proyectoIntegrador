@@ -36,8 +36,8 @@ export const crearPedido = async (datosPedido: any, direccionPedido: any) => {
     const idPedido = pedidoData?.[0]?.id_pedido;
 
 
-    // ingresar direccion del pedido
-        // Insertar el pedido en la tabla 'pedidos'
+            // ingresar direccion del pedido
+    try {
         const { data: direccionData, error: direccionError } = await supabase
         .from('direcciones_pedidos')
         .insert([
@@ -47,15 +47,23 @@ export const crearPedido = async (datosPedido: any, direccionPedido: any) => {
                 ciudad: direccionPedido.ciudad,
                 provincia: direccionPedido.provincia,
                 codigo_postal: direccionPedido.codigo_postal,
-                referencia: direccionPedido.referencia,
-                pais: direccionPedido.pais,
-
+                referencia: direccionPedido.referencia || '',
+                pais: direccionPedido.pais || 'República Dominicana',
             },
         ])
-        .select('id_direccion_pedido');  // Seleccionar el id del pedido recién insertado
+        .select('id_direccion_pedido');
 
-    if (direccionError) {
-        throw new Error(`Error al crear el pedido: ${direccionError.message}`);
+        if (direccionError) {
+            console.error("Error al insertar dirección del pedido:", direccionError);
+            // No lanzar error aquí, solo logear. El pedido ya se creó exitosamente
+            console.warn("El pedido se creó pero no se pudo guardar la dirección");
+        } else {
+            console.log("Dirección del pedido guardada exitosamente");
+        }
+    } catch (error) {
+        console.error("Error inesperado al guardar dirección del pedido:", error);
+        // No lanzar error aquí, solo logear. El pedido ya se creó exitosamente
+        console.warn("El pedido se creó pero no se pudo guardar la dirección");
     }
 
 

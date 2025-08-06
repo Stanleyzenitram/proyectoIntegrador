@@ -67,17 +67,24 @@ export const crearFactura = async (datosFactura: any, direccionPedido: any) => {
         if (facturaError) throw facturaError;
 
         // Crear el pedido con la dirección
-        const pedidoResult = await crearPedido({
-            idCliente: datosFactura.id,
-            fechaActual: datosFactura.fechaActual,
-            total: datosFactura.total,
-            metodoPago: datosFactura.metodoPago,
-            id_factura: facturaData.id_factura,
-            estado: "pendiente"
-        }, direccionPedido);
+        try {
+            const pedidoResult = await crearPedido({
+                idCliente: datosFactura.id,
+                fechaActual: datosFactura.fechaActual,
+                total: datosFactura.total,
+                metodoPago: datosFactura.metodoPago,
+                id_factura: facturaData.id_factura,
+                estado: "pendiente"
+            }, direccionPedido);
 
-        if (!pedidoResult || !pedidoResult.success) {
-            throw new Error("Error al crear el pedido");
+            if (!pedidoResult || !pedidoResult.success) {
+                console.warn("No se pudo crear el pedido, pero la factura se creó exitosamente");
+            } else {
+                console.log("Pedido creado exitosamente");
+            }
+        } catch (error) {
+            console.error("Error al crear el pedido:", error);
+            console.warn("No se pudo crear el pedido, pero la factura se creó exitosamente");
         }
 
         // Insertar los productos en detalles_factura

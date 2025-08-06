@@ -13,8 +13,12 @@ interface ProductModalProps {
 
 export default function ProductModal({ product, onClose, isUpdating = false, currentMetros }: ProductModalProps) {
     console.log("Modal renderizando con producto:", product);
+    
+    // Determinar si el producto es individual (no tiene metros por caja o es 0)
+    const esProductoIndividual = !product.metros_por_caja || product.metros_por_caja === 0;
+    
     const [selectionMode, setSelectionMode] = useState<'metros' | 'cajas'>('metros');
-    const [metrosDeseados, setMetrosDeseados] = useState(currentMetros || product.metros_por_caja);
+    const [metrosDeseados, setMetrosDeseados] = useState(currentMetros || product.metros_por_caja || 0);
     const [cajasDeseadas, setCajasDeseadas] = useState(1);
     const { addItem, updateQuantity } = useCart();
     const navigate = useNavigate();
@@ -47,10 +51,10 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
         return (ancho * largo) / 10000;
     };
 
-    // Cálculos básicos
-    const metrosPorPieza = calcularMetrosPorPieza(product.formato);
-    const piezasPorCaja = product.metros_por_caja ? Math.round(product.metros_por_caja / metrosPorPieza) : 0;
-    const metrosMaximos = product.stock_actual * (product.metros_por_caja || 0);
+    // Cálculos básicos - solo para productos no individuales
+    const metrosPorPieza = esProductoIndividual ? 0 : calcularMetrosPorPieza(product.formato);
+    const piezasPorCaja = esProductoIndividual ? 1 : (product.metros_por_caja ? Math.round(product.metros_por_caja / metrosPorPieza) : 0);
+    const metrosMaximos = esProductoIndividual ? 0 : (product.stock_actual * (product.metros_por_caja || 0));
 
     // Función para calcular el precio total
     const calcularPrecioTotal = () => {
@@ -67,17 +71,25 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
 
     // Actualizar cálculos basados en el modo de selección
     useEffect(() => {
-        if (selectionMode === 'cajas') {
-            setMetrosDeseados(cajasDeseadas * (product.metros_por_caja || 0));
+        if (esProductoIndividual) {
+            // Para productos individuales, solo usar cajas
+            setMetrosDeseados(0);
+            setSelectionMode('cajas');
         } else {
-            const cajasNecesarias = Math.ceil(metrosDeseados / (product.metros_por_caja || 1));
-            setCajasDeseadas(cajasNecesarias);
-            // Actualizar metros deseados para reflejar el número real de metros basado en cajas completas
-            setMetrosDeseados(cajasNecesarias * (product.metros_por_caja || 0));
+            if (selectionMode === 'cajas') {
+                setMetrosDeseados(cajasDeseadas * (product.metros_por_caja || 0));
+            } else {
+                const cajasNecesarias = Math.ceil(metrosDeseados / (product.metros_por_caja || 1));
+                setCajasDeseadas(cajasNecesarias);
+                // Actualizar metros deseados para reflejar el número real de metros basado en cajas completas
+                setMetrosDeseados(cajasNecesarias * (product.metros_por_caja || 0));
+            }
         }
-    }, [selectionMode, cajasDeseadas, metrosDeseados, product.metros_por_caja]);
+    }, [selectionMode, cajasDeseadas, metrosDeseados, product.metros_por_caja, esProductoIndividual]);
 
     const handleMetrosChange = (metros: number) => {
+        if (esProductoIndividual) return; // No permitir cambios de metros para productos individuales
+        
         if (metros < (product.metros_por_caja || 0)) return;
         const cajasRequeridas = Math.ceil(metros / (product.metros_por_caja || 1));
         
@@ -91,30 +103,30 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     const handleCajasChange = (cajas: number) => {
         if (cajas >= 1 && cajas <= product.stock_actual) {
             setCajasDeseadas(cajas);
-            setMetrosDeseados(cajas * (product.metros_por_caja || 0));
+            if (!esProductoIndividual) {
+                setMetrosDeseados(cajas * (product.metros_por_caja || 0));
+            }
         }
     };
 
     const handleAddToCart = async () => {
-        const metrosReales = cajasDeseadas * (product.metros_por_caja || 0);
+        const metrosReales = esProductoIndividual ? 0 : (cajasDeseadas * (product.metros_por_caja || 0));
         const precioTotal = calcularPrecioTotal();
         
         // Ya no registramos compras, solo agregamos al carrito
         console.log('🛒 Producto agregado al carrito:', product.nombre_producto, 'Cantidad:', cajasDeseadas);
         
-        if (isUpdating) {
-            updateQuantity(product.id_producto, cajasDeseadas, {
-                metrosCuadrados: metrosDeseados,
+        if (isUpdating && product.id_producto) {
+            updateQuantity(product.id_producto.toString(), cajasDeseadas, {
+                metrosCuadrados: esProductoIndividual ? 0 : metrosDeseados,
                 cajasNecesarias: cajasDeseadas,
-                metrosReales: metrosReales,
-                precioTotal: precioTotal
+                metrosReales: metrosReales
             });
         } else {
             addItem(product, cajasDeseadas, {
-                metrosCuadrados: metrosDeseados,
+                metrosCuadrados: esProductoIndividual ? 0 : metrosDeseados,
                 cajasNecesarias: cajasDeseadas,
-                metrosReales: metrosReales,
-                precioTotal: precioTotal
+                metrosReales: metrosReales
             });
         }
         onClose();
@@ -135,7 +147,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
     };
 
     // Verificar que el producto tenga los datos necesarios
-    if (!product.metros_por_caja || !product.formato) {
+    if (!esProductoIndividual && (!product.metros_por_caja || !product.formato)) {
         return (
             <div className="fixed inset-0 flex items-center justify-center z-50">
                 <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
@@ -199,49 +211,55 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                 </div>
 
                                 <div className="border-t pt-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-gray-600">Precio por metro:</span>
-                                        <span className="font-medium">RD${(product.precio / product.metros_por_caja).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-gray-600">Metros por caja:</span>
-                                        <span className="font-medium">{product.metros_por_caja} m²</span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-gray-600">Piezas por caja:</span>
-                                        <span className="font-medium">{piezasPorCaja} piezas</span>
-                                    </div>
+                                    {!esProductoIndividual && (
+                                        <>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-gray-600">Precio por metro:</span>
+                                                <span className="font-medium">RD${(product.precio / product.metros_por_caja).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-gray-600">Metros por caja:</span>
+                                                <span className="font-medium">{product.metros_por_caja} m²</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-gray-600">Piezas por caja:</span>
+                                                <span className="font-medium">{piezasPorCaja} piezas</span>
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-600">Stock disponible:</span>
-                                        <span className="font-medium">{product.stock_actual} cajas</span>
+                                        <span className="font-medium">{product.stock_actual} {esProductoIndividual ? 'unidades' : 'cajas'}</span>
                                     </div>
                                 </div>
 
                                 <div className="border-t pt-4">
-                                    <div className="flex gap-4 mb-4">
-                                        <button
-                                            onClick={() => setSelectionMode('metros')}
-                                            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-                                                selectionMode === 'metros'
-                                                    ? 'bg-amber-500 text-white shadow-md'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Por metros
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectionMode('cajas')}
-                                            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-                                                selectionMode === 'cajas'
-                                                    ? 'bg-amber-500 text-white shadow-md'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                            }`}
-                                        >
-                                            Por cajas
-                                        </button>
-                                    </div>
+                                    {!esProductoIndividual && (
+                                        <div className="flex gap-4 mb-4">
+                                            <button
+                                                onClick={() => setSelectionMode('metros')}
+                                                className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                                                    selectionMode === 'metros'
+                                                        ? 'bg-amber-500 text-white shadow-md'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                Por metros
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectionMode('cajas')}
+                                                className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                                                    selectionMode === 'cajas'
+                                                        ? 'bg-amber-500 text-white shadow-md'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                }`}
+                                            >
+                                                Por cajas
+                                            </button>
+                                        </div>
+                                    )}
 
-                                    {selectionMode === 'metros' ? (
+                                    {!esProductoIndividual && selectionMode === 'metros' ? (
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <label className="block text-sm font-medium text-gray-700">
                                                 ¿Cuántos metros cuadrados necesitas?
@@ -278,9 +296,9 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                     ) : (
                                         <div className="bg-gray-50 p-4 rounded-lg">
                                             <label className="block text-sm font-medium text-gray-700">
-                                                ¿Cuántas cajas necesitas?
+                                                ¿Cuántas {esProductoIndividual ? 'unidades' : 'cajas'} necesitas?
                                                 <span className="text-sm text-gray-500 ml-2">
-                                                    (Stock disponible: {product.stock_actual} cajas)
+                                                    (Stock disponible: {product.stock_actual} {esProductoIndividual ? 'unidades' : 'cajas'})
                                                 </span>
                                             </label>
                                             <div className="flex items-center mt-2">
@@ -311,12 +329,18 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                     )}
 
                                     <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                                        <p>Total de cajas: <span className="font-medium">{cajasDeseadas}</span></p>
-                                        <p>Total de metros cuadrados: <span className="font-medium">{metrosDeseados.toFixed(2)} m²</span></p>
+                                        <p>Total de {esProductoIndividual ? 'unidades' : 'cajas'}: <span className="font-medium">{cajasDeseadas}</span></p>
+                                        {!esProductoIndividual && (
+                                            <p>Total de metros cuadrados: <span className="font-medium">{metrosDeseados.toFixed(2)} m²</span></p>
+                                        )}
                                         <div className="mt-2">
-                                            <p className="text-gray-600 font-medium">Precio por caja: RD${product.precio.toFixed(2)}</p>
-                                            <p className="text-gray-600 text-sm">Metros cuadrados por caja: {product.metros_por_caja} m²</p>
-                                            <p className="text-gray-600 text-sm">Piezas por caja: {piezasPorCaja} piezas</p>
+                                            <p className="text-gray-600 font-medium">Precio por {esProductoIndividual ? 'unidad' : 'caja'}: RD${product.precio.toFixed(2)}</p>
+                                            {!esProductoIndividual && (
+                                                <>
+                                                    <p className="text-gray-600 text-sm">Metros cuadrados por caja: {product.metros_por_caja} m²</p>
+                                                    <p className="text-gray-600 text-sm">Piezas por caja: {piezasPorCaja} piezas</p>
+                                                </>
+                                            )}
                                             {product.descuento && product.descuento > 0 && (
                                                 <p className="text-green-600">Descuento: {product.descuento}%</p>
                                             )}

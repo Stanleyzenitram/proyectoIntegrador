@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import ProductModal from '../components/ProductModal';
 import RecomendacionesHome from '../components/RecomendacionesHome';
 import ProductosAdicionales from '../components/ProductosAdicionales';
+import UltimosProductosVistos from '../components/UltimosProductosVistos';
 import { Search, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../services/supabase";
 
@@ -259,6 +260,13 @@ export default function Home() {
                         minRelevancia
                     }}
                     numRecomendaciones={numRecomendaciones}
+                />
+
+                {/* Sección de Últimos Productos Vistos */}
+                <div className="my-6 border-t border-gray-200"></div>
+                <UltimosProductosVistos 
+                    onProductClick={handleProductClick}
+                    maxProductos={6}
                 />
 
                 {/* Sección de Productos Adicionales (solo cuando hay búsqueda o filtros activos) */}
