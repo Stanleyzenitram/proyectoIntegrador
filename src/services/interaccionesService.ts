@@ -40,6 +40,12 @@ class InteraccionesService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Calcular relevancia automáticamente si no se proporciona
+      let relevanciaCalculada = relevancia;
+      if (relevancia === 0) {
+        relevanciaCalculada = await this.calcularRelevanciaProducto(productoId, user.id);
+      }
+
       // Verificar si ya existe una vista del mismo producto
       const { data: vistaExistente } = await supabase
         .from('historial_productos_vistos')
@@ -51,8 +57,8 @@ class InteraccionesService {
       if (vistaExistente) {
         // Si existe, actualizar el tiempo de vista (acumular) y relevancia
         const tiempoTotal = vistaExistente.tiempo_vista + tiempoVista;
-        const relevanciaPromedio = relevancia > 0 ? 
-          (vistaExistente.relevancia_calculada + relevancia) / 2 : 
+        const relevanciaPromedio = relevanciaCalculada > 0 ? 
+          (vistaExistente.relevancia_calculada + relevanciaCalculada) / 2 : 
           vistaExistente.relevancia_calculada;
 
         const { error: updateError } = await supabase
@@ -72,7 +78,7 @@ class InteraccionesService {
         if (updateError) {
           console.error('Error al actualizar producto visto:', updateError);
         } else {
-          console.log('✅ Vista de producto renovada:', productoId);
+          console.log('✅ Vista de producto renovada:', productoId, 'Relevancia:', relevanciaPromedio);
         }
       } else {
         // Si no existe, crear nueva entrada
@@ -82,7 +88,7 @@ class InteraccionesService {
             usuario_id: user.id,
             producto_id: productoId,
             tiempo_vista: tiempoVista,
-            relevancia_calculada: relevancia,
+            relevancia_calculada: relevanciaCalculada,
             metadata: {
               timestamp: new Date().toISOString(),
               user_agent: navigator.userAgent
@@ -92,7 +98,7 @@ class InteraccionesService {
         if (insertError) {
           console.error('Error al registrar nuevo producto visto:', insertError);
         } else {
-          console.log('✅ Nuevo producto visto registrado:', productoId);
+          console.log('✅ Nuevo producto visto registrado:', productoId, 'Relevancia:', relevanciaCalculada);
         }
       }
     } catch (error) {
@@ -230,6 +236,115 @@ class InteraccionesService {
   async registrarCompra(productoId: number, precio: number, cantidad: number, ordenId?: string) {
     // Función deshabilitada - no registramos compras por ahora
     console.log('ℹ️ Registro de compras deshabilitado para:', { productoId, precio, cantidad });
+  }
+
+  // Calcular relevancia de un producto para un usuario
+  async calcularRelevanciaProducto(productoId: number, userId: string): Promise<number> {
+    try {
+      // Obtener configuración de relevancia
+      const { data: config } = await supabase
+        .from('configuracion_relevancia')
+        .select('*')
+        .single();
+
+      if (!config) {
+        return 50; // Valor por defecto si no hay configuración
+      }
+
+      // Obtener información del producto
+      const { data: producto } = await supabase
+        .from('productos')
+        .select('*')
+        .eq('id_producto', productoId)
+        .single();
+
+      if (!producto) {
+        return 50;
+      }
+
+      let score = 0;
+
+      // Obtener historial del usuario
+      const [historialVistos, historialBusquedas, historialClics] = await Promise.all([
+        supabase
+          .from('historial_productos_vistos')
+          .select('producto_id, tiempo_vista, relevancia_calculada')
+          .eq('usuario_id', userId)
+          .order('fecha_vista', { ascending: false })
+          .limit(10),
+        supabase
+          .from('historial_busquedas')
+          .select('termino_busqueda')
+          .eq('usuario_id', userId)
+          .order('fecha_busqueda', { ascending: false })
+          .limit(5),
+        supabase
+          .from('historial_clics')
+          .select('producto_id, cantidad_clics')
+          .eq('usuario_id', userId)
+          .order('ultimo_clic', { ascending: false })
+          .limit(10)
+      ]);
+
+      // Score por categoría similar
+      if (historialVistos.data && historialVistos.data.length > 0) {
+        const categoriasVistas = historialVistos.data.map(h => h.producto_id);
+        if (categoriasVistas.includes(productoId)) {
+          score += config.peso_categoria * 0.8;
+        }
+      }
+
+      // Score por material similar
+      if (historialVistos.data && historialVistos.data.length > 0) {
+        const materialesVistos = historialVistos.data.map(h => h.producto_id);
+        if (materialesVistos.includes(productoId)) {
+          score += config.peso_material * 0.7;
+        }
+      }
+
+      // Score por precio similar
+      if (historialVistos.data && historialVistos.data.length > 0) {
+        const preciosVistos = historialVistos.data.map(h => h.relevancia_calculada || 0);
+        const precioPromedio = preciosVistos.reduce((a, b) => a + b, 0) / preciosVistos.length;
+        const diferenciaPrecio = Math.abs(producto.precio - precioPromedio) / precioPromedio;
+        
+        if (diferenciaPrecio <= 0.1) {
+          score += config.peso_precio * 0.9;
+        } else if (diferenciaPrecio <= 0.25) {
+          score += config.peso_precio * 0.6;
+        }
+      }
+
+      // Score por búsquedas recientes
+      if (historialBusquedas.data && historialBusquedas.data.length > 0) {
+        const terminosBusqueda = historialBusquedas.data.map(h => h.termino_busqueda.toLowerCase());
+        const nombreProducto = producto.nombre_producto.toLowerCase();
+        const descripcionProducto = producto.descripcion?.toLowerCase() || '';
+        
+        for (const termino of terminosBusqueda) {
+          if (nombreProducto.includes(termino) || descripcionProducto.includes(termino)) {
+            score += config.peso_busquedas * 0.8;
+            break;
+          }
+        }
+      }
+
+      // Score por clics en productos similares
+      if (historialClics.data && historialClics.data.length > 0) {
+        const productosClickeados = historialClics.data.map(h => h.producto_id);
+        if (productosClickeados.includes(productoId)) {
+          score += config.peso_clics * 0.9;
+        }
+      }
+
+      // Normalizar score a 0-100
+      score = Math.min(100, Math.max(0, score));
+      
+      return score;
+    } catch (error) {
+      console.error('Error al calcular relevancia del producto:', error);
+      return 50; // Valor por defecto en caso de error
+    }
   }
 
   // Obtener productos vistos del usuario
