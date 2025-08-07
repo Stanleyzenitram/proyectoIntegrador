@@ -62,7 +62,7 @@ export default function LoginForm() {
         }
     };
     return (
-        <div className="flex flex-col md:flex-row justify-center items-center min-h-screen bg-gray-100 p-4">
+        <div className="flex flex-col md:flex-row justify-center items-center gap-16 min-h-screen bg-gray-100 p-4">
             <div className="flex gap-2.5 flex-col items-center mx-auto shadow-lg p-5 bg-gray-100 rounded-lg w-full max-w-md">
                 <h2 className="uppercase text-amber-900 font-medium text-2xl">
                     Iniciar sesion
