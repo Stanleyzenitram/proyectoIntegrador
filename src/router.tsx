@@ -8,6 +8,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import Register from "./pages/Register";
 import { ChatPage } from "./pages/ChatPage";
 import Pedidos from "./pages/Pedidos";
+import PedidosInt from "./pages/PedidosInt";
 import PedidosMant from "./pages/PedidosMant";
 import HistorialPedido from "./pages/HistorialPedido";
 import EditProfile from "./pages/EditProfile";
@@ -64,7 +65,7 @@ export default function AppRouter() {
                     <Route path="/edit-profile" element={<EditProfile />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/factura/:id" element={<Factura />} />
-                    <Route path="/pedidos" element={<Pedidos />} />
+                    <Route path="/pedidos" element={<PedidosInt />} />
                     <Route path="/pedido/:id/historial" element={<HistorialPedido />} />
 
                     {/* Mantenimientos */}
