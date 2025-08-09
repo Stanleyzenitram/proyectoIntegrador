@@ -48,6 +48,9 @@ export interface Producto {
     id_estilo: number;
     id_materiales: number;
     id_categoria: number;
+    superficie: string;
+    durabilidad: number;
+    colorDom: string;
 }
 
 export interface Estilo {

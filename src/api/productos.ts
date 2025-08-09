@@ -76,7 +76,10 @@ export const crearProducto = async (producto: Producto) => {
                     piezas_por_caja: producto.piezas_por_caja,
                     id_estilo: producto.id_estilo,
                     id_materiales: producto.id_materiales,
-                    id_categoria: producto.id_categoria
+                    id_categoria: producto.id_categoria,
+                    superficie: producto.superficie,
+                durabilidad: producto.durabilidad,
+                colorDom: producto.colorDom,
                 }
             ])
             .select();
@@ -113,7 +116,10 @@ export const actualizarProducto = async (producto: Producto) => {
                 piezas_por_caja: producto.piezas_por_caja,
                 id_estilo: producto.id_estilo,
                 id_materiales: producto.id_materiales,
-                id_categoria: producto.id_categoria
+                id_categoria: producto.id_categoria,
+                superficie: producto.superficie,
+                durabilidad: producto.durabilidad,
+                colorDom: producto.colorDom,
             })
             .eq('id_producto', producto.id_producto)
             .select();

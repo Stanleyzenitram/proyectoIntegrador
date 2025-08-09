@@ -18,7 +18,10 @@ export default function ProductosForm() {
         id_categoria: 0,
         id_estilo: 0,
         id_materiales: 0,
-        piezas_por_caja: 0
+        piezas_por_caja: 0,
+        superficie: '',
+        durabilidad: 0,
+        colorDom: ''
     });
 
     const [productos, setProductos] = useState<Producto[]>([]);
@@ -82,6 +85,7 @@ export default function ProductosForm() {
                 }
             }
 
+            console.log(formData)
             return updatedData;
         });
     };
@@ -141,7 +145,10 @@ export default function ProductosForm() {
             id_categoria: 0,
             id_estilo: 0,
             id_materiales: 0,
-            piezas_por_caja: 0
+            piezas_por_caja: 0,
+            superficie: "",
+            durabilidad: 0,
+            colorDom: ''
         });
         setImagePreview(null);
         setIsEditing(false);
@@ -366,7 +373,51 @@ export default function ProductosForm() {
                                 <option value="false">No Disponible</option>
                             </select>
                         </div>
+                            {/* Superficie */}
+                            <select
+                                name="superficie"
+                                value={formData.superficie}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            >
+                                <option value="">Seleccionar Superficie</option>
+                                <option value="Planas">Planas</option>
+                                <option value="Texturizadas">Texturizadas</option>
+                                <option value="Esmaltadas">Esmaltadas</option>
+                                <option value="No Esmaltadas">No Esmaltadas</option>
+                            </select>
+                            {/* Durabilidad */}
+                            <select
+                                name="durabilidad"
+                                value={formData.durabilidad}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            >
+                                <option value={0}>Seleccionar Durabilidad</option>
+                                <option value={1}>Baja - PEI 1</option>
+                                <option value={2}>Ligera - PEI 2</option>
+                                <option value={3}>Moderada - PEI 3</option>
+                                <option value={4}>Alta - PEI 4</option>
+                                <option value={5}>Muy Alta - PEI 5</option>
+                            </select>
+                            {/*Color Dom  */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Color dominante</label>
+                                <input
+                                    type="text"
+                                    name="colorDom"
+                                    value={formData.colorDom}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                />
+                            </div>
 
+
+
+                            {/* Boton form */}
                         <div className="flex gap-4">
                             <button
                                 type="submit"
