@@ -42,6 +42,7 @@ export default function PedidosInt() {
     const [pedidoParaRepetir, setPedidoParaRepetir] = useState<any>(null);
     const [productosDelPedido, setProductosDelPedido] = useState<any[]>([]);
     const [cargandoProductos, setCargandoProductos] = useState(false);
+    const [loadingTimeout, setLoadingTimeout] = useState(false);
     const { user } = useAuth();
     const { addItem } = useCart();
     const navigate = useNavigate();
@@ -57,189 +58,245 @@ export default function PedidosInt() {
             return;
         }
 
-        // Ejecutar fetchData cuando el usuario cambie o cuando no haya pedidos cargados
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                console.log('Iniciando carga de datos para usuario:', user?.id);
-                
-                // Obtener el ID del cliente
-                const { data: clienteData, error: clienteError } = await supabase
-                    .from('clientes')
-                    .select('id_cliente')
-                    .eq('uuid', user.id)
-                    .single();
+        // Solo ejecutar fetchData una vez cuando el usuario esté disponible
+        if (pedidos.length === 0 && !loading) {
+            fetchData();
+        }
+    }, [user, navigate]); // Removed pedidos.length and loading from dependencies
 
-                if (clienteError) {
-                    console.error('Error al obtener cliente:', clienteError);
-                    throw new Error(`Error al obtener información del cliente: ${clienteError.message}`);
+    // Timeout para evitar que se quede cargando indefinidamente
+    useEffect(() => {
+        if (loading) {
+            const timeout = setTimeout(() => {
+                if (loading) {
+                    setLoadingTimeout(true);
                 }
+            }, 10000); // 10 segundos
 
-                if (!clienteData) {
-                    console.error('Cliente no encontrado para UUID:', user.id);
-                    throw new Error('No se encontró el cliente');
-                }
+            return () => clearTimeout(timeout);
+        } else {
+            setLoadingTimeout(false);
+        }
+    }, [loading]);
 
-                console.log('Cliente encontrado:', clienteData.id_cliente);
+    // Función para obtener datos
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            console.log('Iniciando carga de datos para usuario:', user?.id);
+            
+            // Obtener el ID del cliente
+            if (!user) return;
+            
+            const { data: clienteData, error: clienteError } = await supabase
+                .from('clientes')
+                .select('id_cliente')
+                .eq('uuid', user.id)
+                .single();
 
-                // Obtener pedidos del cliente
-                console.log('Obteniendo pedidos para cliente ID:', clienteData.id_cliente);
-                const { data: pedidosData, error: pedidosError } = await supabase
-                    .from('pedidos')
-                    .select('*')
-                    .eq('id_cliente', clienteData.id_cliente)
-                    .order('fecha_pedido', { ascending: false })
-                    .limit(10);
+            if (clienteError) {
+                console.error('Error al obtener cliente:', clienteError);
+                throw new Error(`Error al obtener información del cliente: ${clienteError.message}`);
+            }
 
-                if (pedidosError) {
-                    console.error('Error al obtener pedidos:', pedidosError);
-                    throw new Error(`Error al obtener pedidos: ${pedidosError.message}`);
-                }
+            if (!clienteData) {
+                console.error('Cliente no encontrado para UUID:', user.id);
+                throw new Error('No se encontró el cliente');
+            }
 
-                console.log('Pedidos obtenidos:', pedidosData?.length || 0);
+            console.log('Cliente encontrado:', clienteData.id_cliente);
 
-                // Obtener detalles de todos los pedidos usando id_factura
-                const facturasIds = pedidosData
-                    .map(p => p.id_factura)
-                    .filter(id => id !== null);
+            // Obtener pedidos del cliente
+            console.log('Obteniendo pedidos para cliente ID:', clienteData.id_cliente);
+            const { data: pedidosData, error: pedidosError } = await supabase
+                .from('pedidos')
+                .select('*')
+                .eq('id_cliente', clienteData.id_cliente)
+                .order('fecha_pedido', { ascending: false })
+                .limit(10);
 
-                if (facturasIds.length === 0) {
-                    console.log('No hay facturas asociadas a los pedidos');
-                    setPedidos(pedidosData.map((pedido: any) => ({
-                        ...pedido,
-                        productos: {
-                            nombre_producto: 'Sin productos',
-                            imagen: '',
-                            total_productos: 0
-                        }
-                    })));
-                    return;
-                }
+            if (pedidosError) {
+                console.error('Error al obtener pedidos:', pedidosError);
+                throw new Error(`Error al obtener pedidos: ${pedidosError.message}`);
+            }
 
-                const { data: todosLosDetalles } = await supabase
-                    .from('detalle_facturas')
-                    .select(`
-                        id_factura,
-                        id_producto,
-                        productos!inner (
-                            nombre_producto,
-                            imagen
-                        )
-                    `)
-                    .in('id_factura', facturasIds)
-                    .order('id_detalle', { ascending: true });
+            console.log('Pedidos obtenidos:', pedidosData?.length || 0);
 
-                // Agrupar detalles por factura
-                const detallesPorFactura = todosLosDetalles?.reduce((acc: any, detalle: any) => {
-                    if (!acc[detalle.id_factura]) {
-                        acc[detalle.id_factura] = [];
+            // Si no hay pedidos, terminar aquí
+            if (!pedidosData || pedidosData.length === 0) {
+                console.log('No hay pedidos para mostrar');
+                setPedidos([]);
+                setLoading(false);
+                return;
+            }
+
+            // Obtener detalles de todos los pedidos usando id_factura
+            const facturasIds = pedidosData
+                .map(p => p.id_factura)
+                .filter(id => id !== null);
+
+            if (facturasIds.length === 0) {
+                console.log('No hay facturas asociadas a los pedidos');
+                setPedidos(pedidosData.map((pedido: any) => ({
+                    ...pedido,
+                    productos: {
+                        nombre_producto: 'Sin productos',
+                        imagen: '',
+                        total_productos: 0
                     }
-                    acc[detalle.id_factura].push(detalle);
-                    return acc;
-                }, {}) || {};
+                })));
+                setLoading(false);
+                return;
+            }
 
-                // Formatear pedidos con información del primer producto
-                const pedidosFormateados = pedidosData.map((pedido: any) => {
-                    if (!pedido.id_factura) {
-                        return {
-                            ...pedido,
-                            productos: {
-                                nombre_producto: 'Sin factura',
-                                imagen: '',
-                                total_productos: 0
-                            }
-                        };
+            console.log('Facturas IDs a consultar:', facturasIds);
+
+            const { data: todosLosDetalles, error: detallesError } = await supabase
+                .from('detalle_facturas')
+                .select(`
+                    id_factura,
+                    id_producto,
+                    productos!inner (
+                        nombre_producto,
+                        imagen
+                    )
+                `)
+                .in('id_factura', facturasIds)
+                .order('id_detalle', { ascending: true });
+
+            if (detallesError) {
+                console.error('Error al obtener detalles:', detallesError);
+                // Continuar sin detalles, mostrar pedidos básicos
+                setPedidos(pedidosData.map((pedido: any) => ({
+                    ...pedido,
+                    productos: {
+                        nombre_producto: 'Sin detalles disponibles',
+                        imagen: '',
+                        total_productos: 0
                     }
+                })));
+                setLoading(false);
+                return;
+            }
 
-                    const detallesFactura = detallesPorFactura[pedido.id_factura] || [];
-                    const primerDetalle = detallesFactura[0];
-                    const totalProductos = detallesFactura.length;
+            console.log('Detalles obtenidos:', todosLosDetalles?.length || 0);
 
+            // Agrupar detalles por factura
+            const detallesPorFactura = todosLosDetalles?.reduce((acc: any, detalle: any) => {
+                if (!acc[detalle.id_factura]) {
+                    acc[detalle.id_factura] = [];
+                }
+                acc[detalle.id_factura].push(detalle);
+                return acc;
+            }, {}) || {};
+
+            console.log('Detalles agrupados por factura:', Object.keys(detallesPorFactura));
+
+            // Formatear pedidos con información del primer producto
+            const pedidosFormateados = pedidosData.map((pedido: any) => {
+                if (!pedido.id_factura) {
                     return {
                         ...pedido,
-                        productos: primerDetalle?.productos ? {
-                            nombre_producto: primerDetalle.productos.nombre_producto || 'Producto sin nombre',
-                            imagen: primerDetalle.productos.imagen || '',
-                            total_productos: totalProductos
-                        } : {
-                            nombre_producto: 'Sin productos',
+                        productos: {
+                            nombre_producto: 'Sin factura',
                             imagen: '',
                             total_productos: 0
                         }
                     };
-                });
-
-                // Obtener productos más comprados para recomendaciones usando id_factura
-                try {
-                    // Primero obtener las facturas del cliente
-                    const { data: facturasCliente } = await supabase
-                        .from('pedidos')
-                        .select('id_factura')
-                        .eq('id_cliente', clienteData.id_cliente)
-                        .not('id_factura', 'is', null);
-
-                    if (facturasCliente && facturasCliente.length > 0) {
-                        const facturasIds = facturasCliente.map(f => f.id_factura);
-                        
-                        const { data: recomendacionesData } = await supabase
-                            .from('detalle_facturas')
-                            .select(`
-                                id_producto,
-                                cantidad,
-                                productos (
-                                    id_producto,
-                                    nombre_producto,
-                                    imagen,
-                                    precio,
-                                    stock_actual,
-                                    metros_por_caja
-                                )
-                            `)
-                            .in('id_factura', facturasIds);
-
-                        if (recomendacionesData) {
-                            // Agrupar por producto y contar frecuencia
-                            const productosMap = new Map();
-                            recomendacionesData.forEach((detalle: any) => {
-                                const producto = detalle.productos;
-                                if (producto && producto.stock_actual > 0) {
-                                    const key = producto.id_producto;
-                                    if (productosMap.has(key)) {
-                                        productosMap.get(key).frecuencia_compra += detalle.cantidad;
-                                    } else {
-                                        productosMap.set(key, {
-                                            ...producto,
-                                            frecuencia_compra: detalle.cantidad
-                                        });
-                                    }
-                                }
-                            });
-
-                            // Convertir a array y ordenar por frecuencia
-                            const recomendaciones = Array.from(productosMap.values())
-                                .sort((a, b) => b.frecuencia_compra - a.frecuencia_compra)
-                                .slice(0, 4);
-
-                            setProductosRecomendados(recomendaciones);
-                        }
-                    }
-                } catch (recomendacionesError) {
-                    console.warn('Error al cargar recomendaciones:', recomendacionesError);
-                    // No es crítico, continuar sin recomendaciones
                 }
 
-                setPedidos(pedidosFormateados || []);
-            } catch (error: any) {
-                console.error('Error al cargar los datos:', error);
-                setError('Error al cargar los datos. Por favor, intenta de nuevo.');
-            } finally {
-                setLoading(false);
-            }
-        };
+                const detallesFactura = detallesPorFactura[pedido.id_factura] || [];
+                const primerDetalle = detallesFactura[0];
+                const totalProductos = detallesFactura.length;
 
-        fetchData();
-    }, [user, navigate]);
+                return {
+                    ...pedido,
+                    productos: primerDetalle?.productos ? {
+                        nombre_producto: primerDetalle.productos.nombre_producto || 'Producto sin nombre',
+                        imagen: primerDetalle.productos.imagen || '',
+                        total_productos: totalProductos
+                    } : {
+                        nombre_producto: 'Sin productos',
+                        imagen: '',
+                        total_productos: 0
+                    }
+                };
+            });
+
+            console.log('Pedidos formateados:', pedidosFormateados.length);
+
+            // Obtener productos más comprados para recomendaciones usando id_factura
+            try {
+                // Primero obtener las facturas del cliente
+                const { data: facturasCliente } = await supabase
+                    .from('pedidos')
+                    .select('id_factura')
+                    .eq('id_cliente', clienteData.id_cliente)
+                    .not('id_factura', 'is', null);
+
+                if (facturasCliente && facturasCliente.length > 0) {
+                    const facturasIds = facturasCliente.map(f => f.id_factura);
+                    
+                    const { data: recomendacionesData } = await supabase
+                        .from('detalle_facturas')
+                        .select(`
+                            id_producto,
+                            cantidad,
+                            productos (
+                                id_producto,
+                                nombre_producto,
+                                imagen,
+                                precio,
+                                stock_actual,
+                                metros_por_caja
+                            )
+                        `)
+                        .in('id_factura', facturasIds);
+
+                    if (recomendacionesData) {
+                        // Agrupar por producto y contar frecuencia
+                        const productosMap = new Map();
+                        recomendacionesData.forEach((detalle: any) => {
+                            const producto = detalle.productos;
+                            if (producto && producto.stock_actual > 0) {
+                                const key = producto.id_producto;
+                                if (productosMap.has(key)) {
+                                    productosMap.get(key).frecuencia_compra += detalle.cantidad;
+                                } else {
+                                    productosMap.set(key, {
+                                        ...producto,
+                                        frecuencia_compra: detalle.cantidad
+                                    });
+                                }
+                            }
+                        });
+
+                        // Convertir a array y ordenar por frecuencia
+                        const recomendaciones = Array.from(productosMap.values())
+                            .sort((a, b) => b.frecuencia_compra - a.frecuencia_compra)
+                            .slice(0, 4);
+
+                        setProductosRecomendados(recomendaciones);
+                        console.log('Recomendaciones cargadas:', recomendaciones.length);
+                    }
+                }
+            } catch (recomendacionesError) {
+                console.warn('Error al cargar recomendaciones:', recomendacionesError);
+                // No es crítico, continuar sin recomendaciones
+            }
+
+            setPedidos(pedidosFormateados || []);
+            console.log('Datos cargados exitosamente');
+        } catch (error: any) {
+            console.error('Error al cargar los datos:', error);
+            setError('Error al cargar los datos. Por favor, intenta de nuevo.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
 
     const formatearFecha = (fechaStr: string) => {
         try {
@@ -283,6 +340,8 @@ export default function PedidosInt() {
                 throw new Error('Este pedido no tiene factura asociada');
             }
             
+            console.log('Abriendo modal para pedido:', pedido.id_pedido, 'factura:', pedido.id_factura);
+            
             // Obtener detalles del pedido con productos usando id_factura
             const { data: detallesData, error: detallesError } = await supabase
                 .from('detalle_facturas')
@@ -306,23 +365,35 @@ export default function PedidosInt() {
                 `)
                 .eq('id_factura', pedido.id_factura);
 
-            if (detallesError) throw detallesError;
+            if (detallesError) {
+                console.error('Error al obtener detalles:', detallesError);
+                throw new Error(`Error al obtener detalles: ${detallesError.message}`);
+            }
+
+            if (!detallesData || detallesData.length === 0) {
+                throw new Error('No se encontraron detalles para este pedido');
+            }
+
+            console.log('Detalles obtenidos para modal:', detallesData.length);
 
             // Formatear productos con cantidades editables
-            const productosFormateados = (detallesData || []).map(detalle => ({
+            const productosFormateados = (detallesData || []).map((detalle: any) => ({
                 ...detalle.productos,
                 cantidad_original: detalle.cantidad,
                 cantidad_nueva: detalle.cantidad,
                 precio_unitario: detalle.precio_unitario,
                 subtotal_original: detalle.subtotal,
-                disponible: detalle.productos?.stock_actual >= detalle.cantidad
+                disponible: (detalle.productos as any)?.stock_actual >= detalle.cantidad
             }));
 
             setProductosDelPedido(productosFormateados);
+            console.log('Productos formateados para modal:', productosFormateados.length);
         } catch (error: any) {
             console.error('Error al cargar productos del pedido:', error);
             alert(`Error al cargar los productos del pedido: ${error.message}`);
             setMostrarModalRepetir(false);
+            setPedidoParaRepetir(null);
+            setProductosDelPedido([]);
         } finally {
             setCargandoProductos(false);
         }
@@ -353,7 +424,7 @@ export default function PedidosInt() {
 
             for (const producto of productosDelPedido) {
                 if (producto.cantidad_nueva > 0) {
-                    if (producto.stock_actual >= producto.cantidad_nueva) {
+                    if ((producto as any).stock_actual >= producto.cantidad_nueva) {
                         await addItem(producto, producto.cantidad_nueva);
                         productosAgregados++;
                     } else {
@@ -405,14 +476,55 @@ export default function PedidosInt() {
             {loading ? (
                 <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Cargando información...</p>
+                    <p className="mt-4 text-gray-600">
+                        {loadingTimeout ? 'La carga está tomando más tiempo del esperado...' : 'Cargando información...'}
+                    </p>
+                    {loadingTimeout && (
+                        <div className="mt-4 space-y-2">
+                            <p className="text-sm text-gray-500">Si la página no carga, puedes:</p>
+                            <button
+                                onClick={() => {
+                                    setLoading(false);
+                                    setLoadingTimeout(false);
+                                    setError('Tiempo de espera agotado. Por favor, intenta de nuevo.');
+                                }}
+                                className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm font-medium"
+                            >
+                                Cancelar carga
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : error ? (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
                     <p>{error}</p>
+                    <button 
+                        onClick={() => {
+                            setError(null);
+                            setPedidos([]);
+                            fetchData();
+                        }}
+                        className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+                    >
+                        Reintentar
+                    </button>
                 </div>
             ) : (
                 <>
+                    {/* Botón de refrescar */}
+                    <div className="flex justify-end mb-4">
+                        <button
+                            onClick={() => {
+                                setPedidos([]);
+                                setProductosRecomendados([]);
+                                fetchData();
+                            }}
+                            className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm font-medium"
+                        >
+                            Actualizar datos
+                        </button>
+                    </div>
+
                     {/* Sección de Recomendaciones */}
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-6 mb-8">
                         <div className="flex items-center mb-4">
@@ -491,6 +603,10 @@ export default function PedidosInt() {
                                                             src={pedido.productos.imagen} 
                                                             alt={pedido.productos.nombre_producto}
                                                             className="w-16 h-16 object-cover rounded-md border border-gray-200"
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.src = '/placeholder-image.svg';
+                                                            }}
                                                         />
                                                     ) : (
                                                         <div className="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center">
@@ -595,9 +711,13 @@ export default function PedidosInt() {
                                                 {/* Imagen y nombre del producto */}
                                                 <div className="col-span-5 flex items-center space-x-3">
                                                     <img 
-                                                        src={producto.imagen || '/placeholder-image.jpg'} 
+                                                        src={producto.imagen || '/placeholder-image.svg'}
                                                         alt={producto.nombre_producto}
-                                                        className="w-16 h-16 object-cover rounded border"
+                                                        className="w-16 h-16 object-cover rounded-lg"
+                                                        onError={(e) => {
+                                                            const target = e.target as HTMLImageElement;
+                                                            target.src = '/placeholder-image.svg';
+                                                        }}
                                                     />
                                                     <div>
                                                         <h3 className="font-medium text-gray-900 text-sm">

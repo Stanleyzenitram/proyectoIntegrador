@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { FaFileInvoice, FaShippingFast, FaCheckCircle, FaTimesCircle, FaHistory, FaBell, FaArrowLeft } from 'react-icons/fa';
+import { FaFileInvoice, FaShippingFast, FaCheckCircle, FaTimesCircle, FaHistory, FaBell, FaArrowLeft, FaExternalLinkAlt } from 'react-icons/fa';
 
 interface Pedido {
     id_pedido: number;
@@ -512,6 +512,14 @@ const Pedidos = () => {
                                                     >
                                                         <FaHistory className="mr-1" />
                                                         Historial
+                                                    </button>
+                                                    <button
+                                                        onClick={() => navigate(`/pedido/${pedido.id_pedido}/historial`)}
+                                                        className="text-blue-600 hover:text-blue-800 flex items-center"
+                                                        title="Ver Historial Completo"
+                                                    >
+                                                        <FaExternalLinkAlt className="mr-1" />
+                                                        Historial Completo
                                                     </button>
                                                 </div>
                                             </td>

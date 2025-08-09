@@ -36,6 +36,8 @@ import ReportePedidos from "./features/reportes/ReportePedidos";
 import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
+import Preferencias from "./pages/Preferencias";
+import Recomendaciones from "./pages/Recomendaciones";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -44,10 +46,9 @@ export default function AppRouter() {
         <Routes>
             <Route path="/update-password" element={<UpdatePassword />} />
             <Route element={<Layout />}>
-                <Route element={<AdminRoute />}>
-                    <Route path="/" element={<HomePage />} index />
-                </Route>
-
+                {/* Ruta principal accesible para todos */}
+                <Route path="/" element={<HomePage />} index />
+                
                 <Route path="/register" element={<Register />} />
                 <Route path="/SobreNosotros" element={<SobreNosotrosPage />} />
                 <Route path="/reset-password" element={<PasswordReset />} />
@@ -67,6 +68,10 @@ export default function AppRouter() {
                     <Route path="/factura/:id" element={<Factura />} />
                     <Route path="/pedidos" element={<PedidosInt />} />
                     <Route path="/pedido/:id/historial" element={<HistorialPedido />} />
+                    
+                    {/* Funcionalidades del cliente */}
+                    <Route path="/preferencias" element={<Preferencias />} />
+                    <Route path="/recomendaciones" element={<Recomendaciones />} />
 
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />

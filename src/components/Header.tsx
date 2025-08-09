@@ -4,6 +4,7 @@ import { faShoppingCart, faUser, faBars, faTimes } from "@fortawesome/free-solid
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import MenuMant from "./MenuMant";
+import ClienteMenu from "./ClienteMenu";
 import Cart from "./Cart";
 import { useCart } from "../context/CartContext";
 import MiniCart from "./MiniCart";
@@ -152,8 +153,11 @@ export default function Header() {
                         <div className="absolute right-0 w-44 bg-amber-400 shadow-lg py-2 text-gray-800 hidden group-hover:block z-10 rounded-lg">
                             {user ? (
                                 <>
+                                    {/* Enlace al perfil del usuario */}
                                     <NavLink to="/profile" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Perfil</NavLink>
+                                    {/* Enlace al historial de pedidos */}
                                     <NavLink to="/pedidos" className="block px-4 py-2 font-bold uppercase hover:bg-amber-500">Pedidos</NavLink>
+                                    {/* Botón para cerrar sesión */}
                                     <button onClick={handleLogout} className="w-full text-left px-4 py-2 font-bold uppercase hover:bg-amber-500 hover:cursor-pointer">Cerrar Sesión</button>
                                 </>
                             ) : (
@@ -189,6 +193,9 @@ export default function Header() {
 
             {/* Menú mantenimientos */}
             {user && <MenuMant />}
+            
+            {/* Menú cliente normal */}
+            {user && <ClienteMenu />}
         </header>
     );
 }
