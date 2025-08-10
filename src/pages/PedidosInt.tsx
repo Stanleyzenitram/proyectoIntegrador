@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../context/CartContext';
@@ -34,9 +34,9 @@ interface Producto {
     stock_actual: number;
     metros_por_caja: number;
     descripcion: string;
-    categoria_id: number;
-    estilo_id: number;
-    materiales_id: number;
+    id_categoria: number;
+    id_estilo: number;
+    id_materiales: number;
     formato: string;
     piezas_por_caja: number;
     superficie: string;
@@ -61,12 +61,50 @@ const PedidosInt = () => {
     const [filtroEstado, setFiltroEstado] = useState<string>('todos');
     const [ordenarPor, setOrdenarPor] = useState<string>('fecha');
     const [orden, setOrden] = useState<'asc' | 'desc'>('desc');
+    
+    // Ref para controlar si ya se cargaron los pedidos inicialmente
+    const pedidosCargadosRef = useRef(false);
 
     useEffect(() => {
-        if (user) {
+        // Solo cargar pedidos si no se han cargado antes y hay un usuario
+        if (user && !pedidosCargadosRef.current) {
             cargarPedidos();
+            pedidosCargadosRef.current = true;
         }
-    }, [user, filtroEstado, ordenarPor, orden]);
+    }, [user]);
+
+    // Efecto separado para filtros y ordenamiento (sin recargar desde la base de datos)
+    useEffect(() => {
+        // Solo ejecutar si ya hay pedidos cargados
+        if (pedidosCargadosRef.current && pedidos.length > 0) {
+            // Los filtros se aplican localmente, no necesitan recargar desde la BD
+        }
+    }, [filtroEstado, ordenarPor, orden, pedidos.length]);
+
+    // Función para recargar manualmente los pedidos
+    const recargarPedidos = () => {
+        pedidosCargadosRef.current = false;
+        cargarPedidos();
+    };
+
+    // Efecto para detectar cuando el usuario regresa a la página
+    useEffect(() => {
+        const handleFocus = () => {
+            // Solo recargar si han pasado más de 5 minutos desde la última carga
+            const ultimaCarga = localStorage.getItem('ultimaCargaPedidos');
+            if (ultimaCarga) {
+                const tiempoTranscurrido = Date.now() - parseInt(ultimaCarga);
+                const cincoMinutos = 5 * 60 * 1000; // 5 minutos en milisegundos
+                
+                if (tiempoTranscurrido > cincoMinutos) {
+                    recargarPedidos();
+                }
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
 
     const cargarPedidos = async () => {
         if (!user) return;
@@ -74,6 +112,9 @@ const PedidosInt = () => {
         try {
             setLoading(true);
             setError(null);
+
+            // Guardar timestamp de la carga
+            localStorage.setItem('ultimaCargaPedidos', Date.now().toString());
 
             // Primero obtener el id_cliente usando el UUID del usuario autenticado
             const { data: clienteData, error: clienteError } = await supabase
@@ -207,9 +248,9 @@ const PedidosInt = () => {
                         stock_actual,
                         metros_por_caja,
                         descripcion,
-                        categoria_id,
-                        estilo_id,
-                        materiales_id,
+                        id_categoria,
+                        id_estilo,
+                        id_materiales,
                         formato,
                         piezas_por_caja,
                         superficie,
@@ -232,9 +273,9 @@ const PedidosInt = () => {
                     stock_actual: detalle.productos.stock_actual,
                     metros_por_caja: detalle.productos.metros_por_caja,
                     descripcion: detalle.productos.descripcion,
-                    categoria_id: detalle.productos.categoria_id,
-                    estilo_id: detalle.productos.estilo_id,
-                    materiales_id: detalle.productos.materiales_id,
+                    id_categoria: detalle.productos.id_categoria,
+                    id_estilo: detalle.productos.id_estilo,
+                    id_materiales: detalle.productos.id_materiales,
                     formato: detalle.productos.formato,
                     piezas_por_caja: detalle.productos.piezas_por_caja,
                     superficie: detalle.productos.superficie,
@@ -352,7 +393,7 @@ const PedidosInt = () => {
                 <div className="bg-red-50 border border-red-200 rounded-md p-3">
                     <p className="text-red-800 text-sm">{error}</p>
                     <button 
-                        onClick={cargarPedidos}
+                        onClick={recargarPedidos}
                         className="mt-2 bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors cursor-pointer text-sm"
                     >
                         Reintentar
@@ -371,6 +412,18 @@ const PedidosInt = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Mis Pedidos</h1>
                     <p className="text-gray-600 mt-1.5 text-sm">Gestiona y revisa el historial de tus pedidos</p>
+                </div>
+                <div className="mt-3 sm:mt-0">
+                    <button
+                        onClick={recargarPedidos}
+                        className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors cursor-pointer text-sm"
+                        title="Actualizar pedidos"
+                    >
+                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Actualizar
+                    </button>
                 </div>
             </div>
 
