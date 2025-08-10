@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import type {Cliente} from '../types/index';
 
 export default function Checkout() {
-    const { items, total, clearCart } = useCart();
+    const { items, total, clearCart, deliveryAddress } = useCart();
     const { user } = useAuth();
     const [cliente, setCliente] = useState<Cliente | null>(null);
     const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ export default function Checkout() {
                 
                 // Actualizar customerInfo con los datos del cliente
                 if (data) {
-                    setCustomerInfo({
+                    let initialCustomerInfo = {
                         nombre: data.nombre,
                         apellido: data.apellido,
                         telefono: data.telefono,
@@ -82,7 +82,19 @@ export default function Checkout() {
                         tipo_documento: data.tipo_documento,
                         numero_documento: data.numero_documento,
                         email: data.email
-                    });
+                    };
+
+                    // Si hay una dirección de entrega del carrito, usarla para actualizar los campos relevantes
+                    if (deliveryAddress) {
+                        initialCustomerInfo = {
+                            ...initialCustomerInfo,
+                            sector: deliveryAddress.ciudad || initialCustomerInfo.sector,
+                            codigo_postal: deliveryAddress.codigo_postal || initialCustomerInfo.codigo_postal,
+                            detalles_direccion: deliveryAddress.calle || initialCustomerInfo.detalles_direccion
+                        };
+                    }
+
+                    setCustomerInfo(initialCustomerInfo);
                 }
             } catch (error) {
                 console.error('Error al cargar datos del cliente:', error);
@@ -92,7 +104,7 @@ export default function Checkout() {
         };
 
         fetchClienteData();
-    }, [user]);
+    }, [user, deliveryAddress]);
 
     const handleSubmit = async () => {
         if (!cliente || !user) return;

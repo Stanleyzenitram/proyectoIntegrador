@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../services/supabase';
 import { FaFileInvoice, FaHistory, FaShoppingCart, FaEye, FaTrash, FaStar, FaStarHalfAlt } from 'react-icons/fa';
 import RecomendacionesInteligentes from '../components/RecomendacionesInteligentes';
+import { Producto } from '../types'; // Importar la interfaz global
 
 interface Pedido {
     id_pedido: number;
@@ -13,6 +14,7 @@ interface Pedido {
     estado: string;
     metodo_pago: string;
     id_factura: number;
+    direccion_entrega?: string;
     productos?: {
         total_productos: number;
         items: Array<{
@@ -26,29 +28,22 @@ interface Pedido {
     };
 }
 
-interface Producto {
-    id_producto: number;
-    nombre_producto: string;
-    imagen: string;
-    precio: number;
-    stock_actual: number;
-    metros_por_caja: number;
-    descripcion: string;
-    id_categoria: number;
-    id_estilo: number;
-    id_materiales: number;
-    formato: string;
-    piezas_por_caja: number;
-    superficie: string;
-    durabilidad: number;
-    colorDom: string;
-    color: string;
-    disponibilidad: boolean;
+interface DetalleFactura {
+    cantidad: number;
+    precio_unitario: number;
+    subtotal: number;
+    productos: Producto[]; // Reverted back to Producto[] since Supabase returns an array
+}
+
+interface ProductoEnRepetirModal extends Producto {
+    cantidad: number;
+    precio_unitario: number; // Precio específico del pedido (puede ser diferente al precio base)
+    subtotal: number;
 }
 
 const PedidosInt = () => {
     const { user } = useAuth();
-    const { addItem } = useCart();
+    const { addItem, setDeliveryAddress } = useCart();
     const navigate = useNavigate();
     
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -57,7 +52,9 @@ const PedidosInt = () => {
     const [modalAbierto, setModalAbierto] = useState(false);
     const [pedidoSeleccionado, setPedidoSeleccionado] = useState<Pedido | null>(null);
     const [modalRepetirAbierto, setModalRepetirAbierto] = useState(false);
-    const [productosRepetir, setProductosRepetir] = useState<Producto[]>([]);
+    const [productosRepetir, setProductosRepetir] = useState<ProductoEnRepetirModal[]>([]);
+    const [pedidoSeleccionadoRepetir, setPedidoSeleccionadoRepetir] = useState<Pedido | null>(null);
+    const [displayMode, setDisplayMode] = useState<'cajas' | 'metros'>('cajas');
     const [filtroEstado, setFiltroEstado] = useState<string>('todos');
     const [ordenarPor, setOrdenarPor] = useState<string>('fecha');
     const [orden, setOrden] = useState<'asc' | 'desc'>('desc');
@@ -230,77 +227,198 @@ const PedidosInt = () => {
     };
 
     const abrirModalRepetir = async (pedido: Pedido) => {
-        if (!pedido.id_factura) return;
-
         try {
-            // Obtener detalles del pedido con productos usando id_factura
+            setLoading(true);
+            setError(null);
+            
+            // Reset display mode
+            setDisplayMode('cajas');
+            
+            // Obtener detalles de la factura
             const { data: detallesData, error: detallesError } = await supabase
                 .from('detalles_factura')
                 .select(`
                     cantidad,
                     precio_unitario,
                     subtotal,
-                    productos (
-                        id_producto,
-                        nombre_producto,
-                        imagen,
-                        precio,
-                        stock_actual,
-                        metros_por_caja,
-                        descripcion,
-                        id_categoria,
-                        id_estilo,
-                        id_materiales,
-                        formato,
-                        piezas_por_caja,
-                        superficie,
-                        durabilidad,
-                        colorDom,
-                        color,
-                        disponibilidad
-                    )
+                    id_producto
                 `)
                 .eq('id_factura', pedido.id_factura);
 
-            if (detallesError) throw detallesError;
-
-            if (detallesData) {
-                const productos = detallesData.map(detalle => ({
-                    id_producto: detalle.productos.id_producto,
-                    nombre_producto: detalle.productos.nombre_producto,
-                    imagen: detalle.productos.imagen,
-                    precio: detalle.productos.precio,
-                    stock_actual: detalle.productos.stock_actual,
-                    metros_por_caja: detalle.productos.metros_por_caja,
-                    descripcion: detalle.productos.descripcion,
-                    id_categoria: detalle.productos.id_categoria,
-                    id_estilo: detalle.productos.id_estilo,
-                    id_materiales: detalle.productos.id_materiales,
-                    formato: detalle.productos.formato,
-                    piezas_por_caja: detalle.productos.piezas_por_caja,
-                    superficie: detalle.productos.superficie,
-                    durabilidad: detalle.productos.durabilidad,
-                    colorDom: detalle.productos.colorDom,
-                    color: detalle.productos.color,
-                    disponibilidad: detalle.productos.disponibilidad
-                }));
-
-                setProductosRepetir(productos);
-                setModalRepetirAbierto(true);
+            if (detallesError) {
+                throw new Error(`Error al obtener detalles: ${detallesError.message}`);
             }
+
+            if (!detallesData || detallesData.length === 0) {
+                throw new Error('No se encontraron detalles para esta factura');
+            }
+
+            console.log('Detalles obtenidos:', detallesData);
+
+            // Obtener los IDs de productos únicos
+            const idsProductos = [...new Set(detallesData.map(detalle => detalle.id_producto))];
+            
+            // Obtener información completa de los productos
+            const { data: productosData, error: productosError } = await supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    formato,
+                    piezas_por_caja,
+                    superficie,
+                    durabilidad,
+                    colorDom,
+                    disponibilidad
+                `)
+                .in('id_producto', idsProductos);
+
+            if (productosError) {
+                throw new Error(`Error al obtener productos: ${productosError.message}`);
+            }
+
+            if (!productosData || productosData.length === 0) {
+                throw new Error('No se encontraron productos para esta factura');
+            }
+
+            console.log('Productos obtenidos:', productosData);
+
+            // Combinar los datos de detalles_factura con los productos
+            const productosCombinados: ProductoEnRepetirModal[] = detallesData.map(detalle => {
+                const producto = productosData.find(p => p.id_producto === detalle.id_producto);
+                if (producto) {
+                    return {
+                        ...producto,
+                        cantidad: detalle.cantidad,
+                        precio_unitario: detalle.precio_unitario,
+                        subtotal: detalle.subtotal
+                    };
+                }
+                return null;
+            }).filter(Boolean) as ProductoEnRepetirModal[];
+
+            console.log('Productos combinados:', productosCombinados);
+
+            setProductosRepetir(productosCombinados);
+            setPedidoSeleccionadoRepetir(pedido);
+            setModalRepetirAbierto(true);
         } catch (error) {
-            console.error('Error al obtener detalles:', error);
-            alert('Error al obtener los productos del pedido');
+            console.error('Error al abrir modal repetir:', error);
+            setError(`Error al cargar los productos del pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        } finally {
+            setLoading(false);
         }
     };
 
     const cerrarModalRepetir = () => {
         setModalRepetirAbierto(false);
         setProductosRepetir([]);
+        setPedidoSeleccionadoRepetir(null);
+        setDisplayMode('cajas');
+    };
+
+
+
+    const calcularTotalRepetir = () => {
+        if (!productosRepetir.length) return { subtotal: 0, itbis: 0, total: 0 };
+        
+        const subtotal = productosRepetir.reduce((sum, producto) => sum + producto.subtotal, 0);
+        const itbis = subtotal * 0.18;
+        const total = subtotal + itbis;
+        
+        return { subtotal, itbis, total };
+    };
+
+    const actualizarCantidad = (index: number, nuevaCantidad: number) => {
+        if (nuevaCantidad >= 1 && nuevaCantidad <= productosRepetir[index].stock_actual) {
+            const productosActualizados = [...productosRepetir];
+            productosActualizados[index] = {
+                ...productosActualizados[index],
+                cantidad: nuevaCantidad,
+                subtotal: nuevaCantidad * productosActualizados[index].precio_unitario
+            };
+            setProductosRepetir(productosActualizados);
+        }
+    };
+
+    const confirmarPedidoRepetido = () => {
+        if (!pedidoSeleccionadoRepetir) return;
+        
+        // Agregar todos los productos del modal al carrito con sus cantidades actuales
+        productosRepetir.forEach(producto => {
+            addItem(producto, producto.cantidad);
+        });
+        
+        // Procesar y guardar la dirección de entrega del pedido
+        if (pedidoSeleccionadoRepetir.direccion_entrega) {
+            try {
+                // Intentar parsear la dirección si está en formato JSON
+                let direccionParseada;
+                try {
+                    direccionParseada = JSON.parse(pedidoSeleccionadoRepetir.direccion_entrega);
+                } catch {
+                    // Si no es JSON, asumir que es un string simple
+                    direccionParseada = {
+                        calle: pedidoSeleccionadoRepetir.direccion_entrega,
+                        ciudad: '',
+                        provincia: '',
+                        codigo_postal: '',
+                        referencia: '',
+                        pais: 'Republica Dominicana'
+                    };
+                }
+                
+                // Guardar la dirección en el contexto del carrito
+                setDeliveryAddress(direccionParseada);
+                console.log('Dirección del pedido cargada:', direccionParseada);
+                
+            } catch (error) {
+                console.error('Error al procesar la dirección del pedido:', error);
+            }
+        }
+        
+        // Cerrar el modal
+        cerrarModalRepetir();
+        
+        // Redirigir a la página de inicio (home)
+        navigate('/');
     };
 
     const agregarAlCarrito = (producto: Producto) => {
         addItem(producto, 1);
+    };
+
+    const getDisplayQuantity = (producto: ProductoEnRepetirModal) => {
+        if (producto.metros_por_caja) {
+            if (displayMode === 'metros') {
+                return `${(producto.cantidad * (producto.metros_por_caja || 0)).toFixed(2)} m²`;
+            }
+            return `${producto.cantidad} cajas`;
+        }
+        return producto.cantidad;
+    };
+
+    const getUOM = (producto: ProductoEnRepetirModal) => {
+        if (producto.metros_por_caja) {
+            return (
+                <select
+                    value={displayMode}
+                    onChange={(e) => setDisplayMode(e.target.value as 'cajas' | 'metros')}
+                    className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
+                >
+                    <option value="cajas">Cajas</option>
+                    <option value="metros">Metros²</option>
+                </select>
+            );
+        }
+        return "Unidad";
     };
 
     const filtrarPedidos = () => {
@@ -666,53 +784,187 @@ const PedidosInt = () => {
             {/* Modal de Repetir Pedido */}
             {modalRepetirAbierto && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
-                    <div className="bg-white rounded-lg max-w-3xl w-full max-h-[85vh] overflow-y-auto">
-                        <div className="p-4">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-semibold text-gray-900">Repetir Pedido</h2>
+                    <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            {/* Breadcrumb */}
+                            <div className="text-sm text-gray-600 mb-4">
+                                <span className="hover:text-amber-600 cursor-pointer">INICIO</span>
+                                <span className="mx-2">›</span>
+                                <span className="hover:text-amber-600 cursor-pointer">PEDIDOS</span>
+                                <span className="mx-2">›</span>
+                                <span className="text-gray-900">REPETIR PEDIDO</span>
+                            </div>
+
+                            {/* Header */}
+                            <div className="flex justify-between items-center mb-6">
+                                <h1 className="text-3xl font-bold text-amber-600">Volver a pedir</h1>
                                 <button
                                     onClick={cerrarModalRepetir}
-                                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                                    className="text-gray-400 hover:text-gray-600 cursor-pointer p-2"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {productosRepetir.map((producto, index) => (
-                                    <div key={index} className="border border-gray-200 rounded-lg p-3">
-                                        <img
-                                            src={producto.imagen || '/placeholder-image.svg'}
-                                            alt={producto.nombre_producto}
-                                            className="w-full h-24 object-cover rounded-md mb-2"
-                                        />
-                                        <h3 className="font-medium text-gray-900 mb-1.5 text-sm">{producto.nombre_producto}</h3>
-                                        <p className="text-xs text-gray-600 mb-1.5">{producto.descripcion}</p>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-base font-bold text-gray-900">
-                                                {formatearPrecio(producto.precio)}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                Stock: {producto.stock_actual}
-                                            </span>
+
+                            <div className="flex gap-6">
+                                {/* Contenido principal */}
+                                <div className="flex-1">
+                                    {/* Sección de Productos */}
+                                    <div className="mb-8">
+                                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Productos</h2>
+                                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                            {/* Header de la tabla */}
+                                            <div className="grid grid-cols-5 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-700 border-b">
+                                                <div className="col-span-2">Producto</div>
+                                                <div className="text-center">Precio</div>
+                                                <div className="text-center">Cantidad</div>
+                                                <div className="text-center">UOM</div>
+                                                <div className="text-right">Total</div>
+                                            </div>
+                                            
+                                            {/* Productos */}
+                                            {productosRepetir.map((producto, index) => (
+                                                <div key={index} className="grid grid-cols-5 items-center py-4 px-4 border-b border-gray-100 hover:bg-gray-50">
+                                                    {/* Producto */}
+                                                    <div className="col-span-2 flex items-center space-x-3">
+                                                        <img
+                                                            src={producto.imagen || '/placeholder-image.svg'}
+                                                            alt={producto.nombre_producto}
+                                                            className="w-12 h-12 object-cover rounded-md"
+                                                        />
+                                                        <div>
+                                                            <h3 className="font-medium text-gray-900 text-sm">{producto.nombre_producto}</h3>
+                                                            <p className="text-xs text-gray-500">Artículo #{producto.id_producto}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Precio */}
+                                                    <div className="text-center">
+                                                        <span className="text-sm font-medium text-gray-900">
+                                                            RD$ {producto.precio_unitario.toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    {/* Cantidad */}
+                                                    <div className="text-center">
+                                                        <div className="flex items-center justify-center space-x-2">
+                                                            <button 
+                                                                onClick={() => actualizarCantidad(index, producto.cantidad - 1)}
+                                                                className="w-6 h-6 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 cursor-pointer"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="text-sm">{getDisplayQuantity(producto)}</span>
+                                                            <button 
+                                                                onClick={() => actualizarCantidad(index, producto.cantidad + 1)}
+                                                                className="w-6 h-6 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 cursor-pointer"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            (STOCK: {producto.stock_actual} cajas)
+                                                        </p>
+                                                        {producto.metros_por_caja && displayMode === 'cajas' && (
+                                                            <p className="text-xs text-gray-500">
+                                                                ({(producto.cantidad * (producto.metros_por_caja || 0)).toFixed(2)} m² totales)
+                                                            </p>
+                                                        )}
+                                                        <div className="mt-1">
+                                                            <input
+                                                                type="number"
+                                                                value={producto.cantidad}
+                                                                onChange={(e) => actualizarCantidad(index, Math.max(1, parseInt(e.target.value) || 1))}
+                                                                className="w-16 text-center text-xs border border-gray-300 rounded px-1 py-0.5"
+                                                                min="1"
+                                                                max={producto.stock_actual}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* UOM */}
+                                                    <div className="text-center">
+                                                        {getUOM(producto)}
+                                                    </div>
+                                                    
+                                                    {/* Total */}
+                                                    <div className="text-right">
+                                                        <span className="text-sm font-bold text-gray-900">
+                                                            RD$ {producto.subtotal.toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <button
-                                            onClick={() => agregarAlCarrito(producto)}
-                                            disabled={!producto.disponibilidad || producto.stock_actual <= 0}
-                                            className={`w-full px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                                                producto.disponibilidad && producto.stock_actual > 0
-                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            }`}
+                                        
+                                        {/* Botón agregar producto */}
+                                        <div className="mt-4">
+                                            <button 
+                                                onClick={() => alert('Funcionalidad para agregar productos adicionales próximamente')}
+                                                className="text-amber-600 hover:text-amber-700 font-medium text-sm flex items-center cursor-pointer"
+                                            >
+                                                <span className="mr-1">+</span>
+                                                Agregar producto
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Sección de Recomendaciones Inteligentes */}
+                                    <div className="mb-8">
+                                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Recomendaciones Personalizadas</h2>
+                                        <RecomendacionesInteligentes 
+                                            contextProducts={productosRepetir}
+                                            compact={true}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Sidebar derecho - Resumen del pedido */}
+                                <div className="w-80 flex-shrink-0">
+                                    <div className="bg-gray-50 rounded-lg p-6 sticky top-6">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen del pedido</h3>
+                                        
+                                        {/* Desglose de costos */}
+                                        <div className="space-y-3 mb-6">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Subtotal:</span>
+                                                <span className="font-medium">RD$ {calcularTotalRepetir().subtotal.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">ITBIS 18%:</span>
+                                                <span className="font-medium">RD$ {calcularTotalRepetir().itbis.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+                                                <span className="text-gray-900">Total incl. ITBIS:</span>
+                                                <span className="text-amber-600">RD$ {calcularTotalRepetir().total.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Dirección de entrega */}
+                                        <div className="mb-6">
+                                            <h4 className="font-medium text-gray-900 mb-2">Dirección de entrega</h4>
+                                            <p className="text-sm text-gray-600 mb-2">
+                                                {pedidoSeleccionadoRepetir?.direccion_entrega || 'Dirección no especificada'}
+                                            </p>
+                                            <button 
+                                                onClick={() => alert('Funcionalidad para cambiar dirección próximamente')}
+                                                className="text-amber-600 hover:text-amber-700 text-sm font-medium cursor-pointer"
+                                            >
+                                                Cambiar Dirección
+                                            </button>
+                                        </div>
+                                        
+                                        {/* Botón confirmar */}
+                                        <button 
+                                            onClick={confirmarPedidoRepetido}
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold text-lg transition-colors cursor-pointer"
                                         >
-                                            {producto.disponibilidad && producto.stock_actual > 0
-                                                ? 'Agregar al Carrito'
-                                                : 'No Disponible'}
+                                            CONFIRMAR
                                         </button>
                                     </div>
-                                ))}
+                                </div>
                             </div>
                         </div>
                     </div>

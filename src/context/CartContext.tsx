@@ -2,6 +2,15 @@ import { createContext, useContext, useState, useEffect, ReactNode, useMemo } fr
 import { Producto, CartItem } from '../types';
 import { supabase } from '../services/supabase';
 
+interface DeliveryAddress {
+    calle: string;
+    ciudad: string;
+    provincia: string;
+    codigo_postal: string;
+    referencia?: string;
+    pais?: string;
+}
+
 interface CartContextType {
     items: CartItem[];
     addItem: (product: Producto, quantity?: number, options?: { 
@@ -22,6 +31,8 @@ interface CartContextType {
     totalWithDiscount: number;
     clearCart: () => void;
     itemCount: number;
+    deliveryAddress: DeliveryAddress | null;
+    setDeliveryAddress: (address: DeliveryAddress | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -33,10 +44,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return storedCart ? JSON.parse(storedCart) : [];
     });
 
+    const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress | null>(() => {
+        // Recuperar dirección de entrega desde localStorage al cargar la app
+        const storedAddress = localStorage.getItem('deliveryAddress');
+        return storedAddress ? JSON.parse(storedAddress) : null;
+    });
+
     // Efecto para guardar en localStorage cada vez que los ítems cambien
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(items));
     }, [items]);
+
+    // Efecto para guardar en localStorage cada vez que la dirección cambie
+    useEffect(() => {
+        if (deliveryAddress) {
+            localStorage.setItem('deliveryAddress', JSON.stringify(deliveryAddress));
+        } else {
+            localStorage.removeItem('deliveryAddress');
+        }
+    }, [deliveryAddress]);
 
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -182,7 +208,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         totalAmount,
         totalWithDiscount,
         clearCart,
-        itemCount
+        itemCount,
+        deliveryAddress,
+        setDeliveryAddress
     };
 
     return (

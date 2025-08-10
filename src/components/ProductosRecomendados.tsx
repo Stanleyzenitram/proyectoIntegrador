@@ -1,302 +1,261 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRecomendaciones } from '../hooks/useRecomendaciones';
-import { ProductoConScore } from '../types/recomendaciones';
-import { FaStar, FaHeart, FaShoppingCart, FaEye, FaFilter, FaSort } from 'react-icons/fa';
+import { FaStar, FaHeart, FaShoppingCart, FaEye, FaLightbulb, FaInfoCircle, FaCheck, FaRedo } from 'react-icons/fa';
+import { useCart } from '../context/CartContext';
 
 interface ProductosRecomendadosProps {
-    limit?: number;
-    showFilters?: boolean;
-    className?: string;
+    categoriaId?: number;
+    productoId?: number;
+    titulo?: string;
+    maxProductos?: number;
+    mostrarPrecios?: boolean;
+    mostrarAcciones?: boolean;
+    variante?: 'horizontal' | 'grid' | 'carousel';
 }
 
-const ProductosRecomendados: React.FC<ProductosRecomendadosProps> = ({ 
-    limit = 8, 
-    showFilters = true,
-    className = ''
-}) => {
-    const { 
-        recomendaciones, 
-        loadingRecomendaciones, 
-        marcarRecomendacionVista,
-        marcarRecomendacionClickeada,
-        registrarComportamiento
+export default function ProductosRecomendados({
+    categoriaId,
+    productoId,
+    titulo = 'Productos Recomendados',
+    maxProductos = 6,
+    mostrarPrecios = true,
+    mostrarAcciones = true,
+    variante = 'grid'
+}: ProductosRecomendadosProps) {
+    const [productos, setProductos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { addItem } = useCart();
+
+    const {
+        obtenerRecomendacionesPorCategoria,
+        obtenerRecomendacionesSimilares,
+        generarRecomendaciones
     } = useRecomendaciones();
 
-    const [filtroTipo, setFiltroTipo] = useState<string>('todos');
-    const [ordenamiento, setOrdenamiento] = useState<'score' | 'precio' | 'nombre'>('score');
-    const [mostrarFiltros, setMostrarFiltros] = useState(showFilters);
+    useEffect(() => {
+        cargarRecomendaciones();
+    }, [categoriaId, productoId]);
 
-    // Filtrar recomendaciones
-    const recomendacionesFiltradas = recomendaciones
-        .filter(rec => {
-            if (filtroTipo === 'todos') return true;
-            return rec.tipo_recomendacion === filtroTipo;
-        })
-        .sort((a, b) => {
-            switch (ordenamiento) {
-                case 'score':
-                    return b.score - a.score;
-                case 'precio':
-                    return (a.producto.precio || 0) - (b.producto.precio || 0);
-                case 'nombre':
-                    return (a.producto.nombre || '').localeCompare(b.producto.nombre || '');
-                default:
-                    return 0;
-            }
-        })
-        .slice(0, limit);
-
-    // Manejar vista de producto
-    const handleVerProducto = async (producto: any) => {
+    const cargarRecomendaciones = async () => {
         try {
-            // Registrar vista
-            await registrarComportamiento({
-                producto_id: producto.id_producto,
-                accion: 'vista',
-                cantidad: 1,
-                precio_unitario: producto.precio || 0
-            });
+            setLoading(true);
+            setError(null);
 
-            // Marcar recomendación como vista si existe
-            const recomendacion = recomendaciones.find(r => r.producto.id_producto === producto.id_producto);
-            if (recomendacion) {
-                await marcarRecomendacionVista(recomendacion.id!);
+            let recomendaciones: any[] = [];
+
+            if (productoId) {
+                // Obtener productos similares al producto actual
+                recomendaciones = await obtenerRecomendacionesSimilares(productoId);
+            } else if (categoriaId) {
+                // Obtener recomendaciones por categoría
+                recomendaciones = await obtenerRecomendacionesPorCategoria(categoriaId);
+            } else {
+                // Obtener recomendaciones generales
+                await generarRecomendaciones();
+                return; // El hook maneja el estado
             }
+
+            // Limitar el número de productos
+            setProductos(recomendaciones.slice(0, maxProductos));
+
         } catch (error) {
-            console.error('Error al registrar vista:', error);
+            console.error('Error al cargar recomendaciones:', error);
+            setError('No se pudieron cargar las recomendaciones');
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Manejar agregar al carrito
-    const handleAgregarAlCarrito = async (producto: any) => {
-        try {
-            await registrarComportamiento({
-                producto_id: producto.id_producto,
-                accion: 'agregado_carrito',
-                cantidad: 1,
-                precio_unitario: producto.precio || 0
-            });
-
-            // Marcar recomendación como clickeada si existe
-            const recomendacion = recomendaciones.find(r => r.producto.id_producto === producto.id_producto);
-            if (recomendacion) {
-                await marcarRecomendacionClickeada(recomendacion.id!);
-            }
-        } catch (error) {
-            console.error('Error al agregar al carrito:', error);
-        }
+    const agregarAlCarrito = (producto: any) => {
+        addItem({
+            id: producto.id_producto,
+            name: producto.nombre_producto,
+            price: producto.precio,
+            image: producto.imagen,
+            quantity: 1,
+            stock: producto.stock_actual,
+            metros_por_caja: producto.metros_por_caja || 0
+        });
     };
 
-    // Manejar favorito
-    const handleFavorito = async (producto: any) => {
-        try {
-            await registrarComportamiento({
-                producto_id: producto.id_producto,
-                accion: 'favorito',
-                cantidad: 1,
-                precio_unitario: producto.precio || 0
-            });
-        } catch (error) {
-            console.error('Error al marcar favorito:', error);
-        }
+    const formatearPrecio = (precio: number) => {
+        return new Intl.NumberFormat('es-DO', {
+            style: 'currency',
+            currency: 'DOP'
+        }).format(precio);
     };
 
-    // Obtener color del score
-    const getScoreColor = (score: number) => {
-        if (score >= 0.8) return 'text-green-600';
-        if (score >= 0.6) return 'text-yellow-600';
-        if (score >= 0.4) return 'text-orange-600';
-        return 'text-red-600';
-    };
-
-    // Obtener texto del tipo de recomendación
-    const getTipoRecomendacionText = (tipo: string) => {
-        switch (tipo) {
-            case 'alta_preferencia': return 'Alta Preferencia';
-            case 'media_preferencia': return 'Media Preferencia';
-            case 'categoria': return 'Por Categoría';
-            case 'estilo': return 'Por Estilo';
-            case 'material': return 'Por Material';
-            case 'colaborativo': return 'Colaborativo';
-            case 'popular': return 'Popular';
-            default: return 'General';
-        }
-    };
-
-    if (loadingRecomendaciones) {
+    if (loading) {
         return (
-            <div className={`flex justify-center items-center p-8 ${className}`}>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600 text-sm">Cargando recomendaciones...</p>
             </div>
         );
     }
 
-    if (recomendacionesFiltradas.length === 0) {
+    if (error) {
         return (
-            <div className={`text-center p-8 ${className}`}>
-                <div className="text-gray-500 mb-4">
-                    <FaHeart className="mx-auto h-16 w-16 text-gray-300" />
+            <div className="text-center py-6">
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <p className="text-red-800 text-sm">{error}</p>
+                    <button 
+                        onClick={cargarRecomendaciones}
+                        className="mt-2 bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors cursor-pointer text-xs"
+                    >
+                        Reintentar
+                    </button>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No hay recomendaciones disponibles
-                </h3>
-                <p className="text-gray-500">
-                    Configura tus preferencias para recibir recomendaciones personalizadas.
-                </p>
             </div>
         );
     }
 
-    return (
-        <div className={className}>
-            {/* Header con filtros */}
-            {mostrarFiltros && (
-                <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex items-center space-x-4">
-                            <button
-                                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                                className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-                            >
-                                <FaFilter />
-                                <span>Filtros</span>
-                            </button>
-                            
-                            <select
-                                value={filtroTipo}
-                                onChange={(e) => setFiltroTipo(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            >
-                                <option value="todos">Todos los tipos</option>
-                                <option value="alta_preferencia">Alta Preferencia</option>
-                                <option value="media_preferencia">Media Preferencia</option>
-                                <option value="categoria">Por Categoría</option>
-                                <option value="estilo">Por Estilo</option>
-                                <option value="material">Por Material</option>
-                                <option value="colaborativo">Colaborativo</option>
-                                <option value="popular">Popular</option>
-                            </select>
-                        </div>
+    if (productos.length === 0) {
+        return null; // No mostrar nada si no hay productos
+    }
 
-                        <div className="flex items-center space-x-2">
-                            <FaSort className="text-gray-400" />
-                            <select
-                                value={ordenamiento}
-                                onChange={(e) => setOrdenamiento(e.target.value as any)}
-                                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            >
-                                <option value="score">Por Relevancia</option>
-                                <option value="precio">Por Precio</option>
-                                <option value="nombre">Por Nombre</option>
-                            </select>
+    const renderProducto = (producto: any) => (
+        <div key={producto.id_producto} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden">
+            <div className="relative">
+                <img
+                    src={producto.imagen || '/placeholder-image.svg'}
+                    alt={producto.nombre_producto}
+                    className="w-full h-32 object-cover"
+                />
+                
+                {/* Badges */}
+                <div className="absolute top-2 left-2 flex flex-col space-y-1">
+                    {producto.score_recomendacion && (
+                        <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center">
+                            <FaStar className="mr-1" />
+                            {producto.score_recomendacion}
                         </div>
+                    )}
+                    {producto.descuento && producto.descuento > 0 && (
+                        <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            -{producto.descuento}%
+                        </div>
+                    )}
+                </div>
+
+                {/* Botón de información */}
+                <button
+                    className="absolute top-2 right-2 bg-white/80 text-gray-600 p-1 rounded-full hover:bg-white transition-colors"
+                    title="Ver información"
+                >
+                    <FaInfoCircle className="w-4 h-4" />
+                </button>
+            </div>
+
+            <div className="p-3">
+                <h4 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
+                    {producto.nombre_producto}
+                </h4>
+                
+                {mostrarPrecios && (
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-lg font-bold text-amber-600">
+                            {formatearPrecio(producto.precio)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                            Stock: {producto.stock_actual}
+                        </span>
                     </div>
+                )}
+
+                {/* Información adicional */}
+                <div className="text-xs text-gray-600 space-y-1 mb-3">
+                    {producto.colorDom && <p>Color: {producto.colorDom}</p>}
+                    {producto.superficie && <p>Superficie: {producto.superficie}</p>}
+                    {producto.durabilidad && <p>Durabilidad: PEI {producto.durabilidad}</p>}
+                    {producto.razon_recomendacion && (
+                        <p className="text-blue-600 font-medium">
+                            {producto.razon_recomendacion}
+                        </p>
+                    )}
                 </div>
-            )}
 
-            {/* Grid de productos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {recomendacionesFiltradas.map((recomendacion) => {
-                    const producto = recomendacion.producto;
-                    
-                    return (
-                        <div 
-                            key={producto.id_producto} 
-                            className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
+                {mostrarAcciones && (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => agregarAlCarrito(producto)}
+                            className="flex-1 bg-amber-600 text-white py-2 px-3 rounded-md hover:bg-amber-700 transition-colors text-xs flex items-center justify-center"
                         >
-                            {/* Imagen del producto */}
-                            <div className="relative">
-                                <img
-                                    src={producto.imagen_url || '/placeholder-image.svg'}
-                                    alt={producto.nombre}
-                                    className="w-full h-48 object-cover"
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = '/placeholder-image.svg';
-                                    }}
-                                />
-                                
-                                {/* Badge de score */}
-                                <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 shadow-md">
-                                    <div className={`flex items-center space-x-1 text-xs font-semibold ${getScoreColor(recomendacion.score)}`}>
-                                        <FaStar className="w-3 h-3" />
-                                        <span>{(recomendacion.score * 100).toFixed(0)}%</span>
-                                    </div>
-                                </div>
-
-                                {/* Badge de tipo de recomendación */}
-                                <div className="absolute top-2 left-2 bg-amber-600 text-white text-xs px-2 py-1 rounded-md">
-                                    {getTipoRecomendacionText(recomendacion.tipo_recomendacion)}
-                                </div>
-                            </div>
-
-                            {/* Información del producto */}
-                            <div className="p-4">
-                                <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                                    {producto.nombre}
-                                </h3>
-                                
-                                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                                    {producto.descripcion}
-                                </p>
-
-                                {/* Razón de la recomendación */}
-                                <div className="mb-3 p-2 bg-blue-50 rounded-md">
-                                    <p className="text-xs text-blue-700">
-                                        {recomendacion.razon}
-                                    </p>
-                                </div>
-
-                                {/* Precio */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className="text-lg font-bold text-amber-600">
-                                        ${producto.precio?.toFixed(2) || '0.00'}
-                                    </span>
-                                    <span className="text-sm text-gray-500">
-                                        Stock: {producto.stock || 0}
-                                    </span>
-                                </div>
-
-                                {/* Botones de acción */}
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={() => handleVerProducto(producto)}
-                                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
-                                    >
-                                        <FaEye className="w-3 h-3" />
-                                        <span>Ver</span>
-                                    </button>
-                                    
-                                    <button
-                                        onClick={() => handleAgregarAlCarrito(producto)}
-                                        className="flex-1 bg-amber-600 text-white px-3 py-2 rounded-md text-sm hover:bg-amber-700 transition-colors flex items-center justify-center space-x-1"
-                                    >
-                                        <FaShoppingCart className="w-3 h-3" />
-                                        <span>Carrito</span>
-                                    </button>
-                                    
-                                    <button
-                                        onClick={() => handleFavorito(producto)}
-                                        className="px-3 py-2 text-red-600 hover:text-red-700 transition-colors"
-                                        title="Agregar a favoritos"
-                                    >
-                                        <FaHeart className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Información adicional */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-                <p>
-                    Las recomendaciones se basan en tus preferencias, historial de navegación y comportamiento de compra.
-                </p>
+                            <FaShoppingCart className="mr-1" />
+                            Agregar
+                        </button>
+                        <button className="bg-gray-100 text-gray-600 py-2 px-3 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center justify-center">
+                            <FaEye className="mr-1" />
+                            Ver
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
-};
 
-export default ProductosRecomendados;
+    if (variante === 'horizontal') {
+        return (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center mb-4">
+                    <FaLightbulb className="text-blue-500 text-lg mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-900">{titulo}</h3>
+                </div>
+                
+                <div className="flex space-x-4 overflow-x-auto pb-2">
+                    {productos.map(renderProducto)}
+                </div>
+            </div>
+        );
+    }
+
+    if (variante === 'carousel') {
+        return (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                        <FaLightbulb className="text-blue-500 text-lg mr-2" />
+                        <h3 className="text-lg font-semibold text-gray-900">{titulo}</h3>
+                    </div>
+                    
+                    <button
+                        onClick={cargarRecomendaciones}
+                        className="text-blue-600 hover:text-blue-700 transition-colors"
+                        title="Actualizar recomendaciones"
+                    >
+                        <FaRedo className="w-4 h-4" />
+                    </button>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {productos.map(renderProducto)}
+                </div>
+            </div>
+        );
+    }
+
+    // Variante grid (por defecto)
+    return (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                    <FaLightbulb className="text-blue-500 text-lg mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-900">{titulo}</h3>
+                </div>
+                
+                <button
+                    onClick={cargarRecomendaciones}
+                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                    title="Actualizar recomendaciones"
+                >
+                                            <FaRedo className="w-4 h-4" />
+                </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {productos.map(renderProducto)}
+            </div>
+        </div>
+    );
+}

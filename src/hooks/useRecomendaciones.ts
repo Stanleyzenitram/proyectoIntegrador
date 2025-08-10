@@ -1,301 +1,429 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { RecomendacionesService } from '../services/recomendacionesService';
-import {
-    PreferenciasUsuario,
-    HistorialNavegacion,
-    ComportamientoCompra,
-    ProductoRecomendado,
-    ProductoConScore,
-    EstadisticasUsuario
-} from '../types/recomendaciones';
+import { supabase } from '../services/supabase';
 
-export const useRecomendaciones = () => {
+export interface ProductoRecomendado {
+    id_producto: number;
+    nombre_producto: string;
+    imagen: string;
+    precio: number;
+    stock_actual: number;
+    metros_por_caja?: number;
+    descripcion?: string;
+    id_categoria?: number;
+    id_estilo?: number;
+    id_materiales?: number;
+    descuento?: number;
+    score_recomendacion?: number;
+    razon_recomendacion?: string;
+    colorDom?: string;
+    superficie?: string;
+    durabilidad?: number;
+    disponibilidad?: boolean;
+}
+
+export interface Preferencia {
+    id?: string;
+    idClientes: number;
+    idEstilo?: number;
+    color?: string;
+    idMaterial?: number;
+    idCategoria?: number;
+    durabilidad?: number;
+    superficie?: string;
+    enTendencia?: boolean;
+    precMin?: number;
+    precMax?: number;
+    usoEspecifico?: string;
+}
+
+export interface RecomendacionContext {
+    productosComprados?: any[];
+    preferenciasEspecificas?: Preferencia;
+}
+
+export const useRecomendaciones = (context?: RecomendacionContext) => {
+    const [productosRecomendados, setProductosRecomendados] = useState<ProductoRecomendado[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
-    
-    // Estados para preferencias
-    const [preferencias, setPreferencias] = useState<PreferenciasUsuario | null>(null);
-    const [loadingPreferencias, setLoadingPreferencias] = useState(false);
-    
-    // Estados para recomendaciones
-    const [recomendaciones, setRecomendaciones] = useState<ProductoConScore[]>([]);
-    const [loadingRecomendaciones, setLoadingRecomendaciones] = useState(false);
-    
-    // Estados para estadísticas
-    const [estadisticas, setEstadisticas] = useState<EstadisticasUsuario | null>(null);
-    const [loadingEstadisticas, setLoadingEstadisticas] = useState(false);
-    
-    // Estados para historial
-    const [historial, setHistorial] = useState<HistorialNavegacion[]>([]);
-    const [loadingHistorial, setLoadingHistorial] = useState(false);
 
-    // ===== PREFERENCIAS =====
-    
-    /**
-     * Cargar preferencias del usuario
-     */
-    const cargarPreferencias = useCallback(async () => {
-        if (!user?.id) return;
-        
-        setLoadingPreferencias(true);
-        try {
-            const data = await RecomendacionesService.obtenerPreferencias(user.id);
-            setPreferencias(data);
-        } catch (error) {
-            console.error('Error al cargar preferencias:', error);
-        } finally {
-            setLoadingPreferencias(false);
-        }
-    }, [user?.id]);
+    const generarRecomendaciones = useCallback(async () => {
+        if (!user) return;
 
-    /**
-     * Guardar preferencias del usuario
-     */
-    const guardarPreferencias = useCallback(async (nuevasPreferencias: PreferenciasUsuario) => {
-        if (!user?.id) return false;
-        
         try {
-            const success = await RecomendacionesService.guardarPreferencias({
-                ...nuevasPreferencias,
-                usuario_id: user.id
-            });
-            
-            if (success) {
-                setPreferencias(nuevasPreferencias);
-                // Recargar recomendaciones después de cambiar preferencias
-                await cargarRecomendaciones();
+            setLoading(true);
+            setError(null);
+
+            // Obtener ID del cliente
+            const { data: clienteData, error: clienteError } = await supabase
+                .from('clientes')
+                .select('id_cliente')
+                .eq('uuid', user.id)
+                .single();
+
+            if (clienteError || !clienteData) {
+                throw new Error('No se pudo obtener información del cliente');
             }
-            
-            return success;
-        } catch (error) {
-            console.error('Error al guardar preferencias:', error);
-            return false;
-        }
-    }, [user?.id, cargarPreferencias]);
 
-    // ===== RECOMENDACIONES =====
-    
-    /**
-     * Cargar recomendaciones para el usuario
-     */
-    const cargarRecomendaciones = useCallback(async (limit: number = 10) => {
-        if (!user?.id) return;
-        
-        setLoadingRecomendaciones(true);
-        try {
-            const data = await RecomendacionesService.generarRecomendaciones(user.id, limit);
-            setRecomendaciones(data);
-        } catch (error) {
-            console.error('Error al cargar recomendaciones:', error);
-        } finally {
-            setLoadingRecomendaciones(false);
-        }
-    }, [user?.id]);
+            const clienteId = clienteData.id_cliente;
 
-    /**
-     * Marcar recomendación como vista
-     */
-    const marcarRecomendacionVista = useCallback(async (recomendacionId: number) => {
-        if (!user?.id) return false;
-        
-        try {
-            return await RecomendacionesService.marcarRecomendacionVista(recomendacionId, user.id);
-        } catch (error) {
-            console.error('Error al marcar como vista:', error);
-            return false;
-        }
-    }, [user?.id]);
+            // Obtener preferencias del cliente
+            let preferencias: Preferencia[] = [];
+            if (context?.preferenciasEspecificas) {
+                preferencias = [context.preferenciasEspecificas];
+            } else {
+                const { data: prefData, error: prefError } = await supabase
+                    .from('preferenciasProd')
+                    .select('*')
+                    .eq('idClientes', clienteId);
 
-    /**
-     * Marcar recomendación como clickeada
-     */
-    const marcarRecomendacionClickeada = useCallback(async (recomendacionId: number) => {
-        if (!user?.id) return false;
-        
-        try {
-            return await RecomendacionesService.marcarRecomendacionClickeada(recomendacionId, user.id);
-        } catch (error) {
-            console.error('Error al marcar como clickeada:', error);
-            return false;
-        }
-    }, [user?.id]);
+                if (prefError) {
+                    console.warn('No se pudieron cargar preferencias:', prefError);
+                }
+                preferencias = prefData || [];
+            }
 
-    // ===== HISTORIAL Y COMPORTAMIENTO =====
-    
-    /**
-     * Registrar vista de producto
-     */
-    const registrarVistaProducto = useCallback(async (
-        productoId: number, 
-        accion: HistorialNavegacion['accion'] = 'vista',
-        tiempoVista?: number
-    ) => {
-        if (!user?.id) return false;
-        
-        try {
-            const success = await RecomendacionesService.registrarVistaProducto(
-                user.id, 
-                productoId, 
-                accion, 
-                tiempoVista
+            // Obtener productos para recomendaciones
+            let productosComprados: any[] = context?.productosComprados || [];
+
+            if (productosComprados.length === 0) {
+                // Obtener historial de compras del cliente
+                const { data: facturasData } = await supabase
+                    .from('facturas')
+                    .select('id_factura')
+                    .eq('id_cliente', clienteId);
+
+                if (facturasData && facturasData.length > 0) {
+                    const facturasIds = facturasData.map(f => f.id_factura);
+
+                    const { data: detallesData } = await supabase
+                        .from('detalles_factura')
+                        .select(`
+                            id_producto,
+                            productos (
+                                id_producto,
+                                nombre_producto,
+                                id_categoria,
+                                id_estilo,
+                                id_materiales
+                            )
+                        `)
+                        .in('id_factura', facturasIds);
+
+                    if (detallesData) {
+                        productosComprados = detallesData.map(detalle => ({
+                            id_producto: detalle.id_producto,
+                            cantidad: 1,
+                            productos: [detalle.productos]
+                        }));
+                    }
+                }
+            }
+
+            // Generar recomendaciones personalizadas
+            const recomendaciones = await generarRecomendacionesPersonalizadas(
+                preferencias,
+                productosComprados,
+                clienteId
             );
-            
-            if (success) {
-                // Recargar historial y recomendaciones
-                await Promise.all([
-                    cargarHistorial(),
-                    cargarRecomendaciones()
-                ]);
-            }
-            
-            return success;
-        } catch (error) {
-            console.error('Error al registrar vista:', error);
-            return false;
-        }
-    }, [user?.id, cargarHistorial, cargarRecomendaciones]);
 
-    /**
-     * Registrar comportamiento de compra
-     */
-    const registrarComportamiento = useCallback(async (
-        comportamiento: Omit<ComportamientoCompra, 'id' | 'fecha_accion' | 'usuario_id'>
-    ) => {
-        if (!user?.id) return false;
-        
+            setProductosRecomendados(recomendaciones);
+
+        } catch (error) {
+            console.error('Error al generar recomendaciones:', error);
+            setError(error instanceof Error ? error.message : 'Error desconocido');
+        } finally {
+            setLoading(false);
+        }
+    }, [user, context]);
+
+    const generarRecomendacionesPersonalizadas = async (
+        preferencias: Preferencia[],
+        productosComprados: any[],
+        clienteId: number
+    ): Promise<ProductoRecomendado[]> => {
         try {
-            const success = await RecomendacionesService.registrarComportamiento({
-                ...comportamiento,
-                usuario_id: user.id
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0);
+
+            // Aplicar filtros basados en preferencias
+            if (preferencias.length > 0) {
+                const preferencia = preferencias[0];
+
+                if (preferencia.idCategoria) {
+                    query = query.eq('id_categoria', preferencia.idCategoria);
+                }
+                if (preferencia.idEstilo) {
+                    query = query.eq('id_estilo', preferencia.idEstilo);
+                }
+                if (preferencia.idMaterial) {
+                    query = query.eq('id_materiales', preferencia.idMaterial);
+                }
+                if (preferencia.precMin && preferencia.precMax) {
+                    query = query.gte('precio', preferencia.precMin).lte('precio', preferencia.precMax);
+                }
+                if (preferencia.durabilidad && preferencia.durabilidad > 0) {
+                    query = query.gte('durabilidad', preferencia.durabilidad);
+                }
+                if (preferencia.color) {
+                    query = query.ilike('colorDom', `%${preferencia.color}%`);
+                }
+                if (preferencia.superficie) {
+                    query = query.ilike('superficie', `%${preferencia.superficie}%`);
+                }
+            }
+
+            // Obtener productos base
+            const { data: productosBase, error: productosError } = await query.limit(30);
+
+            if (productosError) throw productosError;
+            if (!productosBase) return [];
+
+            // Obtener productos relacionados
+            const productosRelacionados = await obtenerProductosRelacionados(productosComprados);
+
+            // Combinar y puntuar productos
+            const productosPuntuados = productosBase.map(producto => {
+                let score = 0;
+                let razones: string[] = [];
+
+                // Puntuar por preferencias
+                if (preferencias.length > 0) {
+                    score += 50;
+                    razones.push('Basado en tus preferencias');
+                }
+
+                // Puntuar por productos relacionados
+                if (productosRelacionados.includes(producto.id_producto)) {
+                    score += 30;
+                    razones.push('Relacionado con compras anteriores');
+                }
+
+                // Puntuar por descuento
+                if (producto.descuento && producto.descuento > 0) {
+                    score += 20;
+                    razones.push('Producto en oferta');
+                }
+
+                // Puntuar por tendencia
+                if (preferencias.some(p => p.enTendencia)) {
+                    score += 15;
+                    razones.push('Producto en tendencia');
+                }
+
+                // Puntuar por stock
+                score += Math.min(10, producto.stock_actual / 5);
+
+                // Puntuar por precio
+                if (preferencias.length > 0 && preferencias[0].precMin && preferencias[0].precMax) {
+                    const precioMedio = (preferencias[0].precMin + preferencias[0].precMax) / 2;
+                    const diferenciaPrecio = Math.abs(producto.precio - precioMedio);
+                    score += Math.max(0, 15 - diferenciaPrecio / 100);
+                }
+
+                return {
+                    ...producto,
+                    score_recomendacion: score,
+                    razon_recomendacion: razones.join(', ')
+                };
             });
-            
-            if (success) {
-                // Recargar estadísticas y recomendaciones
-                await Promise.all([
-                    cargarEstadisticas(),
-                    cargarRecomendaciones()
-                ]);
-            }
-            
-            return success;
+
+            // Ordenar por score y tomar los mejores
+            return productosPuntuados
+                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                .slice(0, 12);
+
         } catch (error) {
-            console.error('Error al registrar comportamiento:', error);
+            console.error('Error al generar recomendaciones personalizadas:', error);
+            return [];
+        }
+    };
+
+    const obtenerProductosRelacionados = async (productosComprados: any[]): Promise<number[]> => {
+        try {
+            const productosIds = productosComprados.map(p => p.productos?.id_producto).filter(Boolean);
+
+            if (productosIds.length === 0) return [];
+
+            const { data: relacionados } = await supabase
+                .from('productosRelacionados')
+                .select('idProdAsoc')
+                .in('idProdBase', productosIds);
+
+            return relacionados?.map(r => r.idProdAsoc) || [];
+
+        } catch (error) {
+            console.error('Error al obtener productos relacionados:', error);
+            return [];
+        }
+    };
+
+    const actualizarPreferencias = useCallback(async (nuevasPreferencias: Partial<Preferencia>) => {
+        if (!user) return false;
+
+        try {
+            const { data: clienteData } = await supabase
+                .from('clientes')
+                .select('id_cliente')
+                .eq('uuid', user.id)
+                .single();
+
+            if (!clienteData) return false;
+
+            const { error } = await supabase
+                .from('preferenciasProd')
+                .upsert({
+                    idClientes: clienteData.id_cliente,
+                    ...nuevasPreferencias
+                });
+
+            if (error) throw error;
+
+            // Regenerar recomendaciones con las nuevas preferencias
+            await generarRecomendaciones();
+            return true;
+
+        } catch (error) {
+            console.error('Error al actualizar preferencias:', error);
             return false;
         }
-    }, [user?.id, cargarEstadisticas, cargarRecomendaciones]);
+    }, [user, generarRecomendaciones]);
 
-    /**
-     * Cargar historial de navegación
-     */
-    const cargarHistorial = useCallback(async (limit: number = 50) => {
-        if (!user?.id) return;
-        
-        setLoadingHistorial(true);
+    const obtenerRecomendacionesPorCategoria = useCallback(async (categoriaId: number) => {
         try {
-            const data = await RecomendacionesService.obtenerHistorialNavegacion(user.id, limit);
-            setHistorial(data);
-        } catch (error) {
-            console.error('Error al cargar historial:', error);
-        } finally {
-            setLoadingHistorial(false);
-        }
-    }, [user?.id]);
+            const { data, error } = await supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('id_categoria', categoriaId)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0)
+                .limit(8);
 
-    // ===== ESTADÍSTICAS =====
-    
-    /**
-     * Cargar estadísticas del usuario
-     */
-    const cargarEstadisticas = useCallback(async () => {
-        if (!user?.id) return;
-        
-        setLoadingEstadisticas(true);
+            if (error) throw error;
+
+            return data?.map(producto => ({
+                ...producto,
+                score_recomendacion: 40,
+                razon_recomendacion: 'Recomendado por categoría'
+            })) || [];
+
+        } catch (error) {
+            console.error('Error al obtener recomendaciones por categoría:', error);
+            return [];
+        }
+    }, []);
+
+    const obtenerRecomendacionesSimilares = useCallback(async (productoId: number) => {
         try {
-            const data = await RecomendacionesService.obtenerEstadisticasUsuario(user.id);
-            setEstadisticas(data);
-        } catch (error) {
-            console.error('Error al cargar estadísticas:', error);
-        } finally {
-            setLoadingEstadisticas(false);
-        }
-    }, [user?.id]);
+            // Obtener características del producto base
+            const { data: productoBase } = await supabase
+                .from('productos')
+                .select('id_categoria, id_estilo, id_materiales, precio, colorDom')
+                .eq('id_producto', productoId)
+                .single();
 
-    // ===== EFECTOS =====
-    
+            if (!productoBase) return [];
+
+            // Buscar productos similares
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0)
+                .neq('id_producto', productoId);
+
+            // Aplicar filtros de similitud
+            if (productoBase.id_categoria) {
+                query = query.eq('id_categoria', productoBase.id_categoria);
+            }
+            if (productoBase.id_estilo) {
+                query = query.eq('id_estilo', productoBase.id_estilo);
+            }
+            if (productoBase.id_materiales) {
+                query = query.eq('id_materiales', productoBase.id_materiales);
+            }
+
+            const { data, error } = await query.limit(6);
+
+            if (error) throw error;
+
+            return data?.map(producto => ({
+                ...producto,
+                score_recomendacion: 35,
+                razon_recomendacion: 'Producto similar'
+            })) || [];
+
+        } catch (error) {
+            console.error('Error al obtener productos similares:', error);
+            return [];
+        }
+    }, []);
+
     useEffect(() => {
-        if (user?.id) {
-            // Cargar datos iniciales
-            Promise.all([
-                cargarPreferencias(),
-                cargarRecomendaciones(),
-                cargarHistorial(),
-                cargarEstadisticas()
-            ]);
+        if (user) {
+            generarRecomendaciones();
         }
-    }, [user?.id, cargarPreferencias, cargarRecomendaciones, cargarHistorial, cargarEstadisticas]);
-
-    // ===== FUNCIONES DE UTILIDAD =====
-    
-    /**
-     * Obtener productos recomendados filtrados por tipo
-     */
-    const obtenerRecomendacionesPorTipo = useCallback((tipo: string) => {
-        return recomendaciones.filter(r => r.tipo_recomendacion === tipo);
-    }, [recomendaciones]);
-
-    /**
-     * Obtener productos de alta preferencia
-     */
-    const obtenerAltaPreferencia = useCallback(() => {
-        return recomendaciones.filter(r => r.score > 0.7);
-    }, [recomendaciones]);
-
-    /**
-     * Verificar si un producto está en el historial
-     */
-    const productoEnHistorial = useCallback((productoId: number) => {
-        return historial.some(h => h.producto_id === productoId);
-    }, [historial]);
-
-    /**
-     * Obtener frecuencia de vista de un producto
-     */
-    const obtenerFrecuenciaProducto = useCallback((productoId: number) => {
-        return historial.filter(h => h.producto_id === productoId).length;
-    }, [historial]);
+    }, [user, generarRecomendaciones]);
 
     return {
-        // Estados
-        preferencias,
-        recomendaciones,
-        estadisticas,
-        historial,
-        loadingPreferencias,
-        loadingRecomendaciones,
-        loadingEstadisticas,
-        loadingHistorial,
-        
-        // Funciones de preferencias
-        cargarPreferencias,
-        guardarPreferencias,
-        
-        // Funciones de recomendaciones
-        cargarRecomendaciones,
-        marcarRecomendacionVista,
-        marcarRecomendacionClickeada,
-        
-        // Funciones de historial y comportamiento
-        registrarVistaProducto,
-        registrarComportamiento,
-        cargarHistorial,
-        
-        // Funciones de estadísticas
-        cargarEstadisticas,
-        
-        // Funciones de utilidad
-        obtenerRecomendacionesPorTipo,
-        obtenerAltaPreferencia,
-        productoEnHistorial,
-        obtenerFrecuenciaProducto
+        productosRecomendados,
+        loading,
+        error,
+        generarRecomendaciones,
+        actualizarPreferencias,
+        obtenerRecomendacionesPorCategoria,
+        obtenerRecomendacionesSimilares
     };
 };

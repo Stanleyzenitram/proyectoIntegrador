@@ -109,10 +109,11 @@ export default function Preferencias() {
 
             if (!clienteData) return;
 
-            setPreferencias((prev) => ({
-                ...prev,
+            const nuevasPreferencias = {
+                ...preferencias,
                 idClientes: clienteData.id_cliente
-            }));
+            };
+            setPreferencias(nuevasPreferencias);
         } catch (error) {
             console.error('Error al cargar preferencias:', error);
         } finally {
@@ -123,6 +124,12 @@ export default function Preferencias() {
     const handleSave = async () => {
         try {
             setSaving(true);
+
+            // Validaciones básicas
+            if (!preferencias.usoEspecifico) {
+                alert('Por favor selecciona un uso específico');
+                return;
+            }
 
             // 1️⃣ Guardar en `preferenciasProd`
             const datosPreferencias = {
@@ -211,58 +218,58 @@ export default function Preferencias() {
                 return;
             }
             
-                    // Ahora buscar en usoXpref usando el idUso y luego verificar que la preferencia pertenezca al cliente
-        const { data: usoXprefData, error: errorUsoXpref } = await supabase
-            .from('usoXpref')
-            .select(`
-                idPref,
-                preferenciasProd (
-                    idClientes,
-                    idEstilo,
-                    color,
-                    idMaterial,
-                    idCategoria,
-                    durabilidad,
-                    superficie,
-                    enTendencia,
-                    precMin,
-                    precMax
-                )
-            `)
-            .eq('idUso', usoData.id);
+            // Ahora buscar en usoXpref usando el idUso y luego verificar que la preferencia pertenezca al cliente
+            const { data: usoXprefData, error: errorUsoXpref } = await supabase
+                .from('usoXpref')
+                .select(`
+                    idPref,
+                    preferenciasProd (
+                        idClientes,
+                        idEstilo,
+                        color,
+                        idMaterial,
+                        idCategoria,
+                        durabilidad,
+                        superficie,
+                        enTendencia,
+                        precMin,
+                        precMax
+                    )
+                `)
+                .eq('idUso', usoData.id);
             
-        if (errorUsoXpref) {
-            console.error('Error al buscar en usoXpref:', errorUsoXpref);
-            return;
-        }
-        
-        // Filtrar solo las preferencias del cliente actual
-        const preferenciasCliente = usoXprefData?.filter(item => 
-            item.preferenciasProd && Array.isArray(item.preferenciasProd) && 
-            item.preferenciasProd.length > 0 && 
-            item.preferenciasProd[0].idClientes === preferencias.idClientes
-        );
-        
-        console.log('Datos encontrados:', preferenciasCliente);
-        
-        if (preferenciasCliente && preferenciasCliente.length > 0) {
-            // Cargar la primera preferencia encontrada
-            const pref = preferenciasCliente[0].preferenciasProd[0];
-            if (pref) {
-                setPreferencias({
-                    ...preferencias,
-                    idEstilo: pref.idEstilo || 0,
-                    color: pref.color || '',
-                    idMaterial: pref.idMaterial || 0,
-                    idCategoria: pref.idCategoria || 0,
-                    durabilidad: pref.durabilidad || 0,
-                    superficie: pref.superficie || '',
-                    enTendencia: pref.enTendencia || false,
-                    precMin: pref.precMin || 0,
-                    precMax: pref.precMax || 10000
-                });
+            if (errorUsoXpref) {
+                console.error('Error al buscar en usoXpref:', errorUsoXpref);
+                return;
             }
-        } else {
+            
+            // Filtrar solo las preferencias del cliente actual
+            const preferenciasCliente = usoXprefData?.filter(item => 
+                item.preferenciasProd && Array.isArray(item.preferenciasProd) && 
+                item.preferenciasProd.length > 0 && 
+                item.preferenciasProd[0].idClientes === preferencias.idClientes
+            );
+            
+            console.log('Datos encontrados:', preferenciasCliente);
+            
+            if (preferenciasCliente && preferenciasCliente.length > 0) {
+                // Cargar la primera preferencia encontrada
+                const pref = preferenciasCliente[0].preferenciasProd[0];
+                if (pref) {
+                    setPreferencias({
+                        ...preferencias,
+                        idEstilo: pref.idEstilo || 0,
+                        color: pref.color || '',
+                        idMaterial: pref.idMaterial || 0,
+                        idCategoria: pref.idCategoria || 0,
+                        durabilidad: pref.durabilidad || 0,
+                        superficie: pref.superficie || '',
+                        enTendencia: pref.enTendencia || false,
+                        precMin: pref.precMin || 0,
+                        precMax: pref.precMax || 10000
+                    });
+                }
+            } else {
                 // Limpiar el formulario si no hay preferencias para ese uso
                 setPreferencias({
                     ...preferencias,
@@ -294,20 +301,22 @@ export default function Preferencias() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-5">
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gray-50 pt-3">
+            <div className="container mx-auto px-4 py-4">
                 <div className="max-w-6xl mx-auto">
-                    <div className="bg-white rounded-lg shadow-lg p-8">
-                        <div className="flex items-center mb-8">
-                            <FontAwesomeIcon icon={faHeart} className="text-amber-500 text-3xl mr-4" />
-                            <h1 className="text-3xl font-bold text-gray-800">Mis Preferencias de Cerámicas</h1>
+                    {/* Header principal */}
+                    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                        <div className="flex items-center mb-6">
+                            <FontAwesomeIcon icon={faHeart} className="text-amber-500 text-2xl mr-3" />
+                            <h1 className="text-2xl font-bold text-gray-800">Mis Preferencias de Cerámicas</h1>
                         </div>
 
-                        <p className="text-gray-600 mb-8">
+                        <p className="text-gray-600 mb-6 text-sm">
                             Configura tus preferencias específicas para recibir recomendaciones personalizadas de cerámicas que se adapten a tu proyecto.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Formulario de preferencias */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Uso específico */}
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -323,7 +332,7 @@ export default function Preferencias() {
                                             cargarPreferenciasPorUso(usoSeleccionado);
                                         }
                                     }}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar uso específico</option>
                                     <option value="Piso de baño">Piso de baño</option>
@@ -355,7 +364,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.idCategoria || ''}
                                     onChange={(e) => setPreferencias({...preferencias, idCategoria: e.target.value ? Number(e.target.value) : undefined})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar categoría</option>
                                     {categorias.map((cat) => (
@@ -374,7 +383,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.idMaterial || ''}
                                     onChange={(e) => setPreferencias({...preferencias, idMaterial: e.target.value ? Number(e.target.value) : undefined})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar material</option>
                                     {materiales.map((mat) => (
@@ -393,7 +402,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.idEstilo || ''}
                                     onChange={(e) => setPreferencias({...preferencias, idEstilo: e.target.value ? Number(e.target.value) : undefined})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar estilo</option>
                                     {estilos.map((est) => (
@@ -412,7 +421,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.color || ''}
                                     onChange={(e) => setPreferencias({...preferencias, color: e.target.value})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar color</option>
                                     {coloresPredefinidos.map((color) => (
@@ -431,7 +440,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.durabilidad || 0}
                                     onChange={(e) => setPreferencias({...preferencias, durabilidad: Number(e.target.value)})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     {nivelesDurabilidad.map((nivel) => (
                                         <option key={nivel.valor} value={nivel.valor}>
@@ -449,7 +458,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.superficie || ''}
                                     onChange={(e) => setPreferencias({...preferencias, superficie: e.target.value})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar superficie</option>
                                     {superficiesPredefinidas.map((superficie) => (
@@ -468,7 +477,7 @@ export default function Preferencias() {
                                 <select
                                     value={preferencias.enTendencia ? 'true' : 'false'}
                                     onChange={(e) => setPreferencias({...preferencias, enTendencia: e.target.value === 'true'})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="false">No</option>
                                     <option value="true">Sí</option>
@@ -487,7 +496,7 @@ export default function Preferencias() {
                                         const [min, max] = e.target.value.split('-').map(Number);
                                         handleRangoPrecioChange({ min, max });
                                     }}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar rango de precio</option>
                                     {rangosPrecio.map((rango, index) => (
@@ -499,11 +508,11 @@ export default function Preferencias() {
                             </div>
                         </div>
 
-                        <div className="mt-8 flex justify-center">
+                        <div className="mt-6 flex justify-center">
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className={`flex items-center px-8 py-3 rounded-lg font-semibold text-white transition-colors ${
+                                className={`flex items-center px-6 py-2 rounded-lg font-semibold text-white transition-colors text-sm cursor-pointer ${
                                     saving 
                                         ? 'bg-gray-400 cursor-not-allowed' 
                                         : saved 
@@ -513,7 +522,7 @@ export default function Preferencias() {
                             >
                                 {saving ? (
                                     <>
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                         Guardando...
                                     </>
                                 ) : saved ? (

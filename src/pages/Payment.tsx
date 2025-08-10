@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import CheckoutForm from "../components/CheckoutForm";
@@ -21,6 +21,8 @@ export default function Payment() {
         totalWithDiscount,
         subtotal,
         clearCart,
+        deliveryAddress: cartDeliveryAddress,
+        setDeliveryAddress: setCartDeliveryAddress,
     } = useCart();
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [cardData, setCardData] = useState({
@@ -41,19 +43,31 @@ export default function Payment() {
         pais: "Republica Dominicana",
     });
 
-       // Función para manejar cambios en los campos del formulario
-       const handleInputChange = (e) => {
+    // Efecto para sincronizar la dirección del carrito con el estado local
+    useEffect(() => {
+        if (cartDeliveryAddress) {
+            setDireccion(cartDeliveryAddress);
+        }
+    }, [cartDeliveryAddress]);
+
+    // Función para manejar cambios en los campos del formulario
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setDireccion({
+        const newDireccion = {
             ...direccion,
             [name]: value,
-        });
+        };
+        setDireccion(newDireccion);
+        // También actualizar la dirección en el contexto del carrito
+        setCartDeliveryAddress(newDireccion);
     };
 
     // Función para manejar el envío del formulario
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Dirección guardada:", direccion);
+        // También actualizar la dirección en el contexto del carrito
+        setCartDeliveryAddress(direccion);
         setIsModalOpen(false); // Cerrar el modal después de guardar
     };
 
