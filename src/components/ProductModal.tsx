@@ -122,17 +122,20 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
         return (calcularSubtotal() * product.descuento) / 100;
     };
 
-    // Actualizar cálculos basados en el modo de selección
+    // Actualizar cálculos basados en el modo de selección (solo para productos revestimiento)
     useEffect(() => {
+        // Solo ejecutar este efecto para productos revestimiento que tienen metros_por_caja
+        if (!esRevestimiento || !product.metros_por_caja) return;
+        
         if (selectionMode === 'cajas') {
-            setMetrosDeseados(cajasDeseadas * (product.metros_por_caja || 0));
+            setMetrosDeseados(cajasDeseadas * product.metros_por_caja);
         } else {
-            const cajasNecesarias = Math.ceil(metrosDeseados / (product.metros_por_caja || 1));
+            const cajasNecesarias = Math.ceil(metrosDeseados / product.metros_por_caja);
             setCajasDeseadas(cajasNecesarias);
             // Actualizar metros deseados para reflejar el número real de metros basado en cajas completas
-            setMetrosDeseados(cajasNecesarias * (product.metros_por_caja || 0));
+            setMetrosDeseados(cajasNecesarias * product.metros_por_caja);
         }
-    }, [selectionMode, cajasDeseadas, metrosDeseados, product.metros_por_caja]);
+    }, [selectionMode, cajasDeseadas, metrosDeseados, product.metros_por_caja, esRevestimiento]);
 
     const handleMetrosChange = (metros: number) => {
         if (metros < (product.metros_por_caja || 0)) return;
@@ -165,7 +168,11 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
             setCalculando(true);
             
             setCajasDeseadas(cajas);
-            setMetrosDeseados(cajas * (product.metros_por_caja || 0));
+            
+            // Solo calcular metros si es un producto revestimiento
+            if (esRevestimiento && product.metros_por_caja) {
+                setMetrosDeseados(cajas * product.metros_por_caja);
+            }
             
             // Desactivar animación después de un breve delay
             setTimeout(() => setCalculando(false), 500);
@@ -173,7 +180,8 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
             // Log para debugging
             console.log('Cajas cambiadas:', {
                 cajasSolicitadas: cajas,
-                metrosCalculados: cajas * (product.metros_por_caja || 0),
+                esRevestimiento,
+                metrosCalculados: esRevestimiento ? cajas * (product.metros_por_caja || 0) : 'N/A',
                 metrosPorCaja: product.metros_por_caja
             });
         }
@@ -186,7 +194,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
             const confirmar = window.confirm(
                 `Este producto no tiene stock disponible actualmente.\n\n` +
                 `¿Deseas agregarlo al carrito como pedido para futuro?\n\n` +
-                `Cantidad: ${cajasDeseadas} ${esRevestimiento ? 'cajas' : 'unidades'}\n` +
+                `Cantidad: ${cajasDeseadas} ${esRevestimiento ? 'cajas' : 'cajas'}\n` +
                 `Total: RD$${calcularPrecioTotal().toFixed(2)}`
             );
             
@@ -197,9 +205,9 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
             updateQuantity(product.id_producto!.toString(), cajasDeseadas);
         } else {
             addItem(product, cajasDeseadas, {
-                metrosCuadrados: metrosDeseados,
+                metrosCuadrados: esRevestimiento ? metrosDeseados : 0,
                 cajasNecesarias: cajasDeseadas,
-                metrosReales: metrosDeseados
+                metrosReales: esRevestimiento ? metrosDeseados : 0
             });
         }
         onClose();
@@ -309,6 +317,34 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                         className="w-full h-64 object-cover rounded-lg shadow-md"
                                     />
                                 )}
+                                
+                                {/* Cálculo en tiempo real para productos no-revestimiento */}
+                                <div className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                    <h4 className="text-sm font-medium text-blue-900 mb-3 flex items-center">
+                                        <span className="mr-2">📊</span>
+                                        Cálculo en tiempo real
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-blue-700">Precio por caja:</span>
+                                            <span className="font-medium text-blue-900">RD${product.precio}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-blue-700">Cantidad de cajas:</span>
+                                            <span className="font-medium text-blue-900">{cajasDeseadas}</span>
+                                        </div>
+                                        <div className="border-t border-blue-200 pt-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-blue-700 font-medium">Total:</span>
+                                                <span className={`text-lg font-bold text-blue-900 transition-all duration-300 ${
+                                                    calculando ? 'scale-110' : ''
+                                                }`}>
+                                                    RD${(product.precio * cajasDeseadas).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="bg-white rounded-lg">
@@ -326,7 +362,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-gray-600">Stock disponible:</span>
                                             <span className={`font-medium ${product.stock_actual === 0 ? 'text-orange-600' : ''}`}>
-                                                {product.stock_actual === 0 ? 'Sin stock' : `${product.stock_actual} unidades`}
+                                                {product.stock_actual === 0 ? 'Sin stock' : `${product.stock_actual} cajas`}
                                             </span>
                                         </div>
                                         {product.stock_actual === 0 && (
@@ -344,7 +380,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                         )}
                                         {product.piezas_por_caja > 1 && (
                                             <div className="flex justify-between items-center">
-                                                <span className="text-gray-600">Piezas por unidad:</span>
+                                                <span className="text-gray-600">Piezas por caja:</span>
                                                 <span className="font-medium">{product.piezas_por_caja}</span>
                                             </div>
                                         )}
@@ -353,7 +389,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                     <div className="border-t pt-4">
                                         <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Cantidad
+                                                Cantidad (Cajas)
                                             </label>
                                             <div className="flex items-center space-x-3">
                                                 <button
@@ -380,7 +416,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                             )}
                                             {product.stock_actual > 0 && (
                                                 <p className="text-sm text-gray-500 mt-1">
-                                                    Stock disponible: {product.stock_actual} unidades
+                                                    Stock disponible: {product.stock_actual} cajas
                                                 </p>
                                             )}
                                         </div>
@@ -707,7 +743,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                         <div className="border-t pt-4">
                                             <div className="mb-4">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Cantidad
+                                                    Cantidad (Cajas)
                                                 </label>
                                                 <div className="flex items-center space-x-3">
                                                     <button
@@ -734,7 +770,7 @@ export default function ProductModal({ product, onClose, isUpdating = false, cur
                                                 )}
                                                 {product.stock_actual > 0 && (
                                                     <p className="text-sm text-gray-500 mt-1">
-                                                        Stock disponible: {product.stock_actual} unidades
+                                                        Stock disponible: {product.stock_actual} cajas
                                                     </p>
                                                 )}
                                             </div>

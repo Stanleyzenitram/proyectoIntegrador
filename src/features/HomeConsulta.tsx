@@ -4,7 +4,7 @@ import type { Producto } from "../types/index";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search, Filter } from "lucide-react"; // Añadimos el ícono de filtro
+import { Search, Filter, ChevronDown, ChevronRight } from "lucide-react"; // Añadimos íconos para colapsar
 import ProductModal from '../components/ProductModal';
 
 export default function Home() {
@@ -23,6 +23,15 @@ export default function Home() {
     const [searchInput, setSearchInput] = useState("");
     const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
     const [showFilters, setShowFilters] = useState(false); // Estado para mostrar/ocultar filtros en móviles
+    
+    // Estados para filtros colapsibles
+    const [filtersCollapsed, setFiltersCollapsed] = useState({
+        ordenar: false,
+        precio: false,
+        categorias: false,
+        material: false,
+        estilo: false
+    });
 
     const { user } = useAuth();
     const { addItem } = useCart();
@@ -118,6 +127,13 @@ export default function Home() {
         setSelectedProduct(product);
     };
 
+    const toggleFilterSection = (section: keyof typeof filtersCollapsed) => {
+        setFiltersCollapsed(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
+
     return (
         <div className="h-screen w-screen">
             <div className="container mx-auto px-2">
@@ -155,89 +171,208 @@ export default function Home() {
                 <div className="flex gap-6">
                     {/* Sidebar de filtros */}
                     <div className={`${showFilters ? 'block' : 'hidden'} md:block w-64 bg-gray-100 p-4`}>
-                        <div className="mb-6">
-                            <h3 className="text-amber-900 font-medium mb-2">Ordenar por</h3>
-                        </div>
-
-                        <div className="mb-6">
-                            <h3 className="text-amber-900 font-medium mb-2">Rango de precio</h3>
-                            <div className="flex gap-2 items-center">
-                                <input
-                                    type="number"
-                                    placeholder="Min"
-                                    value={minPrice}
-                                    onChange={(e) => setMinPrice(e.target.value)}
-                                    className="w-20 p-2 border rounded bg-gray-200"
-                                />
-                                <span>-</span>
-                                <input
-                                    type="number"
-                                    placeholder="Max"
-                                    value={maxPrice}
-                                    onChange={(e) => setMaxPrice(e.target.value)}
-                                    className="w-20 p-2 border rounded bg-gray-200"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h3 className="text-amber-900 font-medium mb-2">Categorías</h3>
-                            <div className="space-y-2">
-                                {categories.map((cat) => (
-                                    <div key={cat.id_categoria} className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            id={`cat-${cat.id_categoria}`}
-                                            checked={selectedCategory === cat.id_categoria}
-                                            onChange={(e) => setSelectedCategory(e.target.checked ? cat.id_categoria : '')}
-                                            className="mr-2"
-                                        />
-                                        <label htmlFor={`cat-${cat.id_categoria}`} className="text-gray-700">
-                                            {cat.nombre_categoria}
+                        {/* Sección Ordenar por */}
+                        <div className="mb-4 border-b border-gray-200 pb-3">
+                            <button
+                                onClick={() => toggleFilterSection('ordenar')}
+                                className="flex items-center justify-between w-full text-amber-900 font-medium hover:text-amber-700 transition-colors"
+                            >
+                                <span>Ordenar por</span>
+                                {filtersCollapsed.ordenar ? (
+                                    <ChevronRight size={20} />
+                                ) : (
+                                    <ChevronDown size={20} />
+                                )}
+                            </button>
+                            {!filtersCollapsed.ordenar && (
+                                <div className="mt-3">
+                                    <div className="space-y-2">
+                                        <label className="flex items-center">
+                                            <input
+                                                type="radio"
+                                                name="orden"
+                                                checked={orderAsc}
+                                                onChange={() => setOrderAsc(true)}
+                                                className="mr-2"
+                                            />
+                                            <span className="text-gray-700">Precio - Ascendente</span>
+                                        </label>
+                                        <label className="flex items-center">
+                                            <input
+                                                type="radio"
+                                                name="orden"
+                                                checked={!orderAsc}
+                                                onChange={() => setOrderAsc(false)}
+                                                className="mr-2"
+                                            />
+                                            <span className="text-gray-700">Precio - Descendente</span>
                                         </label>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="mb-6">
-                            <h3 className="text-amber-900 font-medium mb-2">Material</h3>
-                            <div className="space-y-2">
-                                {materials.map((mat) => (
-                                    <div key={mat.id_materiales} className="flex items-center">
+                        {/* Sección Rango de precio */}
+                        <div className="mb-4 border-b border-gray-200 pb-3">
+                            <button
+                                onClick={() => toggleFilterSection('precio')}
+                                className="flex items-center justify-between w-full text-amber-900 font-medium hover:text-amber-700 transition-colors"
+                            >
+                                <span>Rango de precio</span>
+                                {filtersCollapsed.precio ? (
+                                    <ChevronRight size={20} />
+                                ) : (
+                                    <ChevronDown size={20} />
+                                )}
+                            </button>
+                            {!filtersCollapsed.precio && (
+                                <div className="mt-3">
+                                    <div className="flex gap-2 items-center">
                                         <input
-                                            type="checkbox"
-                                            id={`mat-${mat.id_materiales}`}
-                                            checked={selectedMaterial === mat.id_materiales}
-                                            onChange={(e) => setSelectedMaterial(e.target.checked ? mat.id_materiales : '')}
-                                            className="mr-2"
+                                            type="number"
+                                            placeholder="Min"
+                                            value={minPrice}
+                                            onChange={(e) => setMinPrice(e.target.value)}
+                                            className="w-20 p-2 border rounded bg-gray-200"
                                         />
-                                        <label htmlFor={`mat-${mat.id_materiales}`} className="text-gray-700">
-                                            {mat.nombre_materiales}
-                                        </label>
+                                        <span>-</span>
+                                        <input
+                                            type="number"
+                                            placeholder="Max"
+                                            value={maxPrice}
+                                            onChange={(e) => setMaxPrice(e.target.value)}
+                                            className="w-20 p-2 border rounded bg-gray-200"
+                                        />
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="mb-6">
-                            <h3 className="text-amber-900 font-medium mb-2">Estilo</h3>
-                            <div className="space-y-2">
-                                {estilos.map((est) => (
-                                    <div key={est.id_estilo} className="flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            id={`est-${est.id_estilo}`}
-                                            checked={selectedEstilo === est.id_estilo}
-                                            onChange={(e) => setSelectedEstilo(e.target.checked ? est.id_estilo : '')}
-                                            className="mr-2"
-                                        />
-                                        <label htmlFor={`est-${est.id_estilo}`} className="text-gray-700">
-                                            {est.nombre_estilo}
-                                        </label>
+                        {/* Sección Categorías */}
+                        <div className="mb-4 border-b border-gray-200 pb-3">
+                            <button
+                                onClick={() => toggleFilterSection('categorias')}
+                                className="flex items-center justify-between w-full text-amber-900 font-medium hover:text-amber-700 transition-colors"
+                            >
+                                <span>Categorías</span>
+                                {filtersCollapsed.categorias ? (
+                                    <ChevronRight size={20} />
+                                ) : (
+                                    <ChevronDown size={20} />
+                                )}
+                            </button>
+                            {!filtersCollapsed.categorias && (
+                                <div className="mt-3">
+                                    <div className="space-y-2">
+                                        {categories.map((cat) => (
+                                            <div key={cat.id_categoria} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`cat-${cat.id_categoria}`}
+                                                    checked={selectedCategory === cat.id_categoria}
+                                                    onChange={(e) => setSelectedCategory(e.target.checked ? cat.id_categoria : '')}
+                                                    className="mr-2"
+                                                />
+                                                <label htmlFor={`cat-${cat.id_categoria}`} className="text-gray-700">
+                                                    {cat.nombre_categoria}
+                                                </label>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Sección Material */}
+                        <div className="mb-4 border-b border-gray-200 pb-3">
+                            <button
+                                onClick={() => toggleFilterSection('material')}
+                                className="flex items-center justify-between w-full text-amber-900 font-medium hover:text-amber-700 transition-colors"
+                            >
+                                <span>Material</span>
+                                {filtersCollapsed.material ? (
+                                    <ChevronRight size={20} />
+                                ) : (
+                                    <ChevronDown size={20} />
+                                )}
+                            </button>
+                            {!filtersCollapsed.material && (
+                                <div className="mt-3">
+                                    <div className="space-y-2">
+                                        {materials.map((mat) => (
+                                            <div key={mat.id_materiales} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`mat-${mat.id_materiales}`}
+                                                    checked={selectedMaterial === mat.id_materiales}
+                                                    onChange={(e) => setSelectedMaterial(e.target.checked ? mat.id_materiales : '')}
+                                                    className="mr-2"
+                                                />
+                                                <label htmlFor={`mat-${mat.id_materiales}`} className="text-gray-700">
+                                                    {mat.nombre_materiales}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Sección Estilo */}
+                        <div className="mb-4 border-b border-gray-200 pb-3">
+                            <button
+                                onClick={() => toggleFilterSection('estilo')}
+                                className="flex items-center justify-between w-full text-amber-900 font-medium hover:text-amber-700 transition-colors"
+                            >
+                                <span>Estilo</span>
+                                {filtersCollapsed.estilo ? (
+                                    <ChevronRight size={20} />
+                                ) : (
+                                    <ChevronDown size={20} />
+                                )}
+                            </button>
+                            {!filtersCollapsed.estilo && (
+                                <div className="mt-3">
+                                    <div className="space-y-2">
+                                        {estilos.map((est) => (
+                                            <div key={est.id_estilo} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`est-${est.id_estilo}`}
+                                                    checked={selectedEstilo === est.id_estilo}
+                                                    onChange={(e) => setSelectedEstilo(e.target.checked ? est.id_estilo : '')}
+                                                    className="mr-2"
+                                                />
+                                                <label htmlFor={`est-${est.id_estilo}`} className="text-gray-700">
+                                                    {est.nombre_estilo}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Botón para expandir/colapsar todos los filtros */}
+                        <div className="pt-3">
+                            <button
+                                onClick={() => {
+                                    const allCollapsed = Object.values(filtersCollapsed).every(collapsed => collapsed);
+                                    setFiltersCollapsed({
+                                        ordenar: allCollapsed,
+                                        precio: allCollapsed,
+                                        categorias: allCollapsed,
+                                        material: allCollapsed,
+                                        estilo: allCollapsed
+                                    });
+                                }}
+                                className="w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm transition-colors"
+                            >
+                                {Object.values(filtersCollapsed).every(collapsed => collapsed) 
+                                    ? 'Expandir todos' 
+                                    : 'Colapsar todos'
+                                }
+                            </button>
                         </div>
                     </div>
 
