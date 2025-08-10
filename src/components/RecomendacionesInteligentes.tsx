@@ -14,7 +14,7 @@ interface ProductoRecomendado {
     descripcion?: string;
     categoria_id?: number;
     estilo_id?: number;
-    material_id?: number;
+    materiales_id?: number;
     descuento?: number;
     score_recomendacion?: number;
     razon_recomendacion?: string;
@@ -83,7 +83,7 @@ export default function RecomendacionesInteligentes() {
             let productosComprados: any[] = [];
             if (facturasIds.length > 0) {
                 const { data: detallesCompra } = await supabase
-                    .from('detalle_facturas')
+                    .from('detalles_factura')
                     .select(`
                         id_producto,
                         cantidad,
@@ -92,7 +92,7 @@ export default function RecomendacionesInteligentes() {
                             nombre_producto,
                             categoria_id,
                             estilo_id,
-                            material_id
+                            materiales_id
                         )
                     `)
                     .in('id_factura', facturasIds);
@@ -134,7 +134,7 @@ export default function RecomendacionesInteligentes() {
                     descripcion,
                     categoria_id,
                     estilo_id,
-                    material_id,
+                    materiales_id,
                     descuento
                 `)
                 .eq('estado', true)
@@ -151,7 +151,7 @@ export default function RecomendacionesInteligentes() {
                     query = query.eq('estilo_id', preferencia.idEstilo);
                 }
                 if (preferencia.idMaterial) {
-                    query = query.eq('material_id', preferencia.idMaterial);
+                    query = query.eq('materiales_id', preferencia.idMaterial);
                 }
                 if (preferencia.precMin && preferencia.precMax) {
                     query = query.gte('precio', preferencia.precMin).lte('precio', preferencia.precMax);
