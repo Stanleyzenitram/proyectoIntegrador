@@ -44,21 +44,100 @@ export default function RecomendacionesInteligentes({
     contextProducts,
     compact = false
 }: RecomendacionesInteligentesProps = {}) {
+    const { user } = useAuth();
+    const { addItem } = useCart();
+    const navigate = useNavigate();
     const [productosRecomendados, setProductosRecomendados] = useState<ProductoRecomendado[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [showAll, setShowAll] = useState(false);
     const [mostrarDetalles, setMostrarDetalles] = useState<number | null>(null);
-    const { user } = useAuth();
-    const { addItem } = useCart();
-    const navigate = useNavigate();
+    const [showInfo, setShowInfo] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<ProductoRecomendado | null>(null);
     const [showProductModal, setShowProductModal] = useState(false);
     const [selectionMode, setSelectionMode] = useState<'metros' | 'cajas'>('metros');
     const [metrosDeseados, setMetrosDeseados] = useState(0);
     const [cajasDeseadas, setCajasDeseadas] = useState(1);
+    const [esRevestimiento, setEsRevestimiento] = useState(false);
+    const [loadingTipo, setLoadingTipo] = useState(true);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Función para determinar si un producto es de revestimientos
+    const determinarTipoProducto = async (producto: ProductoRecomendado): Promise<boolean> => {
+        try {
+            // Si no tiene categoría, asumimos que no es revestimiento
+            if (!producto.id_categoria) return false;
+            
+            // Categorías que se consideran revestimientos
+            const categoriasRevestimientos = [
+                'revestimiento',
+                'cerámica', 
+                'porcelanato',
+                'gres',
+                'mosaico',
+                'piedra natural',
+                'piso',
+                'pared',
+                'azulejo',
+                'baldosa'
+            ];
+            
+            // Buscar la categoría en la base de datos
+            const { data: categoria } = await supabase
+                .from('categorias')
+                .select('nombre_categoria')
+                .eq('id_categoria', producto.id_categoria)
+                .single();
+            
+            if (categoria) {
+                const nombreCategoria = categoria.nombre_categoria.toLowerCase();
+                const esRevestimientoPorCategoria = categoriasRevestimientos.some(term => 
+                    nombreCategoria.includes(term)
+                );
+                
+                if (esRevestimientoPorCategoria) return true;
+            }
+            
+            // Verificación adicional por nombre del producto y características
+            const nombreProducto = producto.nombre_producto.toLowerCase();
+            const descripcion = producto.descripcion?.toLowerCase() || '';
+            
+            // Verificar si el nombre o descripción contienen términos de revestimientos
+            const esRevestimientoPorNombre = categoriasRevestimientos.some(term => 
+                nombreProducto.includes(term) || descripcion.includes(term)
+            );
+            
+            // También verificar si tiene formato y metros_por_caja (indicadores de revestimiento)
+            const tieneFormatoRevestimiento = producto.formato && 
+                producto.formato.includes('x') && 
+                producto.metros_por_caja && producto.metros_por_caja > 0;
+            
+            return esRevestimientoPorNombre || tieneFormatoRevestimiento;
+            
+        } catch (error) {
+            console.error('Error al verificar categoría:', error);
+            
+            // Fallback: verificación por características del producto
+            const nombreProducto = producto.nombre_producto.toLowerCase();
+            const descripcion = producto.descripcion?.toLowerCase() || '';
+            
+            const categoriasRevestimientos = [
+                'revestimiento', 'cerámica', 'porcelanato', 'gres', 'mosaico',
+                'piedra natural', 'piso', 'pared', 'azulejo', 'baldosa'
+            ];
+            
+            const esRevestimientoPorNombre = categoriasRevestimientos.some(term => 
+                nombreProducto.includes(term) || descripcion.includes(term)
+            );
+            
+            const tieneFormatoRevestimiento = producto.formato && 
+                producto.formato.includes('x') && 
+                producto.metros_por_caja && producto.metros_por_caja > 0;
+            
+            return esRevestimientoPorNombre || tieneFormatoRevestimiento;
+        }
+    };
 
     useEffect(() => {
         if (user) {
@@ -295,6 +374,9 @@ export default function RecomendacionesInteligentes({
                     if (mensajeUso) {
                         score += 30; // Prioridad alta para productos que coinciden con uso preferido
                         razones.push(mensajeUso);
+                        console.log('🎯 Producto con coincidencia de uso:', producto.nombre_producto, 'Score:', score, 'Mensaje:', mensajeUso);
+                    } else {
+                        console.log('❌ Producto sin coincidencia de uso:', producto.nombre_producto, 'Score actual:', score);
                     }
 
                     return {
@@ -334,6 +416,9 @@ export default function RecomendacionesInteligentes({
                     if (mensajeUso) {
                         score += 30; // Prioridad alta para productos que coinciden con uso preferido
                         razones.push(mensajeUso);
+                        console.log('🎯 Producto con coincidencia de uso (historial):', producto.nombre_producto, 'Score:', score, 'Mensaje:', mensajeUso);
+                    } else {
+                        console.log('❌ Producto sin coincidencia de uso (historial):', producto.nombre_producto, 'Score actual:', score);
                     }
 
                     return {
@@ -351,6 +436,11 @@ export default function RecomendacionesInteligentes({
                 .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
                 .slice(0, 12);
                 
+            console.log('🎯 Productos finales ordenados por score:');
+            productosFinales.forEach((producto, index) => {
+                console.log(`${index + 1}. ${producto.nombre_producto} - Score: ${producto.score_recomendacion} - Razón: ${producto.razon_recomendacion}`);
+            });
+                
             console.log('Final Productos Recomendados:', productosFinales);
             return productosFinales;
 
@@ -363,6 +453,8 @@ export default function RecomendacionesInteligentes({
     // Función para obtener preferencias del usuario por uso
     const obtenerPreferenciasUsuario = async (clienteId: number) => {
         try {
+            console.log('🔍 Buscando preferencias para cliente ID:', clienteId);
+            
             // Obtener preferencias del usuario desde la tabla usoXpref
             const { data: preferenciasData, error } = await supabase
                 .from('usoXpref')
@@ -386,9 +478,26 @@ export default function RecomendacionesInteligentes({
                 `)
                 .eq('preferenciasProd.idClientes', clienteId);
 
+            console.log('📊 Query ejecutada para preferencias');
+            console.log('📋 Datos de preferencias obtenidos:', preferenciasData);
+            console.log('❌ Error en preferencias:', error);
+
             if (error) {
                 console.warn('Error al obtener preferencias del usuario:', error);
                 return [];
+            }
+
+            // Verificar la estructura de los datos
+            if (preferenciasData && preferenciasData.length > 0) {
+                console.log('✅ Preferencias encontradas:', preferenciasData.length);
+                preferenciasData.forEach((pref, index) => {
+                    console.log(`📝 Preferencia ${index + 1}:`, {
+                        idUso: pref.idUso,
+                        preferenciasProd: pref.preferenciasProd
+                    });
+                });
+            } else {
+                console.log('⚠️ No se encontraron preferencias para el cliente');
             }
 
             return preferenciasData || [];
@@ -400,56 +509,92 @@ export default function RecomendacionesInteligentes({
 
     // Función para verificar si un producto coincide con las preferencias de uso del usuario
     const verificarCoincidenciaUso = (producto: any, preferenciasUsuario: any[]) => {
-        if (!preferenciasUsuario || preferenciasUsuario.length === 0) return null;
+        console.log('🔍 Verificando coincidencia de uso para producto:', producto.id_producto, producto.nombre_producto);
+        console.log('📋 Preferencias del usuario:', preferenciasUsuario);
+        
+        if (!preferenciasUsuario || preferenciasUsuario.length === 0) {
+            console.log('⚠️ No hay preferencias del usuario para verificar');
+            return null;
+        }
 
         for (const pref of preferenciasUsuario) {
-            if (!pref.preferenciasProd || !Array.isArray(pref.preferenciasProd) || pref.preferenciasProd.length === 0) continue;
+            console.log('🔍 Analizando preferencia:', pref);
+            
+            if (!pref.preferenciasProd || !Array.isArray(pref.preferenciasProd) || pref.preferenciasProd.length === 0) {
+                console.log('⚠️ Preferencia sin datos de productos válidos');
+                continue;
+            }
             
             const preferencia = pref.preferenciasProd[0];
             const uso = pref.uso?.nombre;
             
-            if (!uso) continue;
+            console.log('📝 Datos de preferencia:', {
+                preferencia,
+                uso,
+                producto: {
+                    id_categoria: producto.id_categoria,
+                    id_materiales: producto.id_materiales,
+                    id_estilo: producto.id_estilo,
+                    colorDom: producto.colorDom,
+                    superficie: producto.superficie,
+                    durabilidad: producto.durabilidad,
+                    precio: producto.precio
+                }
+            });
+            
+            if (!uso) {
+                console.log('⚠️ No se encontró nombre de uso');
+                continue;
+            }
 
             // Verificar coincidencias por categoría
             if (preferencia.idCategoria && producto.id_categoria === preferencia.idCategoria) {
+                console.log('✅ Coincidencia por categoría:', preferencia.idCategoria);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por material
             if (preferencia.idMaterial && producto.id_materiales === preferencia.idMaterial) {
+                console.log('✅ Coincidencia por material:', preferencia.idMaterial);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por estilo
             if (preferencia.idEstilo && producto.id_estilo === preferencia.idEstilo) {
+                console.log('✅ Coincidencia por estilo:', preferencia.idEstilo);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por color
             if (preferencia.color && producto.colorDom && 
                 producto.colorDom.toLowerCase().includes(preferencia.color.toLowerCase())) {
+                console.log('✅ Coincidencia por color:', preferencia.color);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por superficie
             if (preferencia.superficie && producto.superficie && 
                 producto.superficie.toLowerCase().includes(preferencia.superficie.toLowerCase())) {
+                console.log('✅ Coincidencia por superficie:', preferencia.superficie);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por durabilidad
             if (preferencia.durabilidad && producto.durabilidad && 
                 producto.durabilidad >= preferencia.durabilidad) {
+                console.log('✅ Coincidencia por durabilidad:', preferencia.durabilidad);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
 
             // Verificar coincidencias por rango de precio
             if (preferencia.precMin && preferencia.precMax && 
                 producto.precio >= preferencia.precMin && producto.precio <= preferencia.precMax) {
+                console.log('✅ Coincidencia por rango de precio:', preferencia.precMin, '-', preferencia.precMax);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
         }
 
+        console.log('❌ No se encontraron coincidencias para este producto');
         return null;
     };
 
@@ -1126,47 +1271,66 @@ export default function RecomendacionesInteligentes({
 
             {/* Información adicional */}
             {!compact && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                    <div className="flex items-start">
-                        <FaInfoCircle className="text-blue-600 mt-1 mr-3 flex-shrink-0" />
-                        <div className="text-sm text-blue-800">
-                            <p className="font-medium mb-2">¿Cómo funcionan estas recomendaciones?</p>
-                            <div className="space-y-2">
-                                <p>
-                                    <strong>Análisis de compras anteriores:</strong> Analizamos los productos que has comprado 
-                                    para identificar patrones en categorías, estilos, materiales y colores.
-                                </p>
-                                <p>
-                                    <strong>Productos relacionados:</strong> Incluimos productos que están técnicamente 
-                                    relacionados con tus compras anteriores, almacenados en nuestra base de datos de relaciones.
-                                </p>
-                                <p>
-                                    <strong>Puntuación inteligente:</strong> Cada producto recibe una puntuación basada en 
-                                    qué tan bien se adapta a tus patrones de compra anteriores (se calcula analizando similitud de características, 
-                                    historial de compras, y coincidencias con preferencias de uso).
-                                </p>
-                                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                                    <p className="font-medium mb-2 text-blue-900">¿Qué significan los badges?</p>
-                                    <div className="space-y-1 text-xs text-blue-800">
-                                        <div className="flex items-center">
-                                            <div className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center mr-2">
-                                                <FaStar className="mr-0.5" />
-                                                85
+                <div className="mt-6">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 overflow-hidden">
+                        {/* Header del collapse */}
+                        <button
+                            onClick={() => setShowInfo(!showInfo)}
+                            className="w-full p-4 text-left flex items-center justify-between hover:bg-blue-100/50 transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center">
+                                <FaInfoCircle className="text-blue-600 mr-3 flex-shrink-0" />
+                                <span className="font-medium text-blue-800">¿Cómo funcionan estas recomendaciones?</span>
+                            </div>
+                            <div className={`transform transition-transform duration-200 ${showInfo ? 'rotate-180' : ''}`}>
+                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </button>
+                        
+                        {/* Contenido del collapse */}
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                            showInfo ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                            <div className="p-4 pt-0 border-t border-blue-200">
+                                <div className="text-sm text-blue-800 space-y-2">
+                                    <p>
+                                        <strong>Análisis de compras anteriores:</strong> Analizamos los productos que has comprado 
+                                        para identificar patrones en categorías, estilos, materiales y colores.
+                                    </p>
+                                    <p>
+                                        <strong>Productos relacionados:</strong> Incluimos productos que están técnicamente 
+                                        relacionados con tus compras anteriores, almacenados en nuestra base de datos de relaciones.
+                                    </p>
+                                    <p>
+                                        <strong>Puntuación inteligente:</strong> Cada producto recibe una puntuación basada en 
+                                        qué tan bien se adapta a tus patrones de compra anteriores (se calcula analizando similitud de características, 
+                                        historial de compras, y coincidencias con preferencias de uso).
+                                    </p>
+                                    <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                                        <p className="font-medium mb-2 text-blue-900">¿Qué significan los badges?</p>
+                                        <div className="space-y-1 text-xs text-blue-800">
+                                            <div className="flex items-center">
+                                                <div className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center mr-2">
+                                                    <FaStar className="mr-0.5" />
+                                                    85
+                                                </div>
+                                                <span><strong>Estrella azul:</strong> Puntuación de recomendación (0-100). Cuanto más alta, mejor se adapta a tus preferencias (se calcula analizando similitud de características, historial de compras, y coincidencias con preferencias de uso).</span>
                                             </div>
-                                            <span><strong>Estrella azul:</strong> Puntuación de recomendación (0-100). Cuanto más alta, mejor se adapta a tus preferencias (se calcula analizando similitud de características, historial de compras, y coincidencias con preferencias de uso).</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <div className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full mr-2">
-                                                -15%
+                                            <div className="flex items-center">
+                                                <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full mr-2">
+                                                    -15%
+                                                </div>
+                                                <span><strong>Porcentaje rojo:</strong> Descuento disponible en el producto.</span>
                                             </div>
-                                            <span><strong>Porcentaje rojo:</strong> Descuento disponible en el producto.</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-2 py-1 rounded-full font-medium mr-2">
-                                                <FaHeart className="mr-1 inline" />
-                                                ¡Ideal!
+                                            <div className="flex items-center">
+                                                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-2 py-1 rounded-full font-medium mr-2">
+                                                    <FaHeart className="mr-1 inline" />
+                                                    ¡Ideal!
+                                                </div>
+                                                <span><strong>Badge verde:</strong> Producto que coincide perfectamente con tus preferencias de uso.</span>
                                             </div>
-                                            <span><strong>Badge verde:</strong> Producto que coincide perfectamente con tus preferencias de uso.</span>
                                         </div>
                                     </div>
                                 </div>

@@ -269,21 +269,9 @@ export default function Preferencias() {
                         precMax: pref.precMax || 10000
                     });
                 }
-            } else {
-                // Limpiar el formulario si no hay preferencias para ese uso
-                setPreferencias({
-                    ...preferencias,
-                    idEstilo: 0,
-                    color: '',
-                    idMaterial: 0,
-                    idCategoria: 0,
-                    durabilidad: 0,
-                    superficie: '',
-                    enTendencia: false,
-                    precMin: 0,
-                    precMax: 10000
-                });
             }
+            // No limpiar el formulario si no hay preferencias - mantener el estado actual
+            // para que el usuario pueda llenar sus preferencias para ese uso
         } catch (error) {
             console.error('Error al cargar preferencias por uso:', error);
         }
