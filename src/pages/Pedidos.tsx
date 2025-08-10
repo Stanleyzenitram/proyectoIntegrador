@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, useUserRole } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { FaFileInvoice, FaShippingFast, FaCheckCircle, FaTimesCircle, FaHistory, FaBell, FaArrowLeft, FaExternalLinkAlt } from 'react-icons/fa';
+import RecomendacionesInteligentes from '../components/RecomendacionesInteligentes';
 
 interface Pedido {
     id_pedido: number;
@@ -44,6 +45,7 @@ const Pedidos = () => {
     const [historial, setHistorial] = useState<HistorialEstado[]>([]);
     const [pedidoSeleccionado, setPedidoSeleccionado] = useState<number | null>(null);
     const { user } = useAuth();
+    const { userRole } = useUserRole();
     const navigate = useNavigate();
     const location = useLocation();
     const [viendoFactura, setViendoFactura] = useState(false);
@@ -530,6 +532,13 @@ const Pedidos = () => {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Recomendaciones inteligentes - solo para usuarios no admin */}
+            {user && userRole !== 'admin' && (
+                <div className="mt-12">
+                    <RecomendacionesInteligentes />
+                </div>
             )}
         </div>
     );

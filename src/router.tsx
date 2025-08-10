@@ -37,7 +37,6 @@ import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
 import Preferencias from "./pages/Preferencias";
-import Recomendaciones from "./pages/Recomendaciones";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -71,7 +70,6 @@ export default function AppRouter() {
                     
                     {/* Funcionalidades del cliente */}
                     <Route path="/preferencias" element={<Preferencias />} />
-                    <Route path="/recomendaciones" element={<Recomendaciones />} />
 
                     {/* Mantenimientos */}
                     <Route path="/empleados" element={<Empleados />} />

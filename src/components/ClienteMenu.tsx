@@ -8,9 +8,7 @@ import {
     faHome, 
     faUser, 
     faShoppingBag, 
-    faHeart, 
-    faChat,
-    faStar
+    faHeart
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function ClienteMenu() {
@@ -69,15 +67,6 @@ export default function ClienteMenu() {
                             <FontAwesomeIcon icon={faHeart} className="mr-2" />
                             Mis Preferencias
                         </NavLink>
-                        
-                        <NavLink 
-                            to="/recomendaciones" 
-                            onClick={() => setIsMenuOpen(false)} 
-                            className="flex items-center justify-center px-4 py-2 hover:bg-amber-200 rounded-lg transition-colors"
-                        >
-                            <FontAwesomeIcon icon={faStar} className="mr-2" />
-                            Recomendaciones
-                        </NavLink>
                     </div>
                 </nav>
             )}
@@ -130,18 +119,6 @@ export default function ClienteMenu() {
                 >
                     <FontAwesomeIcon icon={faHeart} className="mr-2" />
                     Mis Preferencias
-                </NavLink>
-                
-                <NavLink 
-                    to="/recomendaciones" 
-                    className={({ isActive }) =>
-                        `flex items-center px-4 py-2 rounded-lg transition-colors ${
-                            isActive ? 'bg-amber-600 text-white shadow-md' : 'text-amber-900 hover:bg-amber-400 hover:text-amber-900'
-                        }`
-                    }
-                >
-                    <FontAwesomeIcon icon={faStar} className="mr-2" />
-                    Recomendaciones
                 </NavLink>
             </nav>
         </div>

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShoppingCart, faUser, faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth, useUserRole } from "../hooks/useAuth";
 import MenuMant from "./MenuMant";
 import ClienteMenu from "./ClienteMenu";
 import Cart from "./Cart";
@@ -11,6 +11,7 @@ import MiniCart from "./MiniCart";
 
 export default function Header() {
     const { user, logout } = useAuth();
+    const { userRole } = useUserRole();
     const [isCartOpen, setIsCartOpen] = useState(false);
     const { itemCount } = useCart();
     const cartRef = useRef<HTMLDivElement>(null);
@@ -194,8 +195,8 @@ export default function Header() {
             {/* Menú mantenimientos */}
             {user && <MenuMant />}
             
-            {/* Menú cliente normal */}
-            {user && <ClienteMenu />}
+            {/* Menú cliente normal - solo para usuarios no admin */}
+            {user && userRole !== 'admin' && <ClienteMenu />}
         </header>
     );
 }

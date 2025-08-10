@@ -5,12 +5,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar, faHeart, faShoppingCart, faEye, faFilter, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 interface Producto {
-    id_producto: string;
+    id_producto: number;
     nombre_producto: string;
     descripcion: string;
     precio: number;
-    stock: number;
-    imagen_url?: string;
+    stock_actual: number;
+    imagen: string;
+    id_categoria: number;
+    id_materiales: number;
+    id_estilo: number;
     categoria?: {
         nombre_categoria: string;
     };
@@ -140,25 +143,28 @@ export default function Recomendaciones() {
                     nombre_producto,
                     descripcion,
                     precio,
-                    stock,
-                    imagen_url,
+                    stock_actual,
+                    imagen,
                     descuento,
-                    categoria: categorias(nombre_categoria),
-                    material: materiales(nombre_materiales),
-                    estilo: estilos(nombre_estilo)
+                    id_categoria,
+                    id_materiales,
+                    id_estilo,
+                    categorias(nombre_categoria),
+                    materiales(nombre_materiales),
+                    estilos(nombre_estilo)
                 `)
-                .eq('estado', 'activo')
-                .gte('stock', 1);
+                .eq('disponibilidad', true)
+                .gte('stock_actual', 1);
 
             // Aplicar filtros
             if (filtros.categoria) {
-                query = query.eq('id_categoria', filtros.categoria);
+                query = query.eq('id_categoria', Number(filtros.categoria));
             }
             if (filtros.material) {
-                query = query.eq('id_materiales', filtros.material);
+                query = query.eq('id_materiales', Number(filtros.material));
             }
             if (filtros.estilo) {
-                query = query.eq('id_estilo', filtros.estilo);
+                query = query.eq('id_estilo', Number(filtros.estilo));
             }
             if (filtros.precioMin) {
                 query = query.gte('precio', Number(filtros.precioMin));
@@ -171,8 +177,16 @@ export default function Recomendaciones() {
 
             if (error) throw error;
 
+            // Mapear los datos para incluir las relaciones
+            const productosMapeados = (data || []).map(producto => ({
+                ...producto,
+                categoria: producto.categorias,
+                material: producto.materiales,
+                estilo: producto.estilos
+            }));
+
             // Ordenar por relevancia basada en preferencias
-            const productosOrdenados = ordenarPorRelevancia(data || [], preferencias);
+            const productosOrdenados = ordenarPorRelevancia(productosMapeados, preferencias);
             setProductos(productosOrdenados);
         } catch (error) {
             console.error('Error al cargar productos:', error);
@@ -195,7 +209,7 @@ export default function Recomendaciones() {
             if (pref.material_preferido && b.material?.nombre_materiales === pref.material_preferido) scoreB += 8;
 
             // Puntuación por estilo
-            if (pref.estilo_preferido && a.estilo?.nombre_estilo === pref.estilo_preferido) scoreA += 8;
+            if (pref.estilo_preferido && a.estilo?.nombre_estilo === pref.estilo_preferido) scoreB += 8;
             if (pref.estilo_preferido && b.estilo?.nombre_estilo === pref.estilo_preferido) scoreB += 8;
 
             // Puntuación por rango de precio
@@ -382,7 +396,7 @@ export default function Recomendaciones() {
                                 <div key={producto.id_producto} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                                     <div className="relative">
                                         <img
-                                            src={producto.imagen_url || '/placeholder-image.svg'}
+                                            src={producto.imagen || '/placeholder-image.svg'}
                                             alt={producto.nombre_producto}
                                             className="w-full h-48 object-cover"
                                         />
@@ -442,7 +456,7 @@ export default function Recomendaciones() {
                                                 )}
                                             </div>
                                             <div className="text-sm text-gray-500">
-                                                Stock: {producto.stock}
+                                                Stock: {producto.stock_actual}
                                             </div>
                                         </div>
                                         

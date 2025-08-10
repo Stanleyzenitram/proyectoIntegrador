@@ -6,38 +6,33 @@ import { faHeart, faSave, faCheck, faHome, faPalette, faRuler, faDollarSign } fr
 
 interface Preferencia {
     id_preferencia?: number;
-    id_cliente: number;
-    categoria_preferida?: string;
-    material_preferido?: string;
-    estilo_preferido?: string;
-    rango_precio_min?: number;
-    rango_precio_max?: number;
-    color_preferido?: string;
-    formato_preferido?: string;
-    // Nuevas preferencias específicas para cerámicas
-    uso_principal?: string;
-    ambiente_preferido?: string;
-    acabado_preferido?: string;
-    resistencia_preferida?: string;
-    mantenimiento_preferido?: string;
+    idClientes: number;
+    idEstilo?: number;
+    color?: string;
+    idMaterial?: number;
+    idCategoria?: number;
+    durabilidad?: number;
+    superficie?: string;
+    enTendencia?: boolean;
+    precMin?: number;
+    precMax?: number;
+    usoEspecifico?: string;
 }
 
 export default function Preferencias() {
     const { user } = useAuth();
     const [preferencias, setPreferencias] = useState<Preferencia>({
-        id_cliente: 0,
-        categoria_preferida: '',
-        material_preferido: '',
-        estilo_preferido: '',
-        rango_precio_min: 0,
-        rango_precio_max: 10000,
-        color_preferido: '',
-        formato_preferido: '',
-        uso_principal: '',
-        ambiente_preferido: '',
-        acabado_preferido: '',
-        resistencia_preferida: '',
-        mantenimiento_preferido: ''
+        idClientes: 0,
+        idEstilo: undefined,
+        color: '',
+        idMaterial: undefined,
+        idCategoria: undefined,
+        durabilidad: 0,
+        superficie: '',
+        enTendencia: false,
+        precMin: 0,
+        precMax: 10000,
+        usoEspecifico: ''
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -45,32 +40,6 @@ export default function Preferencias() {
     const [categorias, setCategorias] = useState<Array<{id_categoria: string, nombre_categoria: string}>>([]);
     const [materiales, setMateriales] = useState<Array<{id_materiales: string, nombre_materiales: string}>>([]);
     const [estilos, setEstilos] = useState<Array<{id_estilo: string, nombre_estilo: string}>>([]);
-
-    // Opciones predefinidas para las nuevas preferencias
-    const usosPrincipales = [
-        'Piso interior', 'Piso exterior', 'Pared interior', 'Pared exterior', 
-        'Baño', 'Cocina', 'Sala', 'Comedor', 'Habitación', 'Área comercial'
-    ];
-
-    const ambientes = [
-        'Moderno', 'Clásico', 'Rústico', 'Minimalista', 'Tropical', 
-        'Industrial', 'Vintage', 'Contemporáneo', 'Mediterráneo', 'Escandinavo'
-    ];
-
-    const acabados = [
-        'Mate', 'Brillante', 'Semi-brillante', 'Texturizado', 'Liso', 
-        'Antideslizante', 'Porcelánico', 'Gres porcelánico', 'Cerámico tradicional'
-    ];
-
-    const resistencias = [
-        'Alta resistencia', 'Resistencia media', 'Resistencia estándar', 
-        'Resistente a manchas', 'Resistente a rayones', 'Resistente a humedad'
-    ];
-
-    const mantenimientos = [
-        'Bajo mantenimiento', 'Mantenimiento regular', 'Fácil limpieza', 
-        'Requiere sellador', 'Limpieza con productos especiales'
-    ];
 
     useEffect(() => {
         if (user) {
@@ -118,21 +87,26 @@ export default function Preferencias() {
 
             // Obtener preferencias existentes
             const { data: prefData } = await supabase
-                .from('preferenciasProd')
+                .from('preferencias_usuario')
                 .select('*')
-                .eq('idClientes', clienteData.id_cliente)
+                .eq('usuario_id', user?.id)
                 .single();
 
             if (prefData) {
                 setPreferencias({
                     ...preferencias,
-                    ...prefData,
-                    id_cliente: clienteData.id_cliente
+                    idClientes: clienteData.id_cliente,
+                    idCategoria: prefData.categorias_favoritas?.[0] || undefined,
+                    idMaterial: prefData.materiales_favoritos?.[0] || undefined,
+                    idEstilo: prefData.estilos_preferidos?.[0] || undefined,
+                    precMin: prefData.rango_precio_min || undefined,
+                    precMax: prefData.rango_precio_max || undefined,
+                    color: prefData.color_preferido || undefined
                 });
             } else {
                 setPreferencias({
                     ...preferencias,
-                    id_cliente: clienteData.id_cliente
+                    idClientes: clienteData.id_cliente
                 });
             }
         } catch (error) {
@@ -146,19 +120,38 @@ export default function Preferencias() {
         try {
             setSaving(true);
             
-            if (preferencias.id_preferencia) {
+            // Preparar datos para la tabla preferencias_usuario
+            const datosPreferencias = {
+                usuario_id: user?.id,
+                categorias_favoritas: preferencias.idCategoria ? [preferencias.idCategoria] : [],
+                estilos_preferidos: preferencias.idEstilo ? [preferencias.idEstilo] : [],
+                materiales_favoritos: preferencias.idMaterial ? [preferencias.idMaterial] : [],
+                rango_precio_min: preferencias.precMin,
+                rango_precio_max: preferencias.precMax,
+                color_preferido: preferencias.color,
+                fecha_actualizacion: new Date().toISOString()
+            };
+            
+            // Verificar si ya existen preferencias para este usuario
+            const { data: prefExistente } = await supabase
+                .from('preferencias_usuario')
+                .select('id')
+                .eq('usuario_id', user?.id)
+                .single();
+
+            if (prefExistente) {
                 // Actualizar preferencias existentes
                 const { error } = await supabase
-                    .from('preferenciasProd')
-                    .update(preferencias)
-                    .eq('id_preferencia', preferencias.id_preferencia);
+                    .from('preferencias_usuario')
+                    .update(datosPreferencias)
+                    .eq('usuario_id', user?.id);
                 
                 if (error) throw error;
             } else {
                 // Crear nuevas preferencias
                 const { error } = await supabase
-                    .from('preferenciasProd')
-                    .insert([preferencias]);
+                    .from('preferencias_usuario')
+                    .insert([datosPreferencias]);
                 
                 if (error) throw error;
             }
@@ -199,43 +192,36 @@ export default function Preferencias() {
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Uso principal */}
-                            <div>
+                            {/* Uso específico - MOVIDO ARRIBA */}
+                            <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FontAwesomeIcon icon={faHome} className="mr-2 text-amber-500" />
-                                    Uso principal
+                                    Uso específico
                                 </label>
                                 <select
-                                    value={preferencias.uso_principal || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, uso_principal: e.target.value})}
+                                    value={preferencias.usoEspecifico || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, usoEspecifico: e.target.value})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
-                                    <option value="">Seleccionar uso principal</option>
-                                    {usosPrincipales.map((uso) => (
-                                        <option key={uso} value={uso}>
-                                            {uso}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Ambiente preferido */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <FontAwesomeIcon icon={faPalette} className="mr-2 text-amber-500" />
-                                    Ambiente preferido
-                                </label>
-                                <select
-                                    value={preferencias.ambiente_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, ambiente_preferido: e.target.value})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                >
-                                    <option value="">Seleccionar ambiente</option>
-                                    {ambientes.map((ambiente) => (
-                                        <option key={ambiente} value={ambiente}>
-                                            {ambiente}
-                                        </option>
-                                    ))}
+                                    <option value="">Seleccionar uso específico</option>
+                                    <option value="Piso de baño">Piso de baño</option>
+                                    <option value="Pared de baño">Pared de baño</option>
+                                    <option value="Piso de cocina">Piso de cocina</option>
+                                    <option value="Pared de cocina">Pared de cocina</option>
+                                    <option value="Piso de sala">Piso de sala</option>
+                                    <option value="Piso de comedor">Piso de comedor</option>
+                                    <option value="Piso de habitación">Piso de habitación</option>
+                                    <option value="Piso de terraza">Piso de terraza</option>
+                                    <option value="Piso de balcón">Piso de balcón</option>
+                                    <option value="Piso de entrada">Piso de entrada</option>
+                                    <option value="Piso de garaje">Piso de garaje</option>
+                                    <option value="Piso comercial">Piso comercial</option>
+                                    <option value="Piso industrial">Piso industrial</option>
+                                    <option value="Pared exterior">Pared exterior</option>
+                                    <option value="Pared interior">Pared interior</option>
+                                    <option value="Escaleras">Escaleras</option>
+                                    <option value="Zócalos">Zócalos</option>
+                                    <option value="Otro">Otro</option>
                                 </select>
                             </div>
 
@@ -245,8 +231,8 @@ export default function Preferencias() {
                                     Categoría preferida
                                 </label>
                                 <select
-                                    value={preferencias.categoria_preferida || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, categoria_preferida: e.target.value})}
+                                    value={preferencias.idCategoria || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, idCategoria: e.target.value ? Number(e.target.value) : undefined})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
                                     <option value="">Seleccionar categoría</option>
@@ -264,8 +250,8 @@ export default function Preferencias() {
                                     Material preferido
                                 </label>
                                 <select
-                                    value={preferencias.material_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, material_preferido: e.target.value})}
+                                    value={preferencias.idMaterial || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, idMaterial: e.target.value ? Number(e.target.value) : undefined})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
                                     <option value="">Seleccionar material</option>
@@ -283,33 +269,14 @@ export default function Preferencias() {
                                     Estilo preferido
                                 </label>
                                 <select
-                                    value={preferencias.estilo_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, estilo_preferido: e.target.value})}
+                                    value={preferencias.idEstilo || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, idEstilo: e.target.value ? Number(e.target.value) : undefined})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
                                     <option value="">Seleccionar estilo</option>
                                     {estilos.map((est) => (
                                         <option key={est.id_estilo} value={est.id_estilo}>
                                             {est.nombre_estilo}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Acabado preferido */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Acabado preferido
-                                </label>
-                                <select
-                                    value={preferencias.acabado_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, acabado_preferido: e.target.value})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                >
-                                    <option value="">Seleccionar acabado</option>
-                                    {acabados.map((acabado) => (
-                                        <option key={acabado} value={acabado}>
-                                            {acabado}
                                         </option>
                                     ))}
                                 </select>
@@ -322,67 +289,59 @@ export default function Preferencias() {
                                 </label>
                                 <input
                                     type="text"
-                                    value={preferencias.color_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, color_preferido: e.target.value})}
-                                    placeholder="Ej: Blanco, Gris, Beige, Marrón..."
+                                    value={preferencias.color || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, color: e.target.value})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="Ej: Blanco, Gris, Beige..."
                                 />
                             </div>
 
-                            {/* Formato preferido */}
+                            {/* Durabilidad */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <FontAwesomeIcon icon={faRuler} className="mr-2 text-amber-500" />
-                                    Formato preferido
+                                    Durabilidad (1-10)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={preferencias.durabilidad || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, durabilidad: Number(e.target.value)})}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="1-10"
+                                    min="1"
+                                    max="10"
+                                />
+                            </div>
+
+                            {/* Superficie */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Superficie preferida
                                 </label>
                                 <input
                                     type="text"
-                                    value={preferencias.formato_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, formato_preferido: e.target.value})}
-                                    placeholder="Ej: 30x30, 60x60, 30x60..."
+                                    value={preferencias.superficie || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, superficie: e.target.value})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="Ej: Mate, Brillante, Texturizado..."
                                 />
                             </div>
 
-                            {/* Resistencia preferida */}
+                            {/* En tendencia */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Resistencia preferida
+                                    ¿Te gustan las tendencias?
                                 </label>
                                 <select
-                                    value={preferencias.resistencia_preferida || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, resistencia_preferida: e.target.value})}
+                                    value={preferencias.enTendencia ? 'true' : 'false'}
+                                    onChange={(e) => setPreferencias({...preferencias, enTendencia: e.target.value === 'true'})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
-                                    <option value="">Seleccionar resistencia</option>
-                                    {resistencias.map((resistencia) => (
-                                        <option key={resistencia} value={resistencia}>
-                                            {resistencia}
-                                        </option>
-                                    ))}
+                                    <option value="false">No</option>
+                                    <option value="true">Sí</option>
                                 </select>
                             </div>
 
-                            {/* Mantenimiento preferido */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Mantenimiento preferido
-                                </label>
-                                <select
-                                    value={preferencias.mantenimiento_preferido || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, mantenimiento_preferido: e.target.value})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                >
-                                    <option value="">Seleccionar mantenimiento</option>
-                                    {mantenimientos.map((mantenimiento) => (
-                                        <option key={mantenimiento} value={mantenimiento}>
-                                            {mantenimiento}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Rango de precio mínimo */}
+                            {/* Precio mínimo */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-amber-500" />
@@ -390,14 +349,15 @@ export default function Preferencias() {
                                 </label>
                                 <input
                                     type="number"
-                                    value={preferencias.rango_precio_min || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, rango_precio_min: Number(e.target.value)})}
-                                    placeholder="0"
+                                    value={preferencias.precMin || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, precMin: Number(e.target.value)})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="0"
+                                    min="0"
                                 />
                             </div>
 
-                            {/* Rango de precio máximo */}
+                            {/* Precio máximo */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-amber-500" />
@@ -405,10 +365,11 @@ export default function Preferencias() {
                                 </label>
                                 <input
                                     type="number"
-                                    value={preferencias.rango_precio_max || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, rango_precio_max: Number(e.target.value)})}
-                                    placeholder="10000"
+                                    value={preferencias.precMax || ''}
+                                    onChange={(e) => setPreferencias({...preferencias, precMax: Number(e.target.value)})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="10000"
+                                    min="0"
                                 />
                             </div>
                         </div>

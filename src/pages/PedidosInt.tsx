@@ -20,10 +20,8 @@ interface Pedido {
     };
 }
 
-
-
 interface ProductoRecomendado {
-    id_producto: string;
+    id_producto: number;
     nombre_producto: string;
     imagen: string;
     precio: number;
@@ -51,7 +49,7 @@ export default function PedidosInt() {
         if (!user) {
             navigate('/login', { 
                 state: { 
-                    returnTo: '/pedidos-int',
+                    returnTo: '/pedidos',
                     message: 'Por favor inicia sesión para ver tus pedidos' 
                 } 
             });
@@ -62,7 +60,7 @@ export default function PedidosInt() {
         if (pedidos.length === 0 && !loading) {
             fetchData();
         }
-    }, [user, navigate]); // Removed pedidos.length and loading from dependencies
+    }, [user, navigate]);
 
     // Timeout para evitar que se quede cargando indefinidamente
     useEffect(() => {
@@ -450,12 +448,48 @@ export default function PedidosInt() {
 
     const agregarRecomendacion = async (producto: ProductoRecomendado) => {
         try {
-            await addItem(producto as any, 1);
+            // Convertir el producto recomendado al formato esperado por el carrito
+            const productoParaCarrito = {
+                id_producto: producto.id_producto,
+                nombre_producto: producto.nombre_producto,
+                descripcion: '',
+                precio: producto.precio,
+                stock_actual: producto.stock_actual,
+                imagen: producto.imagen,
+                descuento: 0,
+                metros_por_caja: producto.metros_por_caja,
+                disponibilidad: true,
+                formato: '',
+                piezas_por_caja: 0,
+                id_estilo: 0,
+                id_materiales: 0,
+                id_categoria: 0,
+                superficie: '',
+                durabilidad: 0,
+                colorDom: ''
+            };
+            
+            await addItem(productoParaCarrito, 1);
             alert(`${producto.nombre_producto} agregado al carrito`);
         } catch (error) {
             console.error('Error al agregar recomendación:', error);
             alert('Error al agregar el producto al carrito');
         }
+    };
+
+    // Función para cancelar la carga y mostrar error
+    const cancelarCarga = () => {
+        setLoading(false);
+        setLoadingTimeout(false);
+        setError('Carga cancelada por el usuario. Haz clic en "Reintentar" para cargar de nuevo.');
+    };
+
+    // Función para reintentar la carga
+    const reintentarCarga = () => {
+        setError(null);
+        setPedidos([]);
+        setProductosRecomendados([]);
+        fetchData();
     };
   
   return (
@@ -483,11 +517,7 @@ export default function PedidosInt() {
                         <div className="mt-4 space-y-2">
                             <p className="text-sm text-gray-500">Si la página no carga, puedes:</p>
                             <button
-                                onClick={() => {
-                                    setLoading(false);
-                                    setLoadingTimeout(false);
-                                    setError('Tiempo de espera agotado. Por favor, intenta de nuevo.');
-                                }}
+                                onClick={cancelarCarga}
                                 className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm font-medium"
                             >
                                 Cancelar carga
@@ -499,11 +529,7 @@ export default function PedidosInt() {
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
                     <p>{error}</p>
                     <button 
-                        onClick={() => {
-                            setError(null);
-                            setPedidos([]);
-                            fetchData();
-                        }}
+                        onClick={reintentarCarga}
                         className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
                     >
                         Reintentar
@@ -514,11 +540,7 @@ export default function PedidosInt() {
                     {/* Botón de refrescar */}
                     <div className="flex justify-end mb-4">
                         <button
-                            onClick={() => {
-                                setPedidos([]);
-                                setProductosRecomendados([]);
-                                fetchData();
-                            }}
+                            onClick={reintentarCarga}
                             className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm font-medium"
                         >
                             Actualizar datos
