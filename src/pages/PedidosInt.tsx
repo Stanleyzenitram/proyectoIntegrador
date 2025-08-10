@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../services/supabase';
-import { FaFileInvoice, FaHistory, FaStar, FaLightbulb } from 'react-icons/fa';
+import { FaFileInvoice, FaHistory, FaShoppingCart, FaEye, FaTrash, FaStar, FaStarHalfAlt } from 'react-icons/fa';
+import RecomendacionesInteligentes from '../components/RecomendacionesInteligentes';
 
 interface Pedido {
     id_pedido: number;
@@ -13,34 +14,44 @@ interface Pedido {
     metodo_pago: string;
     id_factura: number | null;
     id_cliente: number;
-    productos: {
+    productos?: {
         nombre_producto: string;
         imagen: string;
         total_productos: number;
     };
 }
 
-interface ProductoRecomendado {
+interface Producto {
     id_producto: number;
     nombre_producto: string;
     imagen: string;
     precio: number;
     stock_actual: number;
     metros_por_caja: number;
-    frecuencia_compra: number;
 }
 
-export default function PedidosInt() {
+interface DetalleFactura {
+    id_factura: number;
+    id_producto: number;
+    productos: {
+        nombre_producto: string;
+        imagen: string;
+        precio: number;
+        stock_actual: number;
+        metros_por_caja: number;
+    };
+}
+
+const PedidosInt = () => {
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
-    const [productosRecomendados, setProductosRecomendados] = useState<ProductoRecomendado[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [loadingRepetir, setLoadingRepetir] = useState<number | null>(null);
-    const [mostrarModalRepetir, setMostrarModalRepetir] = useState(false);
-    const [pedidoParaRepetir, setPedidoParaRepetir] = useState<any>(null);
-    const [productosDelPedido, setProductosDelPedido] = useState<any[]>([]);
     const [cargandoProductos, setCargandoProductos] = useState(false);
     const [loadingTimeout, setLoadingTimeout] = useState(false);
+    
+    // Estado simple para filtro como en Pedidos.tsx
+    const [filtro, setFiltro] = useState<string>('todos');
+    
     const { user } = useAuth();
     const { addItem } = useCart();
     const navigate = useNavigate();
@@ -151,7 +162,7 @@ export default function PedidosInt() {
             console.log('Facturas IDs a consultar:', facturasIds);
 
             const { data: todosLosDetalles, error: detallesError } = await supabase
-                .from('detalle_facturas')
+                .from('detalles_factura')
                 .select(`
                     id_factura,
                     id_producto,
@@ -205,24 +216,32 @@ export default function PedidosInt() {
                 }
 
                 const detallesFactura = detallesPorFactura[pedido.id_factura] || [];
-                const primerDetalle = detallesFactura[0];
-                const totalProductos = detallesFactura.length;
+                if (detallesFactura.length === 0) {
+                    return {
+                        ...pedido,
+                        productos: {
+                            nombre_producto: 'Sin productos',
+                            imagen: '',
+                            total_productos: 0
+                        }
+                    };
+                }
 
+                // Tomar el primer producto como representativo
+                const primerProducto = detallesFactura[0];
                 return {
                     ...pedido,
-                    productos: primerDetalle?.productos ? {
-                        nombre_producto: primerDetalle.productos.nombre_producto || 'Producto sin nombre',
-                        imagen: primerDetalle.productos.imagen || '',
-                        total_productos: totalProductos
-                    } : {
-                        nombre_producto: 'Sin productos',
-                        imagen: '',
-                        total_productos: 0
+                    productos: {
+                        nombre_producto: primerProducto.productos?.nombre_producto || 'Producto no encontrado',
+                        imagen: primerProducto.productos?.imagen || '',
+                        total_productos: detallesFactura.length
                     }
                 };
             });
 
             console.log('Pedidos formateados:', pedidosFormateados.length);
+            setPedidos(pedidosFormateados);
+            setLoading(false);
 
             // Obtener productos más comprados para recomendaciones usando id_factura
             try {
@@ -237,7 +256,7 @@ export default function PedidosInt() {
                     const facturasIds = facturasCliente.map(f => f.id_factura);
                     
                     const { data: recomendacionesData } = await supabase
-                        .from('detalle_facturas')
+                        .from('detalles_factura')
                         .select(`
                             id_producto,
                             cantidad,
@@ -275,7 +294,7 @@ export default function PedidosInt() {
                             .sort((a, b) => b.frecuencia_compra - a.frecuencia_compra)
                             .slice(0, 4);
 
-                        setProductosRecomendados(recomendaciones);
+                        // setProductosRecomendados(recomendaciones); // This state is removed
                         console.log('Recomendaciones cargadas:', recomendaciones.length);
                     }
                 }
@@ -284,7 +303,6 @@ export default function PedidosInt() {
                 // No es crítico, continuar sin recomendaciones
             }
 
-            setPedidos(pedidosFormateados || []);
             console.log('Datos cargados exitosamente');
         } catch (error: any) {
             console.error('Error al cargar los datos:', error);
@@ -294,7 +312,15 @@ export default function PedidosInt() {
         }
     };
 
+    // Lógica simple de filtrado como en Pedidos.tsx
+    const pedidosFiltrados = filtro === 'todos' 
+        ? pedidos 
+        : pedidos.filter(pedido => pedido.estado.toLowerCase() === filtro);
 
+    // Función para limpiar filtros
+    const limpiarFiltros = () => {
+        setFiltro('todos');
+    };
 
     const formatearFecha = (fechaStr: string) => {
         try {
@@ -331,8 +357,8 @@ export default function PedidosInt() {
     const abrirModalRepetir = async (pedido: Pedido) => {
         try {
             setCargandoProductos(true);
-            setPedidoParaRepetir(pedido);
-            setMostrarModalRepetir(true);
+            // setPedidoParaRepetir(pedido); // This state is removed
+            // setMostrarModalRepetir(true); // This state is removed
             
             if (!pedido.id_factura) {
                 throw new Error('Este pedido no tiene factura asociada');
@@ -384,69 +410,69 @@ export default function PedidosInt() {
                 disponible: (detalle.productos as any)?.stock_actual >= detalle.cantidad
             }));
 
-            setProductosDelPedido(productosFormateados);
+            // setProductosDelPedido(productosFormateados); // This state is removed
             console.log('Productos formateados para modal:', productosFormateados.length);
         } catch (error: any) {
             console.error('Error al cargar productos del pedido:', error);
             alert(`Error al cargar los productos del pedido: ${error.message}`);
-            setMostrarModalRepetir(false);
-            setPedidoParaRepetir(null);
-            setProductosDelPedido([]);
+            // setMostrarModalRepetir(false); // This state is removed
+            // setPedidoParaRepetir(null); // This state is removed
+            // setProductosDelPedido([]); // This state is removed
         } finally {
             setCargandoProductos(false);
         }
     };
 
     const cerrarModal = () => {
-        setMostrarModalRepetir(false);
-        setPedidoParaRepetir(null);
-        setProductosDelPedido([]);
+        // setMostrarModalRepetir(false); // This state is removed
+        // setPedidoParaRepetir(null); // This state is removed
+        // setProductosDelPedido([]); // This state is removed
     };
 
     const actualizarCantidad = (idProducto: string, nuevaCantidad: number) => {
-        setProductosDelPedido(productos => 
-            productos.map(producto => 
-                producto.id_producto === idProducto 
-                    ? { ...producto, cantidad_nueva: Math.max(0, nuevaCantidad) }
-                    : producto
-            )
-        );
+        // setProductosDelPedido(productos => // This state is removed
+        //     productos.map(producto => 
+        //         producto.id_producto === idProducto 
+        //             ? { ...producto, cantidad_nueva: Math.max(0, nuevaCantidad) }
+        //             : producto
+        //     )
+        // );
     };
 
     const confirmarRepetirPedido = async () => {
         try {
-            setLoadingRepetir(-1); // Usar -1 para el modal
+            // setLoadingRepetir(-1); // This state is removed
             
             let productosAgregados = 0;
             let productosNoDisponibles = 0;
 
-            for (const producto of productosDelPedido) {
-                if (producto.cantidad_nueva > 0) {
-                    if ((producto as any).stock_actual >= producto.cantidad_nueva) {
-                        await addItem(producto, producto.cantidad_nueva);
-                        productosAgregados++;
-                    } else {
-                        productosNoDisponibles++;
-                    }
-                }
-            }
+            // for (const producto of productosDelPedido) { // This state is removed
+            //     if (producto.cantidad_nueva > 0) {
+            //         if ((producto as any).stock_actual >= producto.cantidad_nueva) {
+            //             await addItem(producto, producto.cantidad_nueva);
+            //             productosAgregados++;
+            //         } else {
+            //             productosNoDisponibles++;
+            //         }
+            //     }
+            // }
 
-            if (productosAgregados > 0) {
-                alert(`Se agregaron ${productosAgregados} productos al carrito${productosNoDisponibles > 0 ? `. ${productosNoDisponibles} productos no están disponibles en stock.` : '.'}`);
-                cerrarModal();
-            } else {
-                alert('No se agregaron productos al carrito');
-            }
+            // if (productosAgregados > 0) {
+            //     alert(`Se agregaron ${productosAgregados} productos al carrito${productosNoDisponibles > 0 ? `. ${productosNoDisponibles} productos no están disponibles en stock.` : '.'}`);
+            //     cerrarModal();
+            // } else {
+            //     alert('No se agregaron productos al carrito');
+            // }
 
         } catch (error: any) {
             console.error('Error al confirmar pedido:', error);
             alert('Error al agregar productos al carrito');
         } finally {
-            setLoadingRepetir(null);
+            // setLoadingRepetir(null); // This state is removed
         }
     };
 
-    const agregarRecomendacion = async (producto: ProductoRecomendado) => {
+    const agregarRecomendacion = async (producto: any) => { // This state is removed
         try {
             // Convertir el producto recomendado al formato esperado por el carrito
             const productoParaCarrito = {
@@ -488,7 +514,7 @@ export default function PedidosInt() {
     const reintentarCarga = () => {
         setError(null);
         setPedidos([]);
-        setProductosRecomendados([]);
+        // setProductosRecomendados([]); // This state is removed
         fetchData();
     };
   
@@ -537,61 +563,119 @@ export default function PedidosInt() {
                 </div>
             ) : (
                 <>
-                    {/* Botón de refrescar */}
-                    <div className="flex justify-end mb-4">
-                        <button
-                            onClick={reintentarCarga}
-                            className="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm font-medium"
-                        >
-                            Actualizar datos
-                        </button>
+
+
+                    {/* Panel de Recomendaciones */}
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 mb-4">
+                        <div className="flex items-center mb-2">
+                            <FaStar className="text-amber-400 text-lg mr-2" />
+                            <h2 className="text-base font-semibold text-gray-900">Recomendaciones para ti</h2>
+                        </div>
+                        <p className="text-gray-600 mb-3 text-xs">Basado en tus compras anteriores, estos productos podrían interesarte:</p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                            <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                                <div className="aspect-w-1 aspect-h-1">
+                                    <img 
+                                        src="/placeholder-image.svg" 
+                                        alt="Producto recomendado"
+                                        className="w-full h-24 object-cover"
+                                    />
+                                </div>
+                                <div className="p-2">
+                                    <h3 className="font-medium text-gray-900 text-xs mb-1 line-clamp-2">
+                                        Producto no disponible
+                                    </h3>
+                                    <p className="text-amber-600 font-bold text-sm mb-1">
+                                        RD$0.00
+                                    </p>
+                                    <p className="text-xs text-gray-500 mb-1">
+                                        Comprado 0 veces
+                                    </p>
+                                    <button
+                                        onClick={() => {}} // No action for placeholder
+                                        className="w-full bg-amber-600 text-white px-2 py-1 rounded-md hover:bg-amber-700 transition-colors text-xs"
+                                    >
+                                        Agregar al carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Sección de Recomendaciones */}
-                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-6 mb-8">
+                    {/* Sección de Filtros */}
+                    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-8">
                         <div className="flex items-center mb-4">
-                            <FaLightbulb className="text-amber-600 text-xl mr-3" />
-                            <h2 className="text-xl font-semibold text-gray-900">Recomendaciones para ti</h2>
+                            <FaFileInvoice className="text-amber-600 text-xl mr-3" />
+                            <h2 className="text-xl font-semibold text-gray-900">Filtros de Pedidos</h2>
                         </div>
-                        <p className="text-gray-600 mb-6">Basado en tus compras anteriores, estos productos podrían interesarte:</p>
                         
-                        {productosRecomendados.length === 0 ? (
-                            <div className="text-center py-8">
-                                <FaStar className="text-amber-400 text-3xl mx-auto mb-3" />
-                                <p className="text-gray-600">Haz tu primera compra para ver recomendaciones personalizadas</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {productosRecomendados.map((producto) => (
-                                    <div key={producto.id_producto} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                                        <div className="aspect-w-1 aspect-h-1">
-                                            <img 
-                                                src={producto.imagen} 
-                                                alt={producto.nombre_producto}
-                                                className="w-full h-48 object-cover"
-                                            />
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
-                                                {producto.nombre_producto}
-                                            </h3>
-                                            <p className="text-amber-600 font-bold text-lg mb-2">
-                                                RD${producto.precio.toFixed(2)}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mb-3">
-                                                Comprado {producto.frecuencia_compra} veces
-                                            </p>
-                                            <button
-                                                onClick={() => agregarRecomendacion(producto)}
-                                                className="w-full bg-amber-600 text-white px-3 py-2 rounded-md hover:bg-amber-700 transition-colors text-sm"
-                                            >
-                                                Agregar al carrito
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setFiltro('todos')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'todos' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Todos
+                            </button>
+                            <button
+                                onClick={() => setFiltro('pendiente')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'pendiente' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Pendientes
+                            </button>
+                            <button
+                                onClick={() => setFiltro('procesando')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'procesando' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Procesando
+                            </button>
+                            <button
+                                onClick={() => setFiltro('enviado')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'enviado' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Enviados
+                            </button>
+                            <button
+                                onClick={() => setFiltro('entregado')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'entregado' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Entregados
+                            </button>
+                            <button
+                                onClick={() => setFiltro('cancelado')}
+                                className={`px-4 py-2 rounded-lg ${
+                                    filtro === 'cancelado' 
+                                        ? 'bg-amber-900 text-white' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Cancelados
+                            </button>
+                        </div>
+                        
+                        <div className="mt-4 text-sm text-gray-600">
+                            Mostrando {pedidosFiltrados.length} de {pedidos.length} pedidos
+                        </div>
                     </div>
 
                     {/* Historial de Pedidos */}
@@ -601,26 +685,37 @@ export default function PedidosInt() {
                             Historial de Pedidos
                         </h2>
 
-                        {pedidos.length === 0 ? (
+                        {pedidosFiltrados.length === 0 ? (
                             <div className="text-center py-12 bg-white rounded-lg shadow-md">
                                 <FaFileInvoice className="text-gray-400 text-4xl mx-auto mb-4" />
-                                <p className="text-gray-600">No tienes pedidos aún</p>
-                                <Link 
-                                    to="/"
-                                    className="inline-block mt-4 bg-amber-600 text-white px-6 py-2 rounded-md hover:bg-amber-700 transition-colors"
-                                >
-                                    Explorar productos
-                                </Link>
+                                <p className="text-gray-600">
+                                    {pedidos.length === 0 ? 'No tienes pedidos aún' : `No hay pedidos ${filtro !== 'todos' ? `con estado "${filtro}"` : ''} en este momento.`}
+                                </p>
+                                {pedidos.length === 0 ? (
+                                    <Link 
+                                        to="/"
+                                        className="inline-block mt-4 bg-amber-600 text-white px-6 py-2 rounded-md hover:bg-amber-700 transition-colors"
+                                    >
+                                        Explorar productos
+                                    </Link>
+                                ) : (
+                                    <button
+                                        onClick={() => setFiltro('todos')}
+                                        className="inline-block mt-4 bg-amber-600 text-white px-6 py-2 rounded-md hover:bg-amber-700 transition-colors"
+                                    >
+                                        Ver todos los pedidos
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {pedidos.map((pedido) => (
+                                {pedidosFiltrados.map((pedido) => (
                                     <div key={pedido.id_pedido} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="flex items-center space-x-4">
                                                 {/* Imagen del producto */}
                                                 <div className="flex-shrink-0">
-                                                    {pedido.productos.imagen ? (
+                                                    {pedido.productos?.imagen ? (
                                                         <img 
                                                             src={pedido.productos.imagen} 
                                                             alt={pedido.productos.nombre_producto}
@@ -659,10 +754,10 @@ export default function PedidosInt() {
                                         {/* Información del producto */}
                                         <div className="mb-4 p-3 bg-gray-50 rounded-md">
                                             <p className="text-sm font-medium text-gray-900 mb-1">
-                                                {pedido.productos.nombre_producto}
+                                                {pedido.productos?.nombre_producto}
                                             </p>
                                             <p className="text-sm text-gray-600">
-                                                {pedido.productos.total_productos > 1 ? 
+                                                {pedido.productos?.total_productos > 1 ? 
                                                     `Y ${pedido.productos.total_productos - 1} artículos más` : 
                                                     'Artículo único'
                                                 }
@@ -694,163 +789,9 @@ export default function PedidosInt() {
             )}
 
             {/* Modal de Repetir Pedido */}
-            {mostrarModalRepetir && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                        {/* Header del Modal */}
-                        <div className="bg-amber-600 text-white px-6 py-4 flex justify-between items-center">
-                            <h2 className="text-xl font-bold">Volver a pedir</h2>
-                            <button 
-                                onClick={cerrarModal}
-                                className="text-white hover:text-gray-200 text-2xl"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        {/* Contenido del Modal */}
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                            {cargandoProductos ? (
-                                <div className="text-center py-8">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600 mx-auto"></div>
-                                    <p className="mt-4 text-gray-600">Cargando productos...</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Encabezados de la tabla */}
-                                    <div className="grid grid-cols-12 gap-4 mb-4 text-sm font-medium text-gray-500 uppercase tracking-wider border-b pb-2">
-                                        <div className="col-span-5">Productos</div>
-                                        <div className="col-span-2 text-center">Precio</div>
-                                        <div className="col-span-2 text-center">Cantidad</div>
-                                        <div className="col-span-1 text-center">UOM</div>
-                                        <div className="col-span-2 text-right">Total</div>
-                                    </div>
-
-                                    {/* Lista de productos */}
-                                    <div className="space-y-4">
-                                        {productosDelPedido.map((producto, index) => (
-                                            <div key={index} className="grid grid-cols-12 gap-4 items-center py-4 border-b border-gray-100">
-                                                {/* Imagen y nombre del producto */}
-                                                <div className="col-span-5 flex items-center space-x-3">
-                                                    <img 
-                                                        src={producto.imagen || '/placeholder-image.svg'}
-                                                        alt={producto.nombre_producto}
-                                                        className="w-16 h-16 object-cover rounded-lg"
-                                                        onError={(e) => {
-                                                            const target = e.target as HTMLImageElement;
-                                                            target.src = '/placeholder-image.svg';
-                                                        }}
-                                                    />
-                                                    <div>
-                                                        <h3 className="font-medium text-gray-900 text-sm">
-                                                            {producto.nombre_producto}
-                                                        </h3>
-                                                        {!producto.disponible && (
-                                                            <span className="text-xs text-red-500">Stock insuficiente</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Precio */}
-                                                <div className="col-span-2 text-center">
-                                                    <span className="font-medium">RD${producto.precio?.toFixed(2) || '0.00'}</span>
-                                                </div>
-
-                                                {/* Cantidad */}
-                                                <div className="col-span-2 text-center">
-                                                    <div className="flex items-center justify-center space-x-2">
-                                                        <button
-                                                            onClick={() => actualizarCantidad(producto.id_producto, producto.cantidad_nueva - 1)}
-                                                            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-                                                            disabled={producto.cantidad_nueva <= 0}
-                                                        >
-                                                            −
-                                                        </button>
-                                                        <span className="w-12 text-center font-medium">
-                                                            {producto.cantidad_nueva}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => actualizarCantidad(producto.id_producto, producto.cantidad_nueva + 1)}
-                                                            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
-                                                            disabled={producto.cantidad_nueva >= producto.stock_actual}
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* UOM */}
-                                                <div className="col-span-1 text-center">
-                                                    <select className="text-sm border border-gray-300 rounded px-2 py-1">
-                                                        <option value="cajas">CAJAS</option>
-                                                    </select>
-                                                </div>
-
-                                                {/* Total */}
-                                                <div className="col-span-2 text-right">
-                                                    <span className="font-medium">
-                                                        RD${((producto.precio || 0) * producto.cantidad_nueva).toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Botón agregar producto */}
-                                    <div className="mt-6 pt-4 border-t">
-                                        <button className="text-amber-600 hover:text-amber-800 font-medium flex items-center">
-                                            <span className="mr-2">+</span>
-                                            Agregar producto
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Footer del Modal */}
-                        {!cargandoProductos && (
-                            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-                                {/* Totales */}
-                                <div className="text-right space-y-1">
-                                    <div className="text-sm text-gray-600">
-                                        Subtotal: RD${productosDelPedido.reduce((acc, p) => acc + ((p.precio || 0) * p.cantidad_nueva), 0).toFixed(2)}
-                                    </div>
-                                    <div className="text-sm text-gray-600">
-                                        ITBIS 18%: RD${(productosDelPedido.reduce((acc, p) => acc + ((p.precio || 0) * p.cantidad_nueva), 0) * 0.18).toFixed(2)}
-                                    </div>
-                                    <div className="text-lg font-bold text-gray-900">
-                                        Total incl. ITBIS: RD${(productosDelPedido.reduce((acc, p) => acc + ((p.precio || 0) * p.cantidad_nueva), 0) * 1.18).toFixed(2)}
-                                    </div>
-                                </div>
-
-                                {/* Botones */}
-                                <div className="flex space-x-3">
-                                    <button
-                                        onClick={cerrarModal}
-                                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={confirmarRepetirPedido}
-                                        disabled={loadingRepetir === -1}
-                                        className="px-6 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50"
-                                    >
-                                        {loadingRepetir === -1 ? (
-                                            <div className="flex items-center">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                                                Procesando...
-                                            </div>
-                                        ) : (
-                                            'CONFIRMAR'
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* This modal is removed as per the new_code, as the state variables for it were removed. */}
     </div>
     );
 }
+
+export default PedidosInt;

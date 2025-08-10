@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHeart, faSave, faCheck, faHome, faPalette, faRuler, faDollarSign } from '@fortawesome/free-solid-svg-icons';
+import { faHeart, faSave, faCheck, faHome, faDollarSign } from '@fortawesome/free-solid-svg-icons';
 
 interface Preferencia {
-    id_preferencia?: number;
     idClientes: number;
     idEstilo?: number;
     color?: string;
@@ -23,10 +22,10 @@ export default function Preferencias() {
     const { user } = useAuth();
     const [preferencias, setPreferencias] = useState<Preferencia>({
         idClientes: 0,
-        idEstilo: undefined,
+        idEstilo: 0,
         color: '',
-        idMaterial: undefined,
-        idCategoria: undefined,
+        idMaterial: 0,
+        idCategoria: 0,
         durabilidad: 0,
         superficie: '',
         enTendencia: false,
@@ -41,6 +40,35 @@ export default function Preferencias() {
     const [materiales, setMateriales] = useState<Array<{id_materiales: string, nombre_materiales: string}>>([]);
     const [estilos, setEstilos] = useState<Array<{id_estilo: string, nombre_estilo: string}>>([]);
 
+    // Opciones predefinidas para los combo boxes
+    const coloresPredefinidos = [
+        'Blanco', 'Negro', 'Gris', 'Beige', 'Marrón', 'Rojo', 'Azul', 'Verde', 
+        'Amarillo', 'Naranja', 'Púrpura', 'Rosa', 'Multicolor', 'Natural'
+    ];
+
+    const superficiesPredefinidas = [
+        'Mate', 'Brillante', 'Semi-brillante', 'Texturizada', 'Lisa', 'Rústica', 
+        'Pulida', 'Antideslizante', 'Decorativa'
+    ];
+
+    const rangosPrecio = [
+        { label: 'Económico (RD$ 0 - 500)', min: 0, max: 500 },
+        { label: 'Accesible (RD$ 500 - 1,500)', min: 500, max: 1500 },
+        { label: 'Medio (RD$ 1,500 - 3,000)', min: 1500, max: 3000 },
+        { label: 'Alto (RD$ 3,000 - 5,000)', min: 3000, max: 5000 },
+        { label: 'Premium (RD$ 5,000 - 10,000)', min: 5000, max: 10000 },
+        { label: 'Lujo (RD$ 10,000+)', min: 10000, max: 50000 }
+    ];
+
+    const nivelesDurabilidad = [
+        { valor: 0, label: 'Seleccionar Durabilidad' },
+        { valor: 1, label: 'Baja - PEI 1' },
+        { valor: 2, label: 'Ligera - PEI 2' },
+        { valor: 3, label: 'Moderada - PEI 3' },
+        { valor: 4, label: 'Alta - PEI 4' },
+        { valor: 5, label: 'Muy Alta - PEI 5' }
+    ];
+
     useEffect(() => {
         if (user) {
             fetchPreferencias();
@@ -50,19 +78,16 @@ export default function Preferencias() {
 
     const fetchOpciones = async () => {
         try {
-            // Obtener categorías
             const { data: catData } = await supabase
                 .from('categorias')
                 .select('id_categoria, nombre_categoria');
             if (catData) setCategorias(catData);
 
-            // Obtener materiales
             const { data: matData } = await supabase
                 .from('materiales')
                 .select('id_materiales, nombre_materiales');
             if (matData) setMateriales(matData);
 
-            // Obtener estilos
             const { data: estData } = await supabase
                 .from('estilos')
                 .select('id_estilo, nombre_estilo');
@@ -75,8 +100,7 @@ export default function Preferencias() {
     const fetchPreferencias = async () => {
         try {
             setLoading(true);
-            
-            // Obtener ID del cliente
+
             const { data: clienteData } = await supabase
                 .from('clientes')
                 .select('id_cliente')
@@ -85,30 +109,10 @@ export default function Preferencias() {
 
             if (!clienteData) return;
 
-            // Obtener preferencias existentes
-            const { data: prefData } = await supabase
-                .from('preferencias_usuario')
-                .select('*')
-                .eq('usuario_id', user?.id)
-                .single();
-
-            if (prefData) {
-                setPreferencias({
-                    ...preferencias,
-                    idClientes: clienteData.id_cliente,
-                    idCategoria: prefData.categorias_favoritas?.[0] || undefined,
-                    idMaterial: prefData.materiales_favoritos?.[0] || undefined,
-                    idEstilo: prefData.estilos_preferidos?.[0] || undefined,
-                    precMin: prefData.rango_precio_min || undefined,
-                    precMax: prefData.rango_precio_max || undefined,
-                    color: prefData.color_preferido || undefined
-                });
-            } else {
-                setPreferencias({
-                    ...preferencias,
-                    idClientes: clienteData.id_cliente
-                });
-            }
+            setPreferencias((prev) => ({
+                ...prev,
+                idClientes: clienteData.id_cliente
+            }));
         } catch (error) {
             console.error('Error al cargar preferencias:', error);
         } finally {
@@ -119,50 +123,162 @@ export default function Preferencias() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            
-            // Preparar datos para la tabla preferencias_usuario
+
+            // 1️⃣ Guardar en `preferenciasProd`
             const datosPreferencias = {
-                usuario_id: user?.id,
-                categorias_favoritas: preferencias.idCategoria ? [preferencias.idCategoria] : [],
-                estilos_preferidos: preferencias.idEstilo ? [preferencias.idEstilo] : [],
-                materiales_favoritos: preferencias.idMaterial ? [preferencias.idMaterial] : [],
-                rango_precio_min: preferencias.precMin,
-                rango_precio_max: preferencias.precMax,
-                color_preferido: preferencias.color,
-                fecha_actualizacion: new Date().toISOString()
+                idClientes: preferencias.idClientes,
+                idEstilo: preferencias.idEstilo,
+                color: preferencias.color,
+                idMaterial: preferencias.idMaterial,
+                idCategoria: preferencias.idCategoria,
+                durabilidad: preferencias.durabilidad,
+                superficie: preferencias.superficie,
+                enTendencia: preferencias.enTendencia,
+                precMin: preferencias.precMin,
+                precMax: preferencias.precMax,
             };
-            
-            // Verificar si ya existen preferencias para este usuario
-            const { data: prefExistente } = await supabase
-                .from('preferencias_usuario')
+
+            const { data: prefInsertada, error: errorPref } = await supabase
+                .from('preferenciasProd')
+                .insert([datosPreferencias])
                 .select('id')
-                .eq('usuario_id', user?.id)
                 .single();
 
-            if (prefExistente) {
-                // Actualizar preferencias existentes
-                const { error } = await supabase
-                    .from('preferencias_usuario')
-                    .update(datosPreferencias)
-                    .eq('usuario_id', user?.id);
-                
-                if (error) throw error;
+            if (errorPref) throw errorPref;
+
+            // 2️⃣ Obtener o crear el uso
+            let usoId;
+            const { data: usoExistente } = await supabase
+                .from('uso')
+                .select('id')
+                .eq('nombre', preferencias.usoEspecifico)
+                .single();
+
+            if (usoExistente) {
+                usoId = usoExistente.id;
             } else {
-                // Crear nuevas preferencias
-                const { error } = await supabase
-                    .from('preferencias_usuario')
-                    .insert([datosPreferencias]);
-                
-                if (error) throw error;
+                const { data: usoNuevo, error: errorUsoNuevo } = await supabase
+                    .from('uso')
+                    .insert([{ nombre: preferencias.usoEspecifico }])
+                    .select('id')
+                    .single();
+                if (errorUsoNuevo) throw errorUsoNuevo;
+                usoId = usoNuevo.id;
             }
+
+            // 3️⃣ Insertar en `usoXpref`
+            const { error: errorRelacion } = await supabase
+                .from('usoXpref')
+                .insert([{
+                    idUso: usoId,
+                    idPref: prefInsertada.id
+                }]);
+
+            if (errorRelacion) throw errorRelacion;
 
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
         } catch (error) {
-            console.error('Error al guardar preferencias:', error);
+            console.error('Error al guardar preferencias por uso:', error);
             alert('Error al guardar las preferencias');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleRangoPrecioChange = (rango: { min: number, max: number }) => {
+        setPreferencias({
+            ...preferencias,
+            precMin: rango.min,
+            precMax: rango.max
+        });
+    };
+
+    // Función para cargar preferencias por uso
+    const cargarPreferenciasPorUso = async (usoSeleccionado: string) => {
+        if (!usoSeleccionado || !preferencias.idClientes) return;
+        
+        try {
+            // Primero obtener el ID del uso
+            const { data: usoData, error: errorUso } = await supabase
+                .from('uso')
+                .select('id')
+                .eq('nombre', usoSeleccionado)
+                .single();
+                
+            if (errorUso || !usoData) {
+                console.log('No se encontró el uso:', usoSeleccionado);
+                return;
+            }
+            
+                    // Ahora buscar en usoXpref usando el idUso y luego verificar que la preferencia pertenezca al cliente
+        const { data: usoXprefData, error: errorUsoXpref } = await supabase
+            .from('usoXpref')
+            .select(`
+                idPref,
+                preferenciasProd (
+                    idClientes,
+                    idEstilo,
+                    color,
+                    idMaterial,
+                    idCategoria,
+                    durabilidad,
+                    superficie,
+                    enTendencia,
+                    precMin,
+                    precMax
+                )
+            `)
+            .eq('idUso', usoData.id);
+            
+        if (errorUsoXpref) {
+            console.error('Error al buscar en usoXpref:', errorUsoXpref);
+            return;
+        }
+        
+        // Filtrar solo las preferencias del cliente actual
+        const preferenciasCliente = usoXprefData?.filter(item => 
+            item.preferenciasProd && Array.isArray(item.preferenciasProd) && 
+            item.preferenciasProd.length > 0 && 
+            item.preferenciasProd[0].idClientes === preferencias.idClientes
+        );
+        
+        console.log('Datos encontrados:', preferenciasCliente);
+        
+        if (preferenciasCliente && preferenciasCliente.length > 0) {
+            // Cargar la primera preferencia encontrada
+            const pref = preferenciasCliente[0].preferenciasProd[0];
+            if (pref) {
+                setPreferencias({
+                    ...preferencias,
+                    idEstilo: pref.idEstilo || 0,
+                    color: pref.color || '',
+                    idMaterial: pref.idMaterial || 0,
+                    idCategoria: pref.idCategoria || 0,
+                    durabilidad: pref.durabilidad || 0,
+                    superficie: pref.superficie || '',
+                    enTendencia: pref.enTendencia || false,
+                    precMin: pref.precMin || 0,
+                    precMax: pref.precMax || 10000
+                });
+            }
+        } else {
+                // Limpiar el formulario si no hay preferencias para ese uso
+                setPreferencias({
+                    ...preferencias,
+                    idEstilo: 0,
+                    color: '',
+                    idMaterial: 0,
+                    idCategoria: 0,
+                    durabilidad: 0,
+                    superficie: '',
+                    enTendencia: false,
+                    precMin: 0,
+                    precMax: 10000
+                });
+            }
+        } catch (error) {
+            console.error('Error al cargar preferencias por uso:', error);
         }
     };
 
@@ -178,7 +294,7 @@ export default function Preferencias() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-32">
+        <div className="min-h-screen bg-gray-50 pt-5">
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-6xl mx-auto">
                     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -192,7 +308,7 @@ export default function Preferencias() {
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Uso específico - MOVIDO ARRIBA */}
+                            {/* Uso específico */}
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FontAwesomeIcon icon={faHome} className="mr-2 text-amber-500" />
@@ -200,7 +316,13 @@ export default function Preferencias() {
                                 </label>
                                 <select
                                     value={preferencias.usoEspecifico || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, usoEspecifico: e.target.value})}
+                                    onChange={(e) => {
+                                        const usoSeleccionado = e.target.value;
+                                        setPreferencias({...preferencias, usoEspecifico: usoSeleccionado});
+                                        if (usoSeleccionado) {
+                                            cargarPreferenciasPorUso(usoSeleccionado);
+                                        }
+                                    }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
                                     <option value="">Seleccionar uso específico</option>
@@ -282,34 +404,41 @@ export default function Preferencias() {
                                 </select>
                             </div>
 
-                            {/* Color preferido */}
+                            {/* Color */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Color preferido
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     value={preferencias.color || ''}
                                     onChange={(e) => setPreferencias({...preferencias, color: e.target.value})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="Ej: Blanco, Gris, Beige..."
-                                />
+                                >
+                                    <option value="">Seleccionar color</option>
+                                    {coloresPredefinidos.map((color) => (
+                                        <option key={color} value={color}>
+                                            {color}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Durabilidad */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Durabilidad (1-10)
+                                    Nivel de durabilidad
                                 </label>
-                                <input
-                                    type="number"
-                                    value={preferencias.durabilidad || ''}
+                                <select
+                                    value={preferencias.durabilidad || 0}
                                     onChange={(e) => setPreferencias({...preferencias, durabilidad: Number(e.target.value)})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="1-10"
-                                    min="1"
-                                    max="10"
-                                />
+                                >
+                                    {nivelesDurabilidad.map((nivel) => (
+                                        <option key={nivel.valor} value={nivel.valor}>
+                                            {nivel.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Superficie */}
@@ -317,13 +446,18 @@ export default function Preferencias() {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Superficie preferida
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     value={preferencias.superficie || ''}
                                     onChange={(e) => setPreferencias({...preferencias, superficie: e.target.value})}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="Ej: Mate, Brillante, Texturizado..."
-                                />
+                                >
+                                    <option value="">Seleccionar superficie</option>
+                                    {superficiesPredefinidas.map((superficie) => (
+                                        <option key={superficie} value={superficie}>
+                                            {superficie}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* En tendencia */}
@@ -341,36 +475,27 @@ export default function Preferencias() {
                                 </select>
                             </div>
 
-                            {/* Precio mínimo */}
-                            <div>
+                            {/* Rango de precio */}
+                            <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-amber-500" />
-                                    Precio mínimo (RD$)
+                                    Rango de precio preferido
                                 </label>
-                                <input
-                                    type="number"
-                                    value={preferencias.precMin || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, precMin: Number(e.target.value)})}
+                                <select
+                                    value={`${preferencias.precMin}-${preferencias.precMax}`}
+                                    onChange={(e) => {
+                                        const [min, max] = e.target.value.split('-').map(Number);
+                                        handleRangoPrecioChange({ min, max });
+                                    }}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="0"
-                                    min="0"
-                                />
-                            </div>
-
-                            {/* Precio máximo */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <FontAwesomeIcon icon={faDollarSign} className="mr-2 text-amber-500" />
-                                    Precio máximo (RD$)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={preferencias.precMax || ''}
-                                    onChange={(e) => setPreferencias({...preferencias, precMax: Number(e.target.value)})}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="10000"
-                                    min="0"
-                                />
+                                >
+                                    <option value="">Seleccionar rango de precio</option>
+                                    {rangosPrecio.map((rango, index) => (
+                                        <option key={index} value={`${rango.min}-${rango.max}`}>
+                                            {rango.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
