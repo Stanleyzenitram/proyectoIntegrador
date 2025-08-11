@@ -28,6 +28,7 @@ export default function ProductosRecomendados({
     const { addItem } = useCart();
 
     const {
+        productosRecomendados,
         obtenerRecomendacionesPorCategoria,
         obtenerRecomendacionesSimilares,
         generarRecomendaciones
@@ -36,6 +37,13 @@ export default function ProductosRecomendados({
     useEffect(() => {
         cargarRecomendaciones();
     }, [categoriaId, productoId]);
+
+    // Sincronizar con resultados generales del hook cuando no hay filtros específicos
+    useEffect(() => {
+        if (!categoriaId && !productoId && productosRecomendados.length > 0) {
+            setProductos(productosRecomendados.slice(0, maxProductos));
+        }
+    }, [productosRecomendados, categoriaId, productoId, maxProductos]);
 
     const cargarRecomendaciones = async () => {
         try {
@@ -51,9 +59,8 @@ export default function ProductosRecomendados({
                 // Obtener recomendaciones por categoría
                 recomendaciones = await obtenerRecomendacionesPorCategoria(categoriaId);
             } else {
-                // Obtener recomendaciones generales
+                // Obtener recomendaciones generales y sincronizar por efecto
                 await generarRecomendaciones();
-                return; // El hook maneja el estado
             }
 
             // Limitar el número de productos
@@ -151,6 +158,11 @@ export default function ProductosRecomendados({
                     {producto.descuento && producto.descuento > 0 && (
                         <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                             -{producto.descuento}%
+                        </div>
+                    )}
+                    {producto.uso_recomendado && (
+                        <div className="bg-amber-600 text-white text-xs px-2 py-1 rounded-full">
+                            {producto.uso_recomendado}
                         </div>
                     )}
                 </div>

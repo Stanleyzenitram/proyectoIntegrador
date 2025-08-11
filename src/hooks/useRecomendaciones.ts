@@ -20,6 +20,7 @@ export interface ProductoRecomendado {
     superficie?: string;
     durabilidad?: number;
     disponibilidad?: boolean;
+    uso_recomendado?: string;
 }
 
 export interface Preferencia {
@@ -144,6 +145,9 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
         clienteId: number
     ): Promise<ProductoRecomendado[]> => {
         try {
+            // Cargar preferencias por uso del cliente para enriquecer las recomendaciones y mensajes
+            const preferenciasPorUso = await obtenerPreferenciasPorUso(clienteId);
+
             let query = supabase
                 .from('productos')
                 .select(`
@@ -206,6 +210,7 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
             const productosPuntuados = productosBase.map(producto => {
                 let score = 0;
                 let razones: string[] = [];
+                let usoRecomendado: string | undefined;
 
                 // Puntuar por preferencias
                 if (preferencias.length > 0) {
@@ -241,10 +246,19 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
                     score += Math.max(0, 15 - diferenciaPrecio / 100);
                 }
 
+                // Coincidencia por uso específico guardado (si existe)
+                const mensajeUso = verificarCoincidenciaUsoProducto(producto, preferenciasPorUso);
+                if (mensajeUso) {
+                    score += 40; // impulso por coincidencia de uso
+                    usoRecomendado = mensajeUso;
+                    razones.push(mensajeUso);
+                }
+
                 return {
                     ...producto,
                     score_recomendacion: score,
-                    razon_recomendacion: razones.join(', ')
+                    razon_recomendacion: razones.join(', '),
+                    uso_recomendado: usoRecomendado
                 };
             });
 
@@ -257,6 +271,78 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
             console.error('Error al generar recomendaciones personalizadas:', error);
             return [];
         }
+    };
+
+    // Obtener preferencias del cliente ligadas a usos con el nombre del uso
+    const obtenerPreferenciasPorUso = async (clienteId: number) => {
+        try {
+            const { data, error } = await supabase
+                .from('usoXpref')
+                .select(`
+                    uso:uso ( nombre ),
+                    preferenciasProd:preferenciasProd (
+                        idClientes,
+                        idEstilo,
+                        color,
+                        idMaterial,
+                        idCategoria,
+                        durabilidad,
+                        superficie,
+                        enTendencia,
+                        precMin,
+                        precMax
+                    )
+                `)
+                .eq('preferenciasProd.idClientes', clienteId);
+
+            if (error) {
+                console.warn('No se pudieron cargar preferencias por uso:', error);
+                return [] as any[];
+            }
+
+            return data || [];
+        } catch (err) {
+            console.error('Error al obtener preferencias por uso:', err);
+            return [] as any[];
+        }
+    };
+
+    // Verifica si el producto coincide con alguna preferencia por uso y devuelve el mensaje
+    const verificarCoincidenciaUsoProducto = (producto: any, preferenciasPorUso: any[]): string | null => {
+        if (!preferenciasPorUso || preferenciasPorUso.length === 0) return null;
+
+        for (const pref of preferenciasPorUso) {
+            const preferencia = pref?.preferenciasProd?.[0];
+            const usoNombre: string | undefined = pref?.uso?.nombre;
+            if (!preferencia || !usoNombre) continue;
+
+            if (preferencia.idCategoria && producto.id_categoria === preferencia.idCategoria) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (preferencia.idMaterial && producto.id_materiales === preferencia.idMaterial) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (preferencia.idEstilo && producto.id_estilo === preferencia.idEstilo) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (preferencia.color && producto.colorDom && producto.colorDom.toLowerCase().includes(preferencia.color.toLowerCase())) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (preferencia.superficie && producto.superficie && producto.superficie.toLowerCase().includes(preferencia.superficie.toLowerCase())) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (preferencia.durabilidad && producto.durabilidad && producto.durabilidad >= preferencia.durabilidad) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+            if (
+                preferencia.precMin && preferencia.precMax &&
+                producto.precio >= preferencia.precMin && producto.precio <= preferencia.precMax
+            ) {
+                return `Perfecto para tu ${usoNombre.toLowerCase()}`;
+            }
+        }
+
+        return null;
     };
 
     const obtenerProductosRelacionados = async (productosComprados: any[]): Promise<number[]> => {
