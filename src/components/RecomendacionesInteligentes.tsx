@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { FaStar, FaHeart, FaShoppingCart, FaEye, FaLightbulb, FaInfoCircle, FaCheck, FaRedo, FaTimes } from 'react-icons/fa';
+import { FaStar, FaHeart, FaShoppingCart, FaEye, FaLightbulb, FaInfoCircle, FaCheck, FaTimes } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -50,8 +50,8 @@ export default function RecomendacionesInteligentes({
     const [productosRecomendados, setProductosRecomendados] = useState<ProductoRecomendado[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [showAll, setShowAll] = useState(false);
+
     const [mostrarDetalles, setMostrarDetalles] = useState<number | null>(null);
     const [showInfo, setShowInfo] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<ProductoRecomendado | null>(null);
@@ -67,24 +67,10 @@ export default function RecomendacionesInteligentes({
         validas: number;
         modo: 'preferencias' | 'generales' | 'fallback';
     }>({ total: 0, validas: 0, modo: 'generales' });
+    
 
-    // Función para limpiar caché y forzar regeneración completa
-    const limpiarCacheYRegenerar = async () => {
-        console.log('🧹 Limpiando caché y regenerando recomendaciones...');
-        
-        // Limpiar todo el estado
-        setProductosRecomendados([]);
-        setCurrentIndex(0);
-        setShowAll(false);
-        setError(null);
-        setLoading(true);
-        
-        // Pequeña pausa para mostrar el loading
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Forzar regeneración
-        await generarRecomendaciones();
-    };
+
+
 
     // Función para determinar si un producto es de revestimientos
     const determinarTipoProducto = async (producto: ProductoRecomendado): Promise<boolean> => {
@@ -168,8 +154,6 @@ export default function RecomendacionesInteligentes({
             console.log('🔄 Usuario cambiado, regenerando recomendaciones para:', user.id);
             // Limpiar estado anterior
             setProductosRecomendados([]);
-            setCurrentIndex(0);
-            setShowAll(false);
             // Forzar regeneración
             generarRecomendaciones();
         }
@@ -415,7 +399,7 @@ export default function RecomendacionesInteligentes({
             query = filtrosAplicados.query;
 
             // MEJORA: Aumentar el límite para obtener más productos y mejor diversificación
-            const { data: productosBase, error: productosError } = await query.limit(100); // Aumentado de 50 a 100
+            const { data: productosBase, error: productosError } = await query.limit(200); // Aumentado de 100 a 200 para más recomendaciones
 
             console.log('Productos Base (from initial query):', productosBase, 'Productos Error:', productosError);
 
@@ -582,8 +566,8 @@ export default function RecomendacionesInteligentes({
         const productosOrdenados = productosPuntuados
             .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0));
         
-        // Tomar los primeros 8 productos con mejor score (productos similares a lo que ya compraste)
-        const productosSimilares = productosOrdenados.slice(0, 8);
+        // Tomar los primeros 12 productos con mejor score (productos similares a lo que ya compraste)
+        const productosSimilares = productosOrdenados.slice(0, 12);
         
         // MEJORA: Buscar productos nuevos con características complementarias
         const productosNuevos = await buscarProductosNuevosComplementarios(caracteristicas, productosOrdenados, productosComprados);
@@ -593,15 +577,15 @@ export default function RecomendacionesInteligentes({
         
         // Combinar y balancear las recomendaciones
         const recomendacionesFinales = [
-            ...productosSimilares,                    // 8 productos similares a lo que ya compraste
-            ...productosNuevos.slice(0, 3),          // 3 productos nuevos complementarios
-            ...productosTendencia.slice(0, 1)        // 1 producto de tendencia
+            ...productosSimilares,                    // 12 productos similares a lo que ya compraste
+            ...productosNuevos.slice(0, 8),          // 8 productos nuevos complementarios
+            ...productosTendencia.slice(0, 3)        // 3 productos de tendencia
         ];
         
         console.log('📊 Distribución final de recomendaciones:');
         console.log(`   - Productos similares: ${productosSimilares.length}`);
-        console.log(`   - Productos nuevos: ${productosNuevos.slice(0, 3).length}`);
-        console.log(`   - Productos tendencia: ${productosTendencia.slice(0, 1).length}`);
+        console.log(`   - Productos nuevos: ${productosNuevos.slice(0, 8).length}`);
+        console.log(`   - Productos tendencia: ${productosTendencia.slice(0, 3).length}`);
         
         return recomendacionesFinales;
     };
@@ -653,7 +637,7 @@ export default function RecomendacionesInteligentes({
                 .eq('disponibilidad', true)
                 .gt('stock_actual', 0)
                 .not('id_producto', 'in', `(${todosLosIdsExcluidos.join(',')})`)
-                .limit(50);
+                .limit(100); // Aumentado de 50 a 100 para más productos
 
             // Aplicar filtros más flexibles para productos nuevos
             if (caracteristicas.categorias.size > 0) {
@@ -759,7 +743,7 @@ export default function RecomendacionesInteligentes({
                 .eq('disponibilidad', true)
                 .gt('stock_actual', 0)
                 .not('id_producto', 'in', `(${idsExcluidos.join(',')})`)
-                .limit(20);
+                .limit(50); // Aumentado de 20 a 50 para más productos de tendencia
 
             const { data: productosTendencia, error } = await query;
             
@@ -1063,7 +1047,7 @@ export default function RecomendacionesInteligentes({
                 .select('idProdAsoc, frecuencia')
                 .in('idProdBase', productosIds)
                 .order('frecuencia', { ascending: false })
-                .limit(20);
+                .limit(50); // Aumentado de 20 a 50 para más productos relacionados
 
             if (error) {
                 console.error('❌ Error obteniendo productos relacionados:', error);
@@ -1098,7 +1082,7 @@ export default function RecomendacionesInteligentes({
                 .from('productos')
                 .select('id_producto, id_categoria, id_estilo, id_materiales, colorDom, superficie, durabilidad, precio')
                 .not('id_producto', 'in', `(${idsProductosContexto.join(',')})`)
-                .limit(50);
+                .limit(100); // Aumentado de 50 a 100 para más productos similares
 
             if (error || !productosSimilares) {
                 console.error('Error obteniendo productos similares:', error);
@@ -1295,7 +1279,7 @@ export default function RecomendacionesInteligentes({
                 query = query.in('id_materiales', Array.from(caracteristicas.materiales));
             }
 
-            const { data: productosSimilares, error } = await query.limit(10);
+            const { data: productosSimilares, error } = await query.limit(25); // Aumentado de 10 a 25 para más productos similares
             
             if (error) {
                 console.warn('Error al obtener productos por características:', error);
@@ -1353,16 +1337,37 @@ export default function RecomendacionesInteligentes({
         };
     };
 
-    const nextSlide = () => {
-        setCurrentIndex((prevIndex) => 
-            prevIndex === productosRecomendados.length - 4 ? 0 : prevIndex + 1
-        );
+
+
+    // Función para obtener todos los productos recomendados
+    // Función para determinar el tipo de recomendación
+    const getTipoRecomendacion = (producto: ProductoRecomendado) => {
+        if (producto.razon_recomendacion?.includes('Producto complementario') || 
+            producto.razon_recomendacion?.includes('Nuevo para ti')) {
+            return 'nuevo';
+        }
+        if (producto.razon_recomendacion?.includes('Producto de tendencia') ||
+            producto.razon_recomendacion?.includes('Gran oferta') ||
+            producto.razon_recomendacion?.includes('Producto premium')) {
+            return 'tendencia';
+        }
+        if (producto.razon_recomendacion?.includes('Producto relacionado') ||
+            producto.razon_recomendacion?.includes('Similitud')) {
+            return 'relacionado';
+        }
+        if (producto.razon_recomendacion?.includes('Perfecto para tu')) {
+            return 'ideal';
+        }
+        return 'general';
     };
 
-    const prevSlide = () => {
-        setCurrentIndex((prevIndex) => 
-            prevIndex === 0 ? productosRecomendados.length - 4 : prevIndex - 1
-        );
+    const getProductsToShow = () => {
+        if (showAll) {
+            return productosRecomendados;
+        }
+        // Mostrar 6 productos inicialmente para llenar mejor el grid
+        // Solo mostrar el botón "Ver todas" si hay más de 6 productos
+        return productosRecomendados.slice(0, 6);
     };
 
     const formatearPrecio = (precio: number) => {
@@ -1417,6 +1422,8 @@ export default function RecomendacionesInteligentes({
             }
         }
     }, [selectionMode, cajasDeseadas, metrosDeseados, selectedProduct]);
+
+
 
     const handleMetrosChange = (metros: number) => {
         if (!selectedProduct) return;
@@ -2059,19 +2066,7 @@ export default function RecomendacionesInteligentes({
             <div className="text-center py-8">
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
                     <p className="text-red-800 text-sm">{error}</p>
-                    <button 
-                        onClick={limpiarCacheYRegenerar}
-                        disabled={loading}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
-                            loading 
-                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                        title="Regenerar recomendaciones"
-                    >
-                        <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-                        {loading ? 'Regenerando...' : 'Regenerar'}
-                    </button>
+
                 </div>
             </div>
         );
@@ -2081,8 +2076,7 @@ export default function RecomendacionesInteligentes({
         loading, 
         error, 
         productosRecomendados: productosRecomendados.length,
-        showAll,
-        currentIndex 
+        showAll
     });
     
     if (productosRecomendados.length === 0) {
@@ -2111,24 +2105,12 @@ export default function RecomendacionesInteligentes({
                         <span>Calculando similitudes</span>
                     </div>
                 </div>
-                <button
-                    onClick={limpiarCacheYRegenerar}
-                    disabled={loading}
-                    className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
-                        loading 
-                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                    title="Regenerar recomendaciones"
-                >
-                    <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-                    {loading ? 'Regenerando...' : 'Regenerar'}
-                </button>
+
             </div>
         );
     }
 
-    const productosAMostrar = showAll ? productosRecomendados : productosRecomendados.slice(currentIndex, currentIndex + 4);
+    const productosAMostrar = getProductsToShow();
     console.log('Productos a mostrar:', productosAMostrar);
 
     return (
@@ -2172,82 +2154,11 @@ export default function RecomendacionesInteligentes({
                                 ) : (
                                     '🔄 Recomendaciones basadas en características generales del producto'
                                 )}
-                                {preferenciasInfo.total > 0 && preferenciasInfo.validas === 0 && (
-                                    <button
-                                        onClick={limpiarCacheYRegenerar}
-                                        className="ml-2 text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                                        title="Regenerar recomendaciones con preferencias válidas"
-                                    >
-                                        🔄 Regenerar
-                                    </button>
-                                )}
+
                             </div>
                         )}
                     </div>
                 </div>
-                
-                {/* Botones de Debug */}
-                {!compact && (
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={limpiarCacheYRegenerar}
-                            disabled={loading}
-                            className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
-                                loading 
-                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                            title="Regenerar recomendaciones"
-                        >
-                            <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
-                            {loading ? 'Regenerando...' : 'Regenerar'}
-                        </button>
-                        <button
-                            onClick={poblarTablaProductosRelacionados}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
-                            title="Poblar tabla de productos relacionados"
-                        >
-                            🗄️ Poblar BD
-                        </button>
-                        <button
-                            onClick={limpiarProductosRelacionadosObsoletos}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
-                            title="Limpiar productos relacionados obsoletos"
-                        >
-                            🧹 Limpiar
-                        </button>
-                        <button
-                            onClick={() => console.log('Estado actual:', { productosRecomendados, loading, error })}
-                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
-                            title="Ver estado en consola"
-                        >
-                            🔍 Debug
-                        </button>
-                    </div>
-                )}
-                
-                {!showAll && productosRecomendados.length > 4 && (
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={prevSlide}
-                            className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                            disabled={currentIndex === 0}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={nextSlide}
-                            className="p-2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                            disabled={currentIndex >= productosRecomendados.length - 4}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* Indicador de distribución de recomendaciones */}
@@ -2258,7 +2169,7 @@ export default function RecomendacionesInteligentes({
                         <div className="flex space-x-2">
                             <div className="flex items-center space-x-1">
                                 <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
-                                <span className="text-indigo-700">Similares</span>
+                                <span className="text-indigo-700">Relacionados</span>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
@@ -2268,37 +2179,46 @@ export default function RecomendacionesInteligentes({
                                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                                 <span className="text-orange-700">Tendencia</span>
                             </div>
+                            <div className="flex items-center space-x-1">
+                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span className="text-green-700">Ideales</span>
+                            </div>
                         </div>
                     </div>
                     
-                    {/* Indicador del tipo de recomendación */}
+                    {/* Contador de tipos de recomendación */}
                     <div className="mt-2 pt-2 border-t border-blue-200">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-600">Tipo de recomendación:</span>
-                            <div className="flex items-center space-x-2">
-                                {contextProducts && contextProducts.length > 0 ? (
-                                    <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                        <span className="text-xs text-blue-700 font-medium">Por similitud de productos</span>
-                                    </div>
-                                ) : productosRecomendados.length > 0 ? (
-                                    <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span className="text-xs text-green-700 font-medium">Por historial y preferencias</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                        <span className="text-xs text-amber-700 font-medium">Por preferencias de uso</span>
-                                    </div>
-                                )}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-600">Relacionados:</span>
+                                <span className="font-medium text-indigo-700">
+                                    {productosRecomendados.filter(p => getTipoRecomendacion(p) === 'relacionado').length}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-600">Nuevos:</span>
+                                <span className="font-medium text-purple-700">
+                                    {productosRecomendados.filter(p => getTipoRecomendacion(p) === 'nuevo').length}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-600">Tendencia:</span>
+                                <span className="font-medium text-orange-700">
+                                    {productosRecomendados.filter(p => getTipoRecomendacion(p) === 'tendencia').length}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-600">Ideales:</span>
+                                <span className="font-medium text-green-700">
+                                    {productosRecomendados.filter(p => getTipoRecomendacion(p) === 'ideal').length}
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className={`grid gap-3 ${compact ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mb-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6'}`}>
+            <div className={`grid gap-3 ${compact ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 mb-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6'}`}>
                 {productosAMostrar.map((producto) => {
                     // Verificar si tiene mensaje de uso preferido
                     const tieneMensajeUso = producto.razon_recomendacion && 
@@ -2330,35 +2250,42 @@ export default function RecomendacionesInteligentes({
 
                                 {/* Badge de tipo de recomendación */}
                                 <div className="absolute top-1.5 right-1.5">
-                                    {producto.razon_recomendacion?.includes('Producto complementario') && (
-                                        <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
-                                            <FaEye className="mr-1 inline" />
-                                            Nuevo
-                                        </div>
-                                    )}
-                                    {producto.razon_recomendacion?.includes('Producto de tendencia') && (
-                                        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
-                                            <FaStar className="mr-1 inline" />
-                                            Tendencia
-                                        </div>
-                                    )}
-                                    {producto.razon_recomendacion?.includes('Producto relacionado') && (
-                                        <div className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
-                                            <FaCheck className="mr-1 inline" />
-                                            Relacionado
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        const tipo = getTipoRecomendacion(producto);
+                                        switch (tipo) {
+                                            case 'nuevo':
+                                                return (
+                                                    <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                                        <FaEye className="mr-1 inline" />
+                                                        Nuevo
+                                                    </div>
+                                                );
+                                            case 'tendencia':
+                                                return (
+                                                    <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                                        <FaStar className="mr-1 inline" />
+                                                        Tendencia
+                                                    </div>
+                                                );
+                                            case 'relacionado':
+                                                return (
+                                                    <div className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                                        <FaCheck className="mr-1 inline" />
+                                                        Relacionado
+                                                    </div>
+                                                );
+                                            case 'ideal':
+                                                return (
+                                                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                                        <FaHeart className="mr-1 inline" />
+                                                        ¡Ideal!
+                                                    </div>
+                                                );
+                                            default:
+                                                return null;
+                                        }
+                                    })()}
                                 </div>
-
-                                {/* Badge especial para mensaje de uso preferido */}
-                                {tieneMensajeUso && (
-                                    <div className="absolute top-1.5 right-1.5">
-                                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
-                                            <FaHeart className="mr-1 inline" />
-                                            ¡Ideal!
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className={`${compact ? 'p-2' : 'p-2.5'}`}>
@@ -2421,7 +2348,7 @@ export default function RecomendacionesInteligentes({
             </div>
 
             {/* Botón para mostrar todas las recomendaciones */}
-            {productosRecomendados.length > 4 && (
+            {productosRecomendados.length > 6 && (
                 <div className="text-center">
                     <button
                         onClick={() => setShowAll(!showAll)}
@@ -2527,6 +2454,13 @@ export default function RecomendacionesInteligentes({
                                                     Tendencia
                                                 </div>
                                                 <span><strong>Badge naranja:</strong> Producto de tendencia o popular.</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <div className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium mr-2">
+                                                    <FaCheck className="mr-1 inline" />
+                                                    Relacionado
+                                                </div>
+                                                <span><strong>Badge azul:</strong> Producto técnicamente relacionado con tus compras anteriores.</span>
                                             </div>
                                         </div>
                                     </div>

@@ -32,6 +32,7 @@ export interface CaracteristicasProducto {
     superficies: Set<string>;
     durabilidades: Set<number>;
     rangoPrecio: { min: number; max: number };
+    totalProductos: number;
 }
 
 /**
@@ -45,7 +46,8 @@ export const analizarCaracteristicasProductos = (productos: any[]): Caracteristi
         colores: new Set(),
         superficies: new Set(),
         durabilidades: new Set(),
-        rangoPrecio: { min: Infinity, max: -Infinity }
+        rangoPrecio: { min: Infinity, max: -Infinity },
+        totalProductos: productos.length
     };
 
     productos.forEach(producto => {
