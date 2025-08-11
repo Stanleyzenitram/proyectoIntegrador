@@ -15,15 +15,10 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
         document.getElementById('cart-button')?.click();
     };
 
-    const handleCheckout = () => {
+    const handleViewCart = () => {
         onClose();
+        // Solo abrir el carrito, no proceder al pago automáticamente
         document.getElementById('cart-button')?.click();
-        setTimeout(() => {
-            const checkoutBtn = document.querySelector('[data-checkout-button]');
-            if (checkoutBtn) {
-                (checkoutBtn as HTMLElement).click();
-            }
-        }, 100);
     };
 
     const getDisplayQuantity = (item: CartItem) => {
@@ -89,7 +84,7 @@ const MiniCart = ({ onClose }: MiniCartProps) => {
                     </div>
                     <div className="mt-4 pt-4 border-t">
                         <button
-                            onClick={handleCheckout}
+                            onClick={handleViewCart}
                             className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 px-4 rounded transition-colors"
                         >
                             VER CARRITO DE COMPRAS

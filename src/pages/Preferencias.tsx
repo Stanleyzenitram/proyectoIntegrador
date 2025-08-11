@@ -70,6 +70,27 @@ export default function Preferencias() {
         { valor: 5, label: 'Muy Alta - PEI 5' }
     ];
 
+    // Utilidades de presentación
+    const getCategoriaNombre = (id?: number) => {
+        if (!id) return 'Sin seleccionar';
+        const cat = categorias.find(c => Number(c.id_categoria) === Number(id));
+        return cat?.nombre_categoria || 'Sin seleccionar';
+    };
+    const getMaterialNombre = (id?: number) => {
+        if (!id) return 'Sin seleccionar';
+        const mat = materiales.find(m => Number(m.id_materiales) === Number(id));
+        return mat?.nombre_materiales || 'Sin seleccionar';
+    };
+    const getEstiloNombre = (id?: number) => {
+        if (!id) return 'Sin seleccionar';
+        const est = estilos.find(e => Number(e.id_estilo) === Number(id));
+        return est?.nombre_estilo || 'Sin seleccionar';
+    };
+    const getDurabilidadLabel = (valor?: number) => {
+        const match = nivelesDurabilidad.find(n => n.valor === (valor || 0));
+        return match?.label || 'Sin seleccionar';
+    };
+
     useEffect(() => {
         if (user) {
             fetchPreferencias();
@@ -301,17 +322,20 @@ export default function Preferencias() {
                 <div className="max-w-6xl mx-auto">
                     {/* Header principal */}
                     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                        <div className="flex items-center mb-6">
+                        <div className="flex items-center mb-2">
                             <FontAwesomeIcon icon={faHeart} className="text-amber-500 text-2xl mr-3" />
                             <h1 className="text-2xl font-bold text-gray-800">Mis Preferencias de Cerámicas</h1>
                         </div>
-
-                        <p className="text-gray-600 mb-6 text-sm">
-                            Configura tus preferencias específicas para recibir recomendaciones personalizadas de cerámicas que se adapten a tu proyecto.
+                        <p className="text-gray-600 text-sm">
+                            Configura tus preferencias para obtener recomendaciones personalizadas según tu proyecto y presupuesto.
                         </p>
+                    </div>
 
+                    {/* Contenido principal: formulario + resumen */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Formulario de preferencias */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Uso específico */}
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -336,6 +360,7 @@ export default function Preferencias() {
                                         </option>
                                     ))}
                                 </select>
+                                <p className="text-xs text-gray-500 mt-1">Al cambiar el uso, cargaremos tus preferencias previas si existen.</p>
                             </div>
 
                             {/* Categoría preferida */}
@@ -355,6 +380,7 @@ export default function Preferencias() {
                                         </option>
                                     ))}
                                 </select>
+                                <p className="text-xs text-gray-500 mt-1">Ej.: Piso, Pared, Exterior, etc.</p>
                             </div>
 
                             {/* Material preferido */}
@@ -374,6 +400,7 @@ export default function Preferencias() {
                                         </option>
                                     ))}
                                 </select>
+                                <p className="text-xs text-gray-500 mt-1">Porcelanato, Cerámica, Gres, etc.</p>
                             </div>
 
                             {/* Estilo preferido */}
@@ -393,6 +420,7 @@ export default function Preferencias() {
                                         </option>
                                     ))}
                                 </select>
+                                <p className="text-xs text-gray-500 mt-1">Madera, Mármol, Cemento, Rústico, etc.</p>
                             </div>
 
                             {/* Color */}
@@ -451,19 +479,27 @@ export default function Preferencias() {
                                 </select>
                             </div>
 
-                            {/* En tendencia */}
+                            {/* En tendencia - toggle */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     ¿Te gustan las tendencias?
                                 </label>
-                                <select
-                                    value={preferencias.enTendencia ? 'true' : 'false'}
-                                    onChange={(e) => setPreferencias({...preferencias, enTendencia: e.target.value === 'true'})}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
-                                >
-                                    <option value="false">No</option>
-                                    <option value="true">Sí</option>
-                                </select>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreferencias({...preferencias, enTendencia: true})}
+                                        className={`px-3 py-2 rounded-md text-sm border ${preferencias.enTendencia ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'}`}
+                                    >
+                                        Sí
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreferencias({...preferencias, enTendencia: false})}
+                                        className={`px-3 py-2 rounded-md text-sm border ${!preferencias.enTendencia ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'}`}
+                                    >
+                                        No
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Rango de precio */}
@@ -488,38 +524,115 @@ export default function Preferencias() {
                                     ))}
                                 </select>
                             </div>
+                            {/* Botón guardar (solo en móviles) */}
+                            <div className="md:col-span-2 mt-4 lg:hidden">
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className={`w-full flex justify-center items-center px-6 py-3 rounded-lg font-semibold text-white transition-colors text-sm cursor-pointer ${
+                                        saving 
+                                            ? 'bg-gray-400 cursor-not-allowed' 
+                                            : saved 
+                                                ? 'bg-green-600 hover:bg-green-700' 
+                                                : 'bg-amber-600 hover:bg-amber-700'
+                                    }`}
+                                >
+                                    {saving ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Guardando...
+                                        </>
+                                    ) : saved ? (
+                                        <>
+                                            <FontAwesomeIcon icon={faCheck} className="mr-2" />
+                                            ¡Guardado!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                            Guardar Preferencias
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            </div>
                         </div>
 
-                        <div className="mt-6 flex justify-center">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className={`flex items-center px-6 py-2 rounded-lg font-semibold text-white transition-colors text-sm cursor-pointer ${
-                                    saving 
-                                        ? 'bg-gray-400 cursor-not-allowed' 
-                                        : saved 
-                                            ? 'bg-green-600 hover:bg-green-700' 
-                                            : 'bg-amber-600 hover:bg-amber-700'
-                                }`}
-                            >
-                                {saving ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Guardando...
-                                    </>
-                                ) : saved ? (
-                                    <>
-                                        <FontAwesomeIcon icon={faCheck} className="mr-2" />
-                                        ¡Guardado!
-                                    </>
-                                ) : (
-                                    <>
-                                        <FontAwesomeIcon icon={faSave} className="mr-2" />
-                                        Guardar Preferencias
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        {/* Resumen lateral */}
+                        <aside className="lg:col-span-1">
+                            <div className="sticky top-24">
+                                <div className="bg-white rounded-lg shadow p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumen de Preferencias</h3>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Uso</span>
+                                            <span className="font-medium text-gray-800">{preferencias.usoEspecifico || 'Sin seleccionar'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Categoría</span>
+                                            <span className="font-medium text-gray-800">{getCategoriaNombre(preferencias.idCategoria)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Material</span>
+                                            <span className="font-medium text-gray-800">{getMaterialNombre(preferencias.idMaterial)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Estilo</span>
+                                            <span className="font-medium text-gray-800">{getEstiloNombre(preferencias.idEstilo)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Color</span>
+                                            <span className="font-medium text-gray-800">{preferencias.color || 'Sin seleccionar'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Durabilidad</span>
+                                            <span className="font-medium text-gray-800">{getDurabilidadLabel(preferencias.durabilidad)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Superficie</span>
+                                            <span className="font-medium text-gray-800">{preferencias.superficie || 'Sin seleccionar'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">En tendencia</span>
+                                            <span className="font-medium text-gray-800">{preferencias.enTendencia ? 'Sí' : 'No'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Precio</span>
+                                            <span className="font-medium text-gray-800">RD${preferencias.precMin} - RD${preferencias.precMax}</span>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className={`w-full mt-6 flex justify-center items-center px-6 py-3 rounded-lg font-semibold text-white transition-colors text-sm cursor-pointer ${
+                                            saving 
+                                                ? 'bg-gray-400 cursor-not-allowed' 
+                                                : saved 
+                                                    ? 'bg-green-600 hover:bg-green-700' 
+                                                    : 'bg-amber-600 hover:bg-amber-700'
+                                        }`}
+                                    >
+                                        {saving ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                Guardando...
+                                            </>
+                                        ) : saved ? (
+                                            <>
+                                                <FontAwesomeIcon icon={faCheck} className="mr-2" />
+                                                ¡Guardado!
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                                Guardar Preferencias
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </aside>
                     </div>
                 </div>
             </div>
