@@ -680,10 +680,9 @@ export default function RecomendacionesInteligentes({
                     razones.push('Producto en oferta');
                 }
 
-                // Bonus por stock alto
+                // Bonus por stock alto (sin mostrar en razones)
                 if (producto.stock_actual > 10) {
                     score += 20;
-                    razones.push('Stock abundante');
                 }
 
                 // Bonus por ser "nuevo" (no comprado antes)
@@ -762,13 +761,11 @@ export default function RecomendacionesInteligentes({
                     razones.push('Producto en oferta');
                 }
 
-                // Bonus por stock alto
+                // Bonus por stock alto (sin mostrar en razones)
                 if (producto.stock_actual > 20) {
                     score += 25;
-                    razones.push('Stock muy abundante');
                 } else if (producto.stock_actual > 10) {
                     score += 15;
-                    razones.push('Stock abundante');
                 }
 
                 // Bonus por ser producto premium
@@ -1591,13 +1588,11 @@ export default function RecomendacionesInteligentes({
                     razones.push('Producto en oferta');
                 }
 
-                // Puntuar por stock alto
+                // Puntuar por stock alto (sin mostrar en razones)
                 if (producto.stock_actual > 10) {
                     score += 20;
-                    razones.push('Stock abundante');
                 } else if (producto.stock_actual > 5) {
                     score += 15;
-                    razones.push('Stock disponible');
                 }
 
                 // Bonus por ser producto premium
@@ -1915,13 +1910,11 @@ export default function RecomendacionesInteligentes({
                     razones.push('Producto en oferta');
                 }
 
-                // Puntuar por stock alto
+                // Puntuar por stock alto (sin mostrar en razones)
                 if (producto.stock_actual > 20) {
                     score += 30;
-                    razones.push('Stock muy abundante');
                 } else if (producto.stock_actual > 10) {
                     score += 20;
-                    razones.push('Stock abundante');
                 }
 
                 // Puntuar por ser producto premium
@@ -2080,13 +2073,11 @@ export default function RecomendacionesInteligentes({
             razones.push('Producto en oferta');
         }
 
-        // Score por stock
+        // Score por stock (sin mostrar en razones)
         if (producto.stock_actual > 10) {
             score += 20;
-            razones.push('Stock abundante');
         } else if (producto.stock_actual > 5) {
             score += 15;
-            razones.push('Stock disponible');
         }
 
         // Score por características especiales
@@ -2533,12 +2524,9 @@ export default function RecomendacionesInteligentes({
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between mb-1.5">
+                                <div className="mb-1.5">
                                     <span className={`font-bold text-amber-600 ${compact ? 'text-sm' : 'text-base'}`}>
                                         {formatearPrecio(producto.precio)}
-                                    </span>
-                                    <span className={`text-gray-500 ${compact ? 'text-xs' : 'text-sm'}`}>
-                                        Stock: {producto.stock_actual}
                                     </span>
                                 </div>
 
