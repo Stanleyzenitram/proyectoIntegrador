@@ -65,10 +65,7 @@ export default function Recomendaciones() {
         'Baño', 'Cocina', 'Sala', 'Comedor', 'Habitación', 'Área comercial'
     ];
 
-    const ambientes = [
-        'Moderno', 'Clásico', 'Rústico', 'Minimalista', 'Tropical', 
-        'Industrial', 'Vintage', 'Contemporáneo', 'Mediterráneo', 'Escandinavo'
-    ];
+
 
     useEffect(() => {
         if (user) {

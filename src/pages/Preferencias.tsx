@@ -39,6 +39,7 @@ export default function Preferencias() {
     const [categorias, setCategorias] = useState<Array<{id_categoria: string, nombre_categoria: string}>>([]);
     const [materiales, setMateriales] = useState<Array<{id_materiales: string, nombre_materiales: string}>>([]);
     const [estilos, setEstilos] = useState<Array<{id_estilo: string, nombre_estilo: string}>>([]);
+    const [usos, setUsos] = useState<Array<{id: string, nombre: string}>>([]);
 
     // Opciones predefinidas para los combo boxes
     const coloresPredefinidos = [
@@ -92,6 +93,12 @@ export default function Preferencias() {
                 .from('estilos')
                 .select('id_estilo, nombre_estilo');
             if (estData) setEstilos(estData);
+
+            const { data: usosData } = await supabase
+                .from('uso')
+                .select('id, nombre')
+                .order('nombre');
+            if (usosData) setUsos(usosData);
         } catch (error) {
             console.error('Error al cargar opciones:', error);
         }
@@ -323,24 +330,11 @@ export default function Preferencias() {
                                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm cursor-pointer"
                                 >
                                     <option value="">Seleccionar uso específico</option>
-                                    <option value="Piso de baño">Piso de baño</option>
-                                    <option value="Pared de baño">Pared de baño</option>
-                                    <option value="Piso de cocina">Piso de cocina</option>
-                                    <option value="Pared de cocina">Pared de cocina</option>
-                                    <option value="Piso de sala">Piso de sala</option>
-                                    <option value="Piso de comedor">Piso de comedor</option>
-                                    <option value="Piso de habitación">Piso de habitación</option>
-                                    <option value="Piso de terraza">Piso de terraza</option>
-                                    <option value="Piso de balcón">Piso de balcón</option>
-                                    <option value="Piso de entrada">Piso de entrada</option>
-                                    <option value="Piso de garaje">Piso de garaje</option>
-                                    <option value="Piso comercial">Piso comercial</option>
-                                    <option value="Piso industrial">Piso industrial</option>
-                                    <option value="Pared exterior">Pared exterior</option>
-                                    <option value="Pared interior">Pared interior</option>
-                                    <option value="Escaleras">Escaleras</option>
-                                    <option value="Zócalos">Zócalos</option>
-                                    <option value="Otro">Otro</option>
+                                    {usos.map((uso) => (
+                                        <option key={uso.id} value={uso.nombre}>
+                                            {uso.nombre}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 

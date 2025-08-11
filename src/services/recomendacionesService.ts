@@ -5,7 +5,6 @@ import {
     ComportamientoCompra,
     ProductoRecomendado,
     ProductoConScore,
-    FiltrosRecomendacion,
     EstadisticasUsuario
 } from '../types/recomendaciones';
 
@@ -14,18 +13,44 @@ export class RecomendacionesService {
     // ===== PREFERENCIAS DE USUARIO =====
     
     /**
-     * Obtener preferencias del usuario
+     * Obtener preferencias del usuario desde preferenciasProd
      */
     static async obtenerPreferencias(usuarioId: string): Promise<PreferenciasUsuario | null> {
         try {
+            // Primero obtener el id_cliente del usuario
+            const { data: clienteData, error: errorCliente } = await supabase
+                .from('clientes')
+                .select('id_cliente')
+                .eq('uuid', usuarioId)
+                .single();
+
+            if (errorCliente) throw errorCliente;
+
+            // Luego obtener las preferencias del cliente
             const { data, error } = await supabase
-                .from('preferencias_usuario')
+                .from('preferenciasProd')
                 .select('*')
-                .eq('usuario_id', usuarioId)
+                .eq('idClientes', clienteData.id_cliente)
                 .single();
 
             if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
-            return data;
+            
+            // Convertir el formato de preferenciasProd al formato PreferenciasUsuario
+            if (data) {
+                return {
+                    id: data.id,
+                    usuario_id: usuarioId,
+                    categorias_favoritas: data.idCategoria ? [data.idCategoria] : [],
+                    estilos_preferidos: data.idEstilo ? [data.idEstilo] : [],
+                    materiales_favoritos: data.idMaterial ? [data.idMaterial] : [],
+                    rango_precio_min: data.precMin,
+                    rango_precio_max: data.precMax,
+                    color_preferido: data.color,
+                    fecha_actualizacion: data.fecha_creacion || new Date().toISOString()
+                };
+            }
+            
+            return null;
         } catch (error) {
             console.error('Error al obtener preferencias:', error);
             return null;
@@ -33,14 +58,35 @@ export class RecomendacionesService {
     }
 
     /**
-     * Guardar o actualizar preferencias del usuario
+     * Guardar o actualizar preferencias del usuario en preferenciasProd
      */
     static async guardarPreferencias(preferencias: PreferenciasUsuario): Promise<boolean> {
         try {
+            // Primero obtener el id_cliente del usuario
+            const { data: clienteData, error: errorCliente } = await supabase
+                .from('clientes')
+                .select('id_cliente')
+                .eq('uuid', preferencias.usuario_id)
+                .single();
+
+            if (errorCliente) throw errorCliente;
+
+            // Convertir al formato de preferenciasProd
+            const datosPreferencias = {
+                idClientes: clienteData.id_cliente,
+                idEstilo: preferencias.estilos_preferidos?.[0] || null,
+                color: preferencias.color_preferido,
+                idMaterial: preferencias.materiales_favoritos?.[0] || null,
+                idCategoria: preferencias.categorias_favoritas?.[0] || null,
+                precMin: preferencias.rango_precio_min,
+                precMax: preferencias.rango_precio_max,
+                fecha_creacion: new Date().toISOString()
+            };
+
             const { error } = await supabase
-                .from('preferencias_usuario')
-                .upsert(preferencias, {
-                    onConflict: 'usuario_id'
+                .from('preferenciasProd')
+                .upsert(datosPreferencias, {
+                    onConflict: 'idClientes'
                 });
 
             if (error) throw error;

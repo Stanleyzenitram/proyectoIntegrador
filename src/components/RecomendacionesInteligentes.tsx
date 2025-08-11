@@ -62,6 +62,29 @@ export default function RecomendacionesInteligentes({
     const [esRevestimiento, setEsRevestimiento] = useState(false);
     const [loadingTipo, setLoadingTipo] = useState(true);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [preferenciasInfo, setPreferenciasInfo] = useState<{
+        total: number;
+        validas: number;
+        modo: 'preferencias' | 'generales' | 'fallback';
+    }>({ total: 0, validas: 0, modo: 'generales' });
+
+    // Función para limpiar caché y forzar regeneración completa
+    const limpiarCacheYRegenerar = async () => {
+        console.log('🧹 Limpiando caché y regenerando recomendaciones...');
+        
+        // Limpiar todo el estado
+        setProductosRecomendados([]);
+        setCurrentIndex(0);
+        setShowAll(false);
+        setError(null);
+        setLoading(true);
+        
+        // Pequeña pausa para mostrar el loading
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Forzar regeneración
+        await generarRecomendaciones();
+    };
 
     // Función para determinar si un producto es de revestimientos
     const determinarTipoProducto = async (producto: ProductoRecomendado): Promise<boolean> => {
@@ -109,9 +132,9 @@ export default function RecomendacionesInteligentes({
             );
             
             // También verificar si tiene formato y metros_por_caja (indicadores de revestimiento)
-            const tieneFormatoRevestimiento = producto.formato && 
+            const tieneFormatoRevestimiento = Boolean(producto.formato && 
                 producto.formato.includes('x') && 
-                producto.metros_por_caja && producto.metros_por_caja > 0;
+                producto.metros_por_caja && producto.metros_por_caja > 0);
             
             return esRevestimientoPorNombre || tieneFormatoRevestimiento;
             
@@ -131,19 +154,26 @@ export default function RecomendacionesInteligentes({
                 nombreProducto.includes(term) || descripcion.includes(term)
             );
             
-            const tieneFormatoRevestimiento = producto.formato && 
+            const tieneFormatoRevestimiento = Boolean(producto.formato && 
                 producto.formato.includes('x') && 
-                producto.metros_por_caja && producto.metros_por_caja > 0;
+                producto.metros_por_caja && producto.metros_por_caja > 0);
             
             return esRevestimientoPorNombre || tieneFormatoRevestimiento;
         }
     };
 
+    // Efecto principal para regenerar recomendaciones cuando cambie el usuario
     useEffect(() => {
         if (user) {
+            console.log('🔄 Usuario cambiado, regenerando recomendaciones para:', user.id);
+            // Limpiar estado anterior
+            setProductosRecomendados([]);
+            setCurrentIndex(0);
+            setShowAll(false);
+            // Forzar regeneración
             generarRecomendaciones();
         }
-    }, [user]);
+    }, [user?.id]); // Cambiar de [user] a [user?.id] para detectar cambios de ID
 
     // Efecto adicional para regenerar recomendaciones cuando cambien los productos del contexto
     useEffect(() => {
@@ -151,14 +181,15 @@ export default function RecomendacionesInteligentes({
             console.log('Context products changed, regenerating recommendations...');
             generarRecomendaciones();
         }
-    }, [user, contextProducts]);
+    }, [user?.id, contextProducts]); // Cambiar de [user] a [user?.id]
 
     const generarRecomendaciones = async () => {
         if (!user) {
-            console.log('No user found, returning from generarRecomendaciones.');
+            console.log('❌ No user found, returning from generarRecomendaciones.');
             return;
         }
-        console.log('generarRecomendaciones called. User ID:', user.id);
+        console.log('🚀 generarRecomendaciones called. User ID:', user.id);
+        console.log('🆔 Generando recomendaciones para usuario:', user.email || user.id);
         
         try {
             setLoading(true);
@@ -171,26 +202,26 @@ export default function RecomendacionesInteligentes({
                 .eq('uuid', user.id)
                 .single();
 
-            console.log('Cliente Data:', clienteData, 'Cliente Error:', clienteError);
+            console.log('👤 Cliente Data:', clienteData, 'Cliente Error:', clienteError);
             
             if (clienteError || !clienteData) {
                 throw new Error('No se pudo obtener información del cliente');
             }
 
             const clienteId = clienteData.id_cliente;
-            console.log('Cliente ID:', clienteId);
+            console.log('🆔 Cliente ID:', clienteId);
 
             // Obtener productos para recomendaciones
             let productosComprados: any[] = [];
             
-            console.log('Context Products:', contextProducts);
+            console.log('📦 Context Products:', contextProducts);
             
             // LÓGICA SEPARADA:
             // Si hay productos de contexto (ej: modal de repetir pedido), usar productos relacionados
             // Si NO hay productos de contexto (ej: página principal de PedidosInt), usar historial de compras
             if (contextProducts && contextProducts.length > 0) {
                 // MODO PRODUCTOS RELACIONADOS (para plantilla general)
-                console.log('MODO: Productos relacionados por similitud');
+                console.log('🎯 MODO: Productos relacionados por similitud');
                 productosComprados = contextProducts.map(producto => ({
                     id_producto: producto.id_producto,
                     cantidad: producto.cantidad,
@@ -199,13 +230,19 @@ export default function RecomendacionesInteligentes({
                         nombre_producto: producto.nombre_producto,
                         id_categoria: producto.id_categoria,
                         id_estilo: producto.id_estilo,
-                        id_materiales: producto.id_materiales
-                    }]
+                        id_materiales: producto.id_materiales,
+                        colorDom: producto.colorDom,
+                        superficie: producto.superficie,
+                        durabilidad: producto.durabilidad,
+                        precio: producto.precio
+                    }],
+                    // Incluir todos los campos necesarios para el análisis
+                    ...producto
                 }));
-                console.log('Productos Comprados (from context):', productosComprados);
+                console.log('📋 Productos Comprados (from context):', productosComprados);
             } else {
                 // MODO HISTORIAL DE COMPRAS (para PedidosInt)
-                console.log('MODO: Historial de compras');
+                console.log('📚 MODO: Historial de compras');
                 
                 // Obtener historial de compras del cliente
                 const { data: facturasData } = await supabase
@@ -213,11 +250,11 @@ export default function RecomendacionesInteligentes({
                     .select('id_factura')
                     .eq('id_cliente', clienteId);
 
-                console.log('Facturas Data:', facturasData);
+                console.log('🧾 Facturas Data:', facturasData);
                 
                 if (facturasData && facturasData.length > 0) {
                     const facturasIds = facturasData.map(f => f.id_factura);
-                    console.log('Facturas IDs:', facturasIds);
+                    console.log('🆔 Facturas IDs:', facturasIds);
                     
                     const { data: detallesData } = await supabase
                         .from('detalles_factura')
@@ -228,28 +265,40 @@ export default function RecomendacionesInteligentes({
                                 nombre_producto,
                                 id_categoria,
                                 id_estilo,
-                                id_materiales
+                                id_materiales,
+                                colorDom,
+                                superficie,
+                                durabilidad,
+                                precio
                             )
                         `)
                         .in('id_factura', facturasIds);
 
-                    console.log('Detalles Data:', detallesData);
+                    console.log('📝 Detalles Data:', detallesData);
                     
                     if (detallesData) {
                         productosComprados = detallesData.map(detalle => ({
                             id_producto: detalle.id_producto,
                             cantidad: 1,
-                            productos: [detalle.productos]
+                            productos: [detalle.productos],
+                            // Incluir todos los campos necesarios para el análisis
+                            ...detalle.productos
                         }));
-                        console.log('Productos Comprados (from DB):', productosComprados);
+                        console.log('📋 Productos Comprados (from DB):', productosComprados);
                     }
                 }
             }
             
-            console.log('Productos Comprados finales:', productosComprados);
+            console.log('🎯 Productos Comprados finales:', productosComprados);
+
+            if (productosComprados.length === 0) {
+                console.log('⚠️ No hay productos para generar recomendaciones');
+                setProductosRecomendados([]);
+                return;
+            }
 
             // Generar recomendaciones personalizadas
-            console.log('Calling generarRecomendacionesPersonalizadas with:', {
+            console.log('🔮 Calling generarRecomendacionesPersonalizadas with:', {
                 productosComprados,
                 clienteId,
                 modo: contextProducts && contextProducts.length > 0 ? 'productos_relacionados' : 'historial_compras'
@@ -261,11 +310,18 @@ export default function RecomendacionesInteligentes({
                 Boolean(contextProducts && contextProducts.length > 0) // nuevo parámetro para indicar el modo
             );
 
-            console.log('Recomendaciones generadas:', recomendaciones);
-            setProductosRecomendados(recomendaciones);
+            console.log('✨ Recomendaciones generadas:', recomendaciones);
+            
+            if (recomendaciones && recomendaciones.length > 0) {
+                console.log(`✅ Se generaron ${recomendaciones.length} recomendaciones exitosamente`);
+                setProductosRecomendados(recomendaciones);
+            } else {
+                console.log('⚠️ No se generaron recomendaciones');
+                setProductosRecomendados([]);
+            }
 
         } catch (error) {
-            console.error('Error al generar recomendaciones:', error);
+            console.error('❌ Error al generar recomendaciones:', error);
             setError(error instanceof Error ? error.message : 'Error desconocido');
         } finally {
             setLoading(false);
@@ -280,9 +336,27 @@ export default function RecomendacionesInteligentes({
         console.log('generarRecomendacionesPersonalizadas called with:', { productosComprados, clienteId, modoProductosRelacionados });
         
         try {
+            // Obtener preferencias del usuario por uso (SIEMPRE obtener, incluso si no hay productos comprados)
+            const preferenciasUsuario = await obtenerPreferenciasUsuario(clienteId);
+            console.log('Preferencias del usuario:', preferenciasUsuario);
+
+            // MEJORA: Si no hay productos comprados, generar recomendaciones basadas SOLO en preferencias
+            if (productosComprados.length === 0) {
+                console.log('🆕 No hay historial de compras, generando recomendaciones por preferencias...');
+                const recomendacionesPorPreferencias = await generarRecomendacionesPorPreferencias(preferenciasUsuario, clienteId);
+                
+                if (recomendacionesPorPreferencias.length > 0) {
+                    console.log('✅ Recomendaciones por preferencias generadas exitosamente');
+                    return recomendacionesPorPreferencias;
+                } else {
+                    console.log('⚠️ No se generaron recomendaciones por preferencias, usando fallback general...');
+                    return await generarRecomendacionesGenerales(clienteId);
+                }
+            }
+
             // SIEMPRE generar y guardar productos relacionados para poblar la tabla
             // Esto asegura que la tabla productosRelacionados esté siempre actualizada
-            console.log('Generando y guardando productos relacionados para enriquecer la base de datos...');
+            console.log('Generando y guardar productos relacionados para enriquecer la base de datos...');
             await generarYGuardarProductosRelacionados(productosComprados);
 
             // Limpiar productos relacionados obsoletos periódicamente (cada 10 llamadas)
@@ -290,14 +364,30 @@ export default function RecomendacionesInteligentes({
                 limpiarProductosRelacionadosObsoletos();
             }
 
-            // Obtener preferencias del usuario por uso
-            const preferenciasUsuario = await obtenerPreferenciasUsuario(clienteId);
-            console.log('Preferencias del usuario:', preferenciasUsuario);
-
             // Analizar características de los productos comprados
             const caracteristicasCompradas = analizarCaracteristicasProductos(productosComprados);
-            console.log('Características de productos comprados:', caracteristicasCompradas);
+            console.log('🔍 Características de productos comprados:', {
+                categorias: Array.from(caracteristicasCompradas.categorias),
+                estilos: Array.from(caracteristicasCompradas.estilos),
+                materiales: Array.from(caracteristicasCompradas.materiales),
+                colores: Array.from(caracteristicasCompradas.colores),
+                superficies: Array.from(caracteristicasCompradas.superficies),
+                durabilidades: Array.from(caracteristicasCompradas.durabilidades),
+                rangoPrecio: caracteristicasCompradas.rangoPrecio
+            });
+            console.log('📊 Productos comprados para análisis:', productosComprados.map(p => ({
+                id: p.id_producto,
+                nombre: p.nombre_producto,
+                categoria: p.id_categoria,
+                estilo: p.id_estilo,
+                material: p.id_materiales,
+                color: p.colorDom,
+                superficie: p.superficie,
+                durabilidad: p.durabilidad,
+                precio: p.precio
+            })));
 
+            // MEJORA: Obtener más productos base para mayor diversificación
             let query = supabase
                 .from('productos')
                 .select(`
@@ -324,8 +414,8 @@ export default function RecomendacionesInteligentes({
             const filtrosAplicados = aplicarFiltrosInteligentes(query, caracteristicasCompradas);
             query = filtrosAplicados.query;
 
-            // Obtener productos base
-            const { data: productosBase, error: productosError } = await query.limit(50);
+            // MEJORA: Aumentar el límite para obtener más productos y mejor diversificación
+            const { data: productosBase, error: productosError } = await query.limit(100); // Aumentado de 50 a 100
 
             console.log('Productos Base (from initial query):', productosBase, 'Productos Error:', productosError);
 
@@ -353,6 +443,22 @@ export default function RecomendacionesInteligentes({
                     if (scoreSimilitud.razones.length > 0) {
                         razones.push(...scoreSimilitud.razones);
                     }
+                    
+                    // Logging detallado para debugging
+                    if (scoreSimilitud.score > 0) {
+                        console.log(`🎯 Similitud alta para ${producto.nombre_producto} (contexto):`, {
+                            score: scoreSimilitud.score,
+                            razones: scoreSimilitud.razones,
+                            producto: {
+                                categoria: producto.id_categoria,
+                                estilo: producto.id_estilo,
+                                material: producto.id_materiales,
+                                color: producto.colorDom,
+                                superficie: producto.superficie,
+                                durabilidad: producto.durabilidad
+                            }
+                        });
+                    }
 
                     // Puntuar por productos relacionados (prioridad alta)
                     if (productosRelacionados.includes(producto.id_producto)) {
@@ -369,10 +475,10 @@ export default function RecomendacionesInteligentes({
                     // Puntuar por stock
                     score += Math.min(15, producto.stock_actual / 3);
 
-                    // Verificar si coincide con preferencias de uso del usuario
+                    // MEJORA: Verificar si coincide con preferencias de uso del usuario (prioridad muy alta)
                     const mensajeUso = verificarCoincidenciaUso(producto, preferenciasUsuario);
                     if (mensajeUso) {
-                        score += 30; // Prioridad alta para productos que coinciden con uso preferido
+                        score += 50; // Prioridad muy alta para productos que coinciden con uso preferido
                         razones.push(mensajeUso);
                         console.log('🎯 Producto con coincidencia de uso:', producto.nombre_producto, 'Score:', score, 'Mensaje:', mensajeUso);
                     } else {
@@ -401,6 +507,22 @@ export default function RecomendacionesInteligentes({
                     if (scoreSimilitud.razones.length > 0) {
                         razones.push(...scoreSimilitud.razones);
                     }
+                    
+                    // Logging detallado para debugging
+                    if (scoreSimilitud.score > 0) {
+                        console.log(`🎯 Similitud alta para ${producto.nombre_producto}:`, {
+                            score: scoreSimilitud.score,
+                            razones: scoreSimilitud.razones,
+                            producto: {
+                                categoria: producto.id_categoria,
+                                estilo: producto.id_estilo,
+                                material: producto.id_materiales,
+                                color: producto.colorDom,
+                                superficie: producto.superficie,
+                                durabilidad: producto.durabilidad
+                            }
+                        });
+                    }
 
                     // Puntuar por descuento
                     if (producto.descuento && producto.descuento > 0) {
@@ -411,10 +533,10 @@ export default function RecomendacionesInteligentes({
                     // Puntuar por stock
                     score += Math.min(15, producto.stock_actual / 3);
 
-                    // Verificar si coincide con preferencias de uso del usuario
+                    // MEJORA: Verificar si coincide con preferencias de uso del usuario (prioridad muy alta)
                     const mensajeUso = verificarCoincidenciaUso(producto, preferenciasUsuario);
                     if (mensajeUso) {
-                        score += 30; // Prioridad alta para productos que coinciden con uso preferido
+                        score += 50; // Prioridad muy alta para productos que coinciden con uso preferido
                         razones.push(mensajeUso);
                         console.log('🎯 Producto con coincidencia de uso (historial):', producto.nombre_producto, 'Score:', score, 'Mensaje:', mensajeUso);
                     } else {
@@ -431,10 +553,8 @@ export default function RecomendacionesInteligentes({
 
             console.log('Productos puntuados (before sort/slice):', productosPuntuados);
             
-            // Ordenar por score y tomar los mejores
-            const productosFinales = productosPuntuados
-                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
-                .slice(0, 12);
+            // MEJORA: Implementar estrategia de diversificación inteligente
+            const productosFinales = await aplicarDiversificacionInteligente(productosPuntuados, caracteristicasCompradas, productosComprados);
                 
             console.log('🎯 Productos finales ordenados por score:');
             productosFinales.forEach((producto, index) => {
@@ -450,12 +570,291 @@ export default function RecomendacionesInteligentes({
         }
     };
 
-    // Función para obtener preferencias del usuario por uso
+    // NUEVA FUNCIÓN: Aplicar diversificación inteligente para incluir productos nuevos
+    const aplicarDiversificacionInteligente = async (
+        productosPuntuados: any[], 
+        caracteristicas: any,
+        productosComprados: any[] // Nuevo parámetro para pasar productos ya comprados
+    ): Promise<ProductoRecomendado[]> => {
+        console.log('🔀 Aplicando diversificación inteligente...');
+        
+        // Ordenar por score inicial
+        const productosOrdenados = productosPuntuados
+            .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0));
+        
+        // Tomar los primeros 8 productos con mejor score (productos similares a lo que ya compraste)
+        const productosSimilares = productosOrdenados.slice(0, 8);
+        
+        // MEJORA: Buscar productos nuevos con características complementarias
+        const productosNuevos = await buscarProductosNuevosComplementarios(caracteristicas, productosOrdenados, productosComprados);
+        
+        // MEJORA: Buscar productos de tendencia o populares
+        const productosTendencia = await buscarProductosTendencia(productosOrdenados);
+        
+        // Combinar y balancear las recomendaciones
+        const recomendacionesFinales = [
+            ...productosSimilares,                    // 8 productos similares a lo que ya compraste
+            ...productosNuevos.slice(0, 3),          // 3 productos nuevos complementarios
+            ...productosTendencia.slice(0, 1)        // 1 producto de tendencia
+        ];
+        
+        console.log('📊 Distribución final de recomendaciones:');
+        console.log(`   - Productos similares: ${productosSimilares.length}`);
+        console.log(`   - Productos nuevos: ${productosNuevos.slice(0, 3).length}`);
+        console.log(`   - Productos tendencia: ${productosTendencia.slice(0, 1).length}`);
+        
+        return recomendacionesFinales;
+    };
+
+    // NUEVA FUNCIÓN: Buscar productos nuevos con características complementarias
+    const buscarProductosNuevosComplementarios = async (
+        caracteristicas: any, 
+        productosExistentes: any[],
+        productosComprados: any[] // Nuevo parámetro para excluir productos ya comprados
+    ): Promise<ProductoRecomendado[]> => {
+        console.log('🔍 Buscando productos nuevos complementarios...');
+        
+        try {
+            // Obtener IDs de productos ya incluidos en recomendaciones actuales
+            const idsExcluidos = productosExistentes.map(p => p.id_producto);
+            
+            // Obtener IDs de productos ya comprados por el usuario
+            const idsProductosComprados = productosComprados.map(p => p.id_producto);
+            
+            // Combinar ambos arrays de IDs para excluirlos completamente
+            const todosLosIdsExcluidos = [...idsExcluidos, ...idsProductosComprados];
+            
+            console.log('🚫 Productos excluidos:', {
+                deRecomendaciones: idsExcluidos.length,
+                yaComprados: idsProductosComprados.length,
+                total: todosLosIdsExcluidos.length
+            });
+            
+            // Buscar productos que tengan algunas características similares pero también sean diferentes
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0)
+                .not('id_producto', 'in', `(${todosLosIdsExcluidos.join(',')})`)
+                .limit(50);
+
+            // Aplicar filtros más flexibles para productos nuevos
+            if (caracteristicas.categorias.size > 0) {
+                // Incluir productos de categorías relacionadas pero no exactamente iguales
+                query = query.or(
+                    `id_categoria.in.(${Array.from(caracteristicas.categorias).join(',')}),` +
+                    `id_categoria.not.in.(${Array.from(caracteristicas.categorias).join(',')})`
+                );
+            }
+            
+            if (caracteristicas.estilos.size > 0) {
+                // Incluir productos de estilos complementarios
+                query = query.or(
+                    `id_estilo.in.(${Array.from(caracteristicas.estilos).join(',')}),` +
+                    `id_estilo.not.in.(${Array.from(caracteristicas.estilos).join(',')})`
+                );
+            }
+
+            const { data: productosNuevos, error } = await query;
+            
+            if (error || !productosNuevos) {
+                console.warn('Error buscando productos nuevos:', error);
+                return [];
+            }
+
+            // Puntuar productos nuevos con lógica diferente
+            const productosNuevosPuntuados = productosNuevos.map(producto => {
+                let score = 0;
+                let razones: string[] = [];
+
+                // Puntuar por similitud parcial (no exacta)
+                const scoreSimilitud = calcularSimilitudProducto(producto, caracteristicas);
+                score += scoreSimilitud.score * 0.7; // Reducir peso para productos nuevos
+                
+                // Bonus por ser diferente pero complementario
+                if (scoreSimilitud.score > 30 && scoreSimilitud.score < 80) {
+                    score += 25;
+                    razones.push('Producto complementario a tus preferencias');
+                }
+
+                // Bonus por descuento
+                if (producto.descuento && producto.descuento > 0) {
+                    score += 30;
+                    razones.push('Producto en oferta');
+                }
+
+                // Bonus por stock alto
+                if (producto.stock_actual > 10) {
+                    score += 20;
+                    razones.push('Stock abundante');
+                }
+
+                // Bonus por ser "nuevo" (no comprado antes)
+                score += 15;
+                razones.push('Nuevo para ti');
+
+                return {
+                    ...producto,
+                    score_recomendacion: score,
+                    razon_recomendacion: razones.join(', ')
+                };
+            });
+
+            // Ordenar y retornar los mejores productos nuevos
+            return productosNuevosPuntuados
+                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                .slice(0, 5);
+
+        } catch (error) {
+            console.error('Error buscando productos nuevos:', error);
+            return [];
+        }
+    };
+
+    // NUEVA FUNCIÓN: Buscar productos de tendencia o populares
+    const buscarProductosTendencia = async (productosExistentes: any[]): Promise<ProductoRecomendado[]> => {
+        console.log('🔥 Buscando productos de tendencia...');
+        
+        try {
+            // Obtener IDs de productos ya incluidos para excluirlos
+            const idsExcluidos = productosExistentes.map(p => p.id_producto);
+            
+            // Buscar productos populares o de tendencia
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0)
+                .not('id_producto', 'in', `(${idsExcluidos.join(',')})`)
+                .limit(20);
+
+            const { data: productosTendencia, error } = await query;
+            
+            if (error || !productosTendencia) {
+                console.warn('Error buscando productos de tendencia:', error);
+                return [];
+            }
+
+            // Puntuar productos de tendencia
+            const productosTendenciaPuntuados = productosTendencia.map(producto => {
+                let score = 0;
+                let razones: string[] = [];
+
+                // Bonus por descuento alto
+                if (producto.descuento && producto.descuento > 15) {
+                    score += 40;
+                    razones.push('Gran oferta');
+                } else if (producto.descuento && producto.descuento > 0) {
+                    score += 20;
+                    razones.push('Producto en oferta');
+                }
+
+                // Bonus por stock alto
+                if (producto.stock_actual > 20) {
+                    score += 25;
+                    razones.push('Stock muy abundante');
+                } else if (producto.stock_actual > 10) {
+                    score += 15;
+                    razones.push('Stock abundante');
+                }
+
+                // Bonus por ser producto premium
+                if (producto.precio > 5000) {
+                    score += 20;
+                    razones.push('Producto premium');
+                }
+
+                // Bonus por características especiales
+                if (producto.superficie && producto.superficie.toLowerCase().includes('antideslizante')) {
+                    score += 15;
+                    razones.push('Superficie antideslizante');
+                }
+
+                if (producto.durabilidad && producto.durabilidad >= 8) {
+                    score += 15;
+                    razones.push('Alta durabilidad');
+                }
+
+                // Bonus por ser "tendencia"
+                score += 10;
+                razones.push('Producto de tendencia');
+
+                return {
+                    ...producto,
+                    score_recomendacion: score,
+                    razon_recomendacion: razones.join(', ')
+                };
+            });
+
+            // Ordenar y retornar los mejores productos de tendencia
+            return productosTendenciaPuntuados
+                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                .slice(0, 3);
+
+        } catch (error) {
+            console.error('Error buscando productos de tendencia:', error);
+            return [];
+        }
+    };
+
+    // Función para obtener preferencias del usuario desde preferenciasProd (sin lógica de uso)
     const obtenerPreferenciasUsuario = async (clienteId: number) => {
         try {
             console.log('🔍 Buscando preferencias para cliente ID:', clienteId);
             
             // Obtener preferencias del usuario desde la tabla usoXpref
+            // Primero obtenemos las preferencias del cliente
+            const { data: preferenciasCliente, error: errorPreferencias } = await supabase
+                .from('preferenciasProd')
+                .select('*')
+                .eq('idClientes', clienteId);
+
+            if (errorPreferencias) {
+                console.warn('Error al obtener preferencias del cliente:', errorPreferencias);
+                return [];
+            }
+
+            if (!preferenciasCliente || preferenciasCliente.length === 0) {
+                console.log('⚠️ No se encontraron preferencias para el cliente');
+                return [];
+            }
+
+            console.log('✅ Preferencias del cliente encontradas:', preferenciasCliente.length);
+
+            // Ahora obtenemos los usos asociados a estas preferencias
             const { data: preferenciasData, error } = await supabase
                 .from('usoXpref')
                 .select(`
@@ -476,7 +875,7 @@ export default function RecomendacionesInteligentes({
                         precMax
                     )
                 `)
-                .eq('preferenciasProd.idClientes', clienteId);
+                .in('preferenciasProd.idClientes', [clienteId]);
 
             console.log('📊 Query ejecutada para preferencias');
             console.log('📋 Datos de preferencias obtenidos:', preferenciasData);
@@ -508,6 +907,7 @@ export default function RecomendacionesInteligentes({
     };
 
     // Función para verificar si un producto coincide con las preferencias de uso del usuario
+    // NOTA: Esta función ya no se usa, reemplazada por calcularScoreSimilitud
     const verificarCoincidenciaUso = (producto: any, preferenciasUsuario: any[]) => {
         console.log('🔍 Verificando coincidencia de uso para producto:', producto.id_producto, producto.nombre_producto);
         console.log('📋 Preferencias del usuario:', preferenciasUsuario);
@@ -592,6 +992,24 @@ export default function RecomendacionesInteligentes({
                 console.log('✅ Coincidencia por rango de precio:', preferencia.precMin, '-', preferencia.precMax);
                 return `Perfecto para tu ${uso.toLowerCase()}`;
             }
+
+            // MEJORA: Verificar coincidencias parciales por similitud de características
+            if (preferencia.idCategoria && producto.id_categoria) {
+                // Si la categoría es similar (mismo tipo de producto)
+                const categoriasSimilares = {
+                    'revestimiento': ['cerámica', 'porcelanato', 'gres', 'mosaico'],
+                    'cerámica': ['revestimiento', 'porcelanato', 'gres'],
+                    'porcelanato': ['revestimiento', 'cerámica', 'gres'],
+                    'gres': ['revestimiento', 'cerámica', 'porcelanato']
+                };
+                
+                // Aquí podrías implementar lógica más sofisticada para categorías similares
+                // Por ahora, damos un bonus menor por categorías relacionadas
+                if (producto.id_categoria !== preferencia.idCategoria) {
+                    console.log('🔄 Categoría relacionada (coincidencia parcial)');
+                    return `Ideal para tu ${uso.toLowerCase()} (categoría relacionada)`;
+                }
+            }
         }
 
         console.log('❌ No se encontraron coincidencias para este producto');
@@ -631,47 +1049,34 @@ export default function RecomendacionesInteligentes({
     };
 
     const obtenerProductosRelacionados = async (productosComprados: any[]): Promise<number[]> => {
-        console.log('obtenerProductosRelacionados called with:', productosComprados);
-        
-        if (!productosComprados || productosComprados.length === 0) {
-            return [];
-        }
-
         try {
-            // Obtener productos relacionados desde la tabla productosRelacionados
-            const { data: productosRelacionados, error } = await supabase
+            console.log('🔍 Obteniendo productos relacionados para:', productosComprados);
+            
+            if (productosComprados.length === 0) return [];
+
+            const productosIds = productosComprados.map(p => p.id_producto).filter(Boolean);
+            console.log('IDs de productos para buscar relacionados:', productosIds);
+
+            // Usar la tabla CORRECTA: productosRelacionados
+            const { data: relacionados, error } = await supabase
                 .from('productosRelacionados')
-                .select('producto_relacionado_id, score_similitud')
-                .in('producto_base_id', productosComprados.map(p => p.id_producto))
-                .eq('activo', true)
-                .order('score_similitud', { ascending: false })
+                .select('idProdAsoc, frecuencia')
+                .in('idProdBase', productosIds)
+                .order('frecuencia', { ascending: false })
                 .limit(20);
 
             if (error) {
-                console.error('Error obteniendo productos relacionados:', error);
+                console.error('❌ Error obteniendo productos relacionados:', error);
                 return [];
             }
 
-            // Si encontramos suficientes productos relacionados, los retornamos
-            if (productosRelacionados && productosRelacionados.length >= 5) {
-                const idsRelacionados = productosRelacionados.map(p => p.producto_relacionado_id);
-                console.log('Productos relacionados encontrados en BD:', idsRelacionados);
-                return idsRelacionados;
-            }
-
-            // Si no hay suficientes productos relacionados, generamos nuevos y los guardamos
-            console.log('Generando y guardando nuevos productos relacionados...');
-            const nuevosProductosRelacionados = await generarYGuardarProductosRelacionados(productosComprados);
+            const productosRelacionados = relacionados?.map(r => r.idProdAsoc) || [];
+            console.log(`✅ Encontrados ${productosRelacionados.length} productos relacionados`);
             
-            // Combinar productos existentes con nuevos
-            const todosLosRelacionados = [
-                ...(productosRelacionados || []).map(p => p.producto_relacionado_id),
-                ...nuevosProductosRelacionados
-            ];
+            return productosRelacionados;
 
-            return todosLosRelacionados;
         } catch (error) {
-            console.error('Error en obtenerProductosRelacionados:', error);
+            console.error('❌ Error en obtenerProductosRelacionados:', error);
             return [];
         }
     };
@@ -679,6 +1084,8 @@ export default function RecomendacionesInteligentes({
     // Nueva función para generar y guardar productos relacionados
     const generarYGuardarProductosRelacionados = async (productosComprados: any[]): Promise<number[]> => {
         try {
+            console.log('🔗 Generando productos relacionados para:', productosComprados);
+            
             // Obtener características de los productos comprados
             const caracteristicas = analizarCaracteristicasProductos(productosComprados);
             
@@ -724,38 +1131,39 @@ export default function RecomendacionesInteligentes({
                 if (score > 0.3) { // Solo productos con similitud significativa
                     productosRelacionados.push(producto.id_producto);
                     
-                    // Preparar datos para guardar en la BD
+                    // Preparar datos para guardar en la tabla CORRECTA: productosRelacionados
                     productosComprados.forEach(productoBase => {
                         productosParaGuardar.push({
-                            producto_base_id: productoBase.id_producto,
-                            producto_relacionado_id: producto.id_producto,
-                            score_similitud: score,
-                            caracteristicas_comunes: similitud.razones,
-                            activo: true
+                            idProdBase: productoBase.id_producto,
+                            idProdAsoc: producto.id_producto,
+                            frecuencia: Math.round(score * 100), // Convertir a porcentaje 0-100
+                            created_at: new Date().toISOString()
                         });
                     });
                 }
             });
 
-            // Guardar productos relacionados en la BD
+            // Guardar productos relacionados en la tabla CORRECTA
             if (productosParaGuardar.length > 0) {
+                console.log(`💾 Guardando ${productosParaGuardar.length} productos relacionados...`);
+                
                 const { error: insertError } = await supabase
                     .from('productosRelacionados')
                     .upsert(productosParaGuardar, { 
-                        onConflict: 'producto_base_id,producto_relacionado_id',
+                        onConflict: 'idProdBase,idProdAsoc',
                         ignoreDuplicates: false 
                     });
 
                 if (insertError) {
-                    console.error('Error guardando productos relacionados:', insertError);
+                    console.error('❌ Error guardando productos relacionados:', insertError);
                 } else {
-                    console.log(`${productosParaGuardar.length} productos relacionados guardados exitosamente`);
+                    console.log(`✅ ${productosParaGuardar.length} productos relacionados guardados exitosamente en productosRelacionados`);
                 }
             }
 
             return productosRelacionados;
         } catch (error) {
-            console.error('Error generando productos relacionados:', error);
+            console.error('❌ Error generando productos relacionados:', error);
             return [];
         }
     };
@@ -763,92 +1171,95 @@ export default function RecomendacionesInteligentes({
     // Función para limpiar productos relacionados obsoletos
     const limpiarProductosRelacionadosObsoletos = async () => {
         try {
+            console.log('🧹 Limpiando productos relacionados obsoletos...');
+            
             // Marcar como inactivos productos relacionados con score muy bajo
             const { error } = await supabase
                 .from('productosRelacionados')
                 .update({ activo: false })
-                .lt('score_similitud', 0.2);
+                .lt('frecuencia', 20); // Frecuencia menor a 20%
 
             if (error) {
-                console.error('Error limpiando productos relacionados obsoletos:', error);
+                console.error('❌ Error limpiando productos relacionados obsoletos:', error);
+            } else {
+                console.log('✅ Productos relacionados obsoletos marcados como inactivos');
             }
         } catch (error) {
-            console.error('Error en limpiarProductosRelacionadosObsoletos:', error);
+            console.error('❌ Error en limpiarProductosRelacionadosObsoletos:', error);
         }
     };
 
-    // Nueva función para poblar la tabla productosRelacionados con todos los pedidos multi-producto
-    const poblarTablaProductosRelacionados = async () => {
-        try {
-            console.log('Iniciando población de tabla productosRelacionados...');
-            
-            // Obtener todos los pedidos que tengan más de un producto
-            const { data: pedidosMultiProducto, error: pedidosError } = await supabase
-                .from('detallePedidos')
-                .select(`
-                    id_pedido,
-                    id_producto,
-                    cantidad,
-                    productos!inner(
-                        id_producto,
-                        nombre_producto,
-                        id_categoria,
-                        id_estilo,
-                        id_materiales,
-                        colorDom,
-                        superficie,
-                        durabilidad
-                    )
-                `)
-                .order('id_pedido', { ascending: true });
+                // Nueva función para poblar la tabla productosRelacionados con todos los pedidos multi-producto
+            const poblarTablaProductosRelacionados = async () => {
+                try {
+                    console.log('🚀 Iniciando población de tabla productosRelacionados...');
+                    
+                    // Obtener todos los pedidos que tengan más de un producto
+                    const { data: pedidosMultiProducto, error: pedidosError } = await supabase
+                        .from('detalles_factura')
+                        .select(`
+                            id_factura,
+                            id_producto,
+                            cantidad,
+                            productos!inner(
+                                id_producto,
+                                nombre_producto,
+                                id_categoria,
+                                id_estilo,
+                                id_materiales,
+                                colorDom,
+                                superficie,
+                                durabilidad
+                            )
+                        `)
+                        .order('id_factura', { ascending: true });
 
             if (pedidosError) {
-                console.error('Error obteniendo pedidos multi-producto:', pedidosError);
+                console.error('❌ Error obteniendo pedidos multi-producto:', pedidosError);
                 return;
             }
 
             if (!pedidosMultiProducto) {
-                console.log('No se encontraron pedidos para procesar');
+                console.log('ℹ️ No se encontraron pedidos para procesar');
                 return;
             }
 
-            // Agrupar productos por pedido
-            const pedidosAgrupados = new Map();
+            // Agrupar productos por factura
+            const facturasAgrupadas = new Map();
             pedidosMultiProducto.forEach(detalle => {
-                if (!pedidosAgrupados.has(detalle.id_pedido)) {
-                    pedidosAgrupados.set(detalle.id_pedido, []);
+                if (!facturasAgrupadas.has(detalle.id_factura)) {
+                    facturasAgrupadas.set(detalle.id_factura, []);
                 }
-                pedidosAgrupados.get(detalle.id_pedido).push({
+                facturasAgrupadas.get(detalle.id_factura).push({
                     id_producto: detalle.id_producto,
                     cantidad: detalle.cantidad,
                     ...detalle.productos
                 });
             });
 
-            // Filtrar solo pedidos con más de un producto
-            const pedidosConMultiplesProductos = Array.from(pedidosAgrupados.entries())
+            // Filtrar solo facturas con más de un producto
+            const facturasConMultiplesProductos = Array.from(facturasAgrupadas.entries())
                 .filter(([_, productos]) => productos.length > 1)
-                .map(([idPedido, productos]) => ({ idPedido, productos }));
+                .map(([idFactura, productos]) => ({ idFactura, productos }));
 
-            console.log(`Encontrados ${pedidosConMultiplesProductos.length} pedidos con múltiples productos`);
+            console.log(`📊 Encontradas ${facturasConMultiplesProductos.length} facturas con múltiples productos`);
 
-            // Procesar cada pedido para generar productos relacionados
+            // Procesar cada factura para generar productos relacionados
             let totalProductosRelacionados = 0;
-            for (const pedido of pedidosConMultiplesProductos) {
-                console.log(`Procesando pedido ${pedido.idPedido} con ${pedido.productos.length} productos`);
+            for (const factura of facturasConMultiplesProductos) {
+                console.log(`🔄 Procesando factura ${factura.idFactura} con ${factura.productos.length} productos`);
                 
-                // Generar productos relacionados para este pedido
-                const productosRelacionados = await generarYGuardarProductosRelacionados(pedido.productos);
+                // Generar productos relacionados para esta factura
+                const productosRelacionados = await generarYGuardarProductosRelacionados(factura.productos);
                 totalProductosRelacionados += productosRelacionados.length;
                 
-                // Pequeña pausa para no sobrecargar la BD
-                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log(`✅ Factura ${factura.idFactura}: ${productosRelacionados.length} productos relacionados generados`);
             }
 
-            console.log(`Población completada. Total de productos relacionados generados: ${totalProductosRelacionados}`);
+            console.log(`🎉 Proceso completado. Total de productos relacionados generados: ${totalProductosRelacionados}`);
             
         } catch (error) {
-            console.error('Error en poblarTablaProductosRelacionados:', error);
+            console.error('❌ Error en poblarTablaProductosRelacionados:', error);
         }
     };
 
@@ -1047,13 +1458,598 @@ export default function RecomendacionesInteligentes({
         return { text: 'Disponible', color: 'text-green-600' };
     };
 
+    // Función para generar recomendaciones por similitud de características (sin lógica de uso)
+    const generarRecomendacionesPorPreferencias = async (
+        preferenciasUsuario: any[],
+        clienteId: number
+    ): Promise<ProductoRecomendado[]> => {
+        console.log('🎯 Generando recomendaciones por preferencias para usuario sin historial...');
+        console.log('📊 Preferencias recibidas:', preferenciasUsuario?.length || 0);
+        
+        try {
+            if (!preferenciasUsuario || preferenciasUsuario.length === 0) {
+                console.log('⚠️ No hay preferencias del usuario, generando recomendaciones generales...');
+                return await generarRecomendacionesGenerales(clienteId);
+            }
 
+            // Verificar si las preferencias tienen datos válidos
+            const preferenciasValidas = preferenciasUsuario.filter(pref => 
+                pref.preferenciasProd && 
+                Array.isArray(pref.preferenciasProd) && 
+                pref.preferenciasProd.length > 0
+            );
+
+            console.log(`📋 Preferencias totales: ${preferenciasUsuario.length}, Preferencias válidas: ${preferenciasValidas.length}`);
+
+            // Actualizar estado de preferencias
+            setPreferenciasInfo({
+                total: preferenciasUsuario.length,
+                validas: preferenciasValidas.length,
+                modo: preferenciasValidas.length > 0 ? 'preferencias' : 'generales'
+            });
+
+            if (preferenciasValidas.length === 0) {
+                console.log('⚠️ No hay preferencias válidas, generando recomendaciones generales...');
+                return await generarRecomendacionesGenerales(clienteId);
+            }
+
+            // Obtener productos que coincidan con las preferencias del usuario
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0);
+
+            // MEJORA: Agregar aleatorización para evitar siempre los mismos productos
+            // Usar un offset aleatorio basado en el ID del cliente para variar las recomendaciones
+            const offsetAleatorio = (clienteId % 30) * 15; // Variar el offset por usuario
+            query = query.range(offsetAleatorio, offsetAleatorio + 200); // Obtener más productos para luego aleatorizar
+
+            // Aplicar filtros basados en preferencias
+            const filtrosPreferencias = aplicarFiltrosPorPreferencias(query, preferenciasValidas);
+            query = filtrosPreferencias.query;
+
+            const { data: productosBase, error: productosError } = await query;
+            
+            if (productosError) throw productosError;
+            if (!productosBase) return [];
+
+            console.log(`✅ Encontrados ${productosBase.length} productos que coinciden con preferencias`);
+
+            // MEJORA: Aleatorizar los productos antes de puntuarlos
+            const productosAleatorizados = [...productosBase].sort(() => Math.random() - 0.5);
+
+            // Puntuar productos basándose en similitud con preferencias (prioridad máxima)
+            const productosPuntuados = productosAleatorizados.map(producto => {
+                let score = 0;
+                let razones: string[] = [];
+
+                // Puntuar por similitud con preferencias (prioridad máxima)
+                const similitud = calcularScoreSimilitud(producto, preferenciasValidas);
+                if (similitud.score > 0) {
+                    score += similitud.score; // Score basado en similitud de características
+                    razones.push(...similitud.razones);
+                    console.log('🎯 Producto con similitud de preferencias:', producto.nombre_producto, 'Score:', score, 'Similitud:', (similitud.porcentaje || 0).toFixed(1) + '%');
+                }
+
+                // Puntuar por descuento
+                if (producto.descuento && producto.descuento > 0) {
+                    score += 25;
+                    razones.push('Producto en oferta');
+                }
+
+                // Puntuar por stock alto
+                if (producto.stock_actual > 10) {
+                    score += 20;
+                    razones.push('Stock abundante');
+                } else if (producto.stock_actual > 5) {
+                    score += 15;
+                    razones.push('Stock disponible');
+                }
+
+                // Bonus por ser producto premium
+                if (producto.precio > 5000) {
+                    score += 15;
+                    razones.push('Producto premium');
+                }
+
+                // Bonus por características especiales
+                if (producto.superficie && producto.superficie.toLowerCase().includes('antideslizante')) {
+                    score += 20;
+                    razones.push('Superficie antideslizante');
+                }
+
+                if (producto.durabilidad && producto.durabilidad >= 8) {
+                    score += 20;
+                    razones.push('Alta durabilidad');
+                }
+
+                // Bonus por ser "nuevo para ti"
+                score += 10;
+                razones.push('Basado en tus preferencias');
+
+                // MEJORA: Agregar variabilidad adicional basada en el ID del producto y cliente
+                // Esto asegura que diferentes usuarios vean diferentes productos
+                const variabilidadUsuario = (clienteId + producto.id_producto) % 25;
+                score += variabilidadUsuario;
+                razones.push('Recomendación personalizada');
+
+                return {
+                    ...producto,
+                    score_recomendacion: score,
+                    razon_recomendacion: razones.join(', ')
+                };
+            });
+
+            // Ordenar por score de similitud (las que coincidan más primero) y retornar los mejores
+            const productosFinales = productosPuntuados
+                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                .slice(0, 12);
+
+            console.log('🎯 Productos recomendados por preferencias:');
+            productosFinales.forEach((producto, index) => {
+                console.log(`${index + 1}. ${producto.nombre_producto} - Score: ${producto.score_recomendacion} - Razón: ${producto.razon_recomendacion}`);
+            });
+
+            return productosFinales;
+
+        } catch (error) {
+            console.error('Error al generar recomendaciones por preferencias:', error);
+            return await generarRecomendacionesGenerales(clienteId);
+        }
+    };
+
+    // NUEVA FUNCIÓN: Generar recomendaciones generales cuando no hay preferencias ni historial
+    const generarRecomendacionesGenerales = async (clienteId: number): Promise<ProductoRecomendado[]> => {
+        console.log('🌟 Generando recomendaciones generales para usuario nuevo...');
+        
+        // Actualizar estado de preferencias
+        setPreferenciasInfo({
+            total: 0,
+            validas: 0,
+            modo: 'generales'
+        });
+        
+        try {
+            // Obtener productos populares, en oferta y con buen stock
+            let query = supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 5);
+
+            // MEJORA: Agregar aleatorización para evitar siempre los mismos productos
+            // Usar un offset aleatorio basado en el ID del cliente para variar las recomendaciones
+            const offsetAleatorio = (clienteId % 50) * 10; // Variar el offset por usuario
+            query = query.range(offsetAleatorio, offsetAleatorio + 150); // Obtener más productos para luego aleatorizar
+
+            const { data: productosBase, error: productosError } = await query;
+            
+            if (productosError) throw productosError;
+            if (!productosBase) return [];
+
+            console.log(`✅ Encontrados ${productosBase.length} productos para recomendaciones generales`);
+
+            // MEJORA: Aleatorizar los productos antes de puntuarlos
+            const productosAleatorizados = [...productosBase].sort(() => Math.random() - 0.5);
+
+            // Puntuar productos para recomendaciones generales
+            const productosPuntuados = productosAleatorizados.map(producto => {
+                let score = 0;
+                let razones: string[] = [];
+
+                // Puntuar por descuento alto
+                if (producto.descuento && producto.descuento > 20) {
+                    score += 40;
+                    razones.push('Gran oferta');
+                } else if (producto.descuento && producto.descuento > 0) {
+                    score += 25;
+                    razones.push('Producto en oferta');
+                }
+
+                // Puntuar por stock alto
+                if (producto.stock_actual > 20) {
+                    score += 30;
+                    razones.push('Stock muy abundante');
+                } else if (producto.stock_actual > 10) {
+                    score += 20;
+                    razones.push('Stock abundante');
+                }
+
+                // Puntuar por ser producto premium
+                if (producto.precio > 8000) {
+                    score += 25;
+                    razones.push('Producto premium');
+                } else if (producto.precio > 3000) {
+                    score += 15;
+                    razones.push('Producto de calidad');
+                }
+
+                // Puntuar por características especiales
+                if (producto.superficie && producto.superficie.toLowerCase().includes('antideslizante')) {
+                    score += 25;
+                    razones.push('Superficie antideslizante');
+                }
+
+                if (producto.durabilidad && producto.durabilidad >= 9) {
+                    score += 25;
+                    razones.push('Durabilidad excepcional');
+                } else if (producto.durabilidad && producto.durabilidad >= 7) {
+                    score += 20;
+                    razones.push('Alta durabilidad');
+                }
+
+                // Bonus por ser "popular" o "tendencia"
+                score += 15;
+                razones.push('Producto popular');
+
+                // MEJORA: Agregar variabilidad adicional basada en el ID del producto
+                // Esto asegura que diferentes usuarios vean diferentes productos
+                const variabilidadUsuario = (clienteId + producto.id_producto) % 20;
+                score += variabilidadUsuario;
+                razones.push('Recomendación personalizada');
+
+                return {
+                    ...producto,
+                    score_recomendacion: score,
+                    razon_recomendacion: razones.join(', ')
+                };
+            });
+
+            // Ordenar por score de similitud (las que coincidan más primero) y retornar los mejores
+            const productosFinales = productosPuntuados
+                .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                .slice(0, 12);
+
+            console.log('🌟 Productos recomendados generales:');
+            productosFinales.forEach((producto, index) => {
+                console.log(`${index + 1}. ${producto.nombre_producto} - Score: ${producto.score_recomendacion} - Razón: ${producto.razon_recomendacion}`);
+            });
+
+            return productosFinales;
+
+        } catch (error) {
+            console.error('Error al generar recomendaciones generales:', error);
+            return [];
+        }
+    };
+
+    // Función para aplicar filtros basados en preferencias del usuario (enfoque en similitud)
+    const aplicarFiltrosPorPreferencias = (query: any, preferenciasUsuario: any[]) => {
+        let queryModificado = query;
+        const filtrosAplicados: string[] = [];
+
+        try {
+            // Recolectar todos los valores únicos de cada característica
+            const categorias = new Set<number>();
+            const materiales = new Set<number>();
+            const estilos = new Set<number>();
+            const rangosPrecio: { min: number; max: number }[] = [];
+
+            for (const pref of preferenciasUsuario) {
+                if (!pref.preferenciasProd || !Array.isArray(pref.preferenciasProd) || pref.preferenciasProd.length === 0) {
+                    continue;
+                }
+                
+                const preferencia = pref.preferenciasProd[0];
+                
+                // Recolectar categorías
+                if (preferencia.idCategoria) {
+                    categorias.add(preferencia.idCategoria);
+                }
+                
+                // Recolectar materiales
+                if (preferencia.idMaterial) {
+                    materiales.add(preferencia.idMaterial);
+                }
+                
+                // Recolectar estilos
+                if (preferencia.idEstilo) {
+                    estilos.add(preferencia.idEstilo);
+                }
+                
+                // Recolectar rangos de precio
+                if (preferencia.precMin && preferencia.precMax) {
+                    rangosPrecio.push({ min: preferencia.precMin, max: preferencia.precMax });
+                }
+            }
+
+            // Aplicar filtros más inteligentes para encontrar productos similares
+            
+            // Filtrar por categorías (OR lógico para incluir productos de categorías relacionadas)
+            if (categorias.size > 0) {
+                queryModificado = queryModificado.in('id_categoria', Array.from(categorias));
+                filtrosAplicados.push(`categorías: ${Array.from(categorias).join(', ')}`);
+            }
+            
+            // Filtrar por materiales (OR lógico para incluir productos de materiales relacionados)
+            if (materiales.size > 0) {
+                queryModificado = queryModificado.in('id_materiales', Array.from(materiales));
+                filtrosAplicados.push(`materiales: ${Array.from(materiales).join(', ')}`);
+            }
+            
+            // Filtrar por estilos (OR lógico para incluir productos de estilos relacionados)
+            if (estilos.size > 0) {
+                queryModificado = queryModificado.in('id_estilo', Array.from(estilos));
+                filtrosAplicados.push(`estilos: ${Array.from(estilos).join(', ')}`);
+            }
+            
+            // Filtrar por rango de precio (ampliar ligeramente el rango para incluir productos similares)
+            if (rangosPrecio.length > 0) {
+                const minPrecio = Math.min(...rangosPrecio.map(r => r.min));
+                const maxPrecio = Math.max(...rangosPrecio.map(r => r.max));
+                const margenPrecio = (maxPrecio - minPrecio) * 0.2; // 20% de margen
+                
+                queryModificado = queryModificado
+                    .gte('precio', Math.max(0, minPrecio - margenPrecio))
+                    .lte('precio', maxPrecio + margenPrecio);
+                filtrosAplicados.push(`precio: ${Math.max(0, minPrecio - margenPrecio).toFixed(0)} - ${(maxPrecio + margenPrecio).toFixed(0)}`);
+            }
+
+            console.log('🎯 Filtros aplicados por preferencias para productos similares:', filtrosAplicados);
+            return { query: queryModificado, filtros: filtrosAplicados };
+            
+        } catch (error) {
+            console.error('Error aplicando filtros por preferencias:', error);
+            return { query: queryModificado, filtros: [] };
+        }
+    };
+
+    // Función de fallback para calcular score cuando no hay preferencias válidas
+    const calcularScoreFallback = (producto: any): { score: number, razones: string[] } => {
+        let score = 0;
+        let razones: string[] = [];
+
+        // Score base por disponibilidad
+        if (producto.disponibilidad && producto.stock_actual > 0) {
+            score += 10;
+            razones.push('Producto disponible');
+        }
+
+        // Score por descuento
+        if (producto.descuento && producto.descuento > 0) {
+            score += 25;
+            razones.push('Producto en oferta');
+        }
+
+        // Score por stock
+        if (producto.stock_actual > 10) {
+            score += 20;
+            razones.push('Stock abundante');
+        } else if (producto.stock_actual > 5) {
+            score += 15;
+            razones.push('Stock disponible');
+        }
+
+        // Score por características especiales
+        if (producto.superficie && producto.superficie.toLowerCase().includes('antideslizante')) {
+            score += 20;
+            razones.push('Superficie antideslizante');
+        }
+
+        if (producto.durabilidad && producto.durabilidad >= 8) {
+            score += 20;
+            razones.push('Alta durabilidad');
+        }
+
+        // Score por ser producto premium
+        if (producto.precio > 5000) {
+            score += 15;
+            razones.push('Producto premium');
+        }
+
+        // Score por tener descripción completa
+        if (producto.descripcion && producto.descripcion.length > 50) {
+            score += 10;
+            razones.push('Descripción completa');
+        }
+
+        console.log(`🔄 Score fallback para ${producto.nombre_producto}: ${score} - Razones: ${razones.join(', ')}`);
+        
+        return { score, razones };
+    };
+
+    const calcularScoreSimilitud = (producto: any, preferenciasUsuario: any[]) => {
+        console.log('🔍 Calculando score de similitud para producto:', producto.id_producto, producto.nombre_producto);
+        console.log('📋 Preferencias del usuario:', preferenciasUsuario);
+        
+        if (!preferenciasUsuario || preferenciasUsuario.length === 0) {
+            console.log('⚠️ No hay preferencias del usuario para calcular similitud');
+            return { score: 0, razones: [], coincidencias: 0 };
+        }
+
+        let scoreTotal = 0;
+        let razones: string[] = [];
+        let totalCoincidencias = 0;
+        let maxPosiblesCoincidencias = 0;
+        let preferenciasValidas = 0;
+
+        for (const pref of preferenciasUsuario) {
+            console.log('🔍 Analizando preferencia:', pref);
+            
+            if (!pref.preferenciasProd || !Array.isArray(pref.preferenciasProd) || pref.preferenciasProd.length === 0) {
+                console.log('⚠️ Preferencia sin datos de productos válidos, saltando...');
+                continue;
+            }
+            
+            preferenciasValidas++;
+            const preferencia = pref.preferenciasProd[0];
+            let coincidenciasPreferencia = 0;
+            let scorePreferencia = 0;
+            
+            console.log('📝 Datos de preferencia válida:', {
+                preferencia,
+                uso: pref.uso?.nombre,
+                producto: {
+                    id_categoria: producto.id_categoria,
+                    id_materiales: producto.id_materiales,
+                    id_estilo: producto.id_estilo,
+                    colorDom: producto.colorDom,
+                    superficie: producto.superficie,
+                    durabilidad: producto.durabilidad,
+                    precio: producto.precio
+                }
+            });
+
+            // Verificar coincidencias por categoría (peso: 25 puntos)
+            if (preferencia.idCategoria && producto.id_categoria === preferencia.idCategoria) {
+                scorePreferencia += 25;
+                coincidenciasPreferencia++;
+                razones.push('Categoría exacta');
+                console.log('✅ Coincidencia por categoría:', preferencia.idCategoria);
+            }
+
+            // Verificar coincidencias por material (peso: 20 puntos)
+            if (preferencia.idMaterial && producto.id_materiales === preferencia.idMaterial) {
+                scorePreferencia += 20;
+                coincidenciasPreferencia++;
+                razones.push('Material exacto');
+                console.log('✅ Coincidencia por material:', preferencia.idMaterial);
+            }
+
+            // Verificar coincidencias por estilo (peso: 20 puntos)
+            if (preferencia.idEstilo && producto.id_estilo === preferencia.idEstilo) {
+                scorePreferencia += 20;
+                coincidenciasPreferencia++;
+                razones.push('Estilo exacto');
+                console.log('✅ Coincidencia por estilo:', preferencia.idEstilo);
+            }
+
+            // Verificar coincidencias por color (peso: 15 puntos)
+            if (preferencia.color && producto.colorDom && 
+                producto.colorDom.toLowerCase().includes(preferencia.color.toLowerCase())) {
+                scorePreferencia += 15;
+                coincidenciasPreferencia++;
+                razones.push('Color similar');
+                console.log('✅ Coincidencia por color:', preferencia.color);
+            }
+
+            // Verificar coincidencias por superficie (peso: 10 puntos)
+            if (preferencia.superficie && producto.superficie && 
+                producto.superficie.toLowerCase().includes(preferencia.superficie.toLowerCase())) {
+                scorePreferencia += 10;
+                coincidenciasPreferencia++;
+                razones.push('Superficie similar');
+                console.log('✅ Coincidencia por superficie:', preferencia.superficie);
+            }
+
+            // Verificar coincidencias por durabilidad (peso: 10 puntos)
+            if (preferencia.durabilidad && producto.durabilidad && 
+                producto.durabilidad >= preferencia.durabilidad) {
+                scorePreferencia += 10;
+                coincidenciasPreferencia++;
+                razones.push('Durabilidad adecuada');
+                console.log('✅ Coincidencia por durabilidad:', preferencia.durabilidad);
+            }
+
+            // Verificar coincidencias por rango de precio (peso: 10 puntos)
+            if (preferencia.precMin && preferencia.precMax && 
+                producto.precio >= preferencia.precMin && producto.precio <= preferencia.precMax) {
+                scorePreferencia += 10;
+                coincidenciasPreferencia++;
+                razones.push('Precio en rango');
+                console.log('✅ Coincidencia por rango de precio:', preferencia.precMin, '-', preferencia.precMax);
+            }
+
+            // Bonus por coincidencias múltiples en la misma preferencia
+            if (coincidenciasPreferencia >= 3) {
+                scorePreferencia += 15; // Bonus por múltiples coincidencias
+                razones.push('Múltiples características coinciden');
+            } else if (coincidenciasPreferencia >= 2) {
+                scorePreferencia += 8; // Bonus por algunas coincidencias
+                razones.push('Varias características coinciden');
+            }
+
+            scoreTotal += scorePreferencia;
+            totalCoincidencias += coincidenciasPreferencia;
+            maxPosiblesCoincidencias += 8; // Máximo de características por preferencia
+        }
+
+        // Si no hay preferencias válidas, retornar score 0
+        if (preferenciasValidas === 0) {
+            console.log('⚠️ No se encontraron preferencias válidas para calcular similitud, usando fallback...');
+            const fallbackScore = calcularScoreFallback(producto);
+            return { 
+                score: fallbackScore.score, 
+                razones: fallbackScore.razones, 
+                coincidencias: 0,
+                porcentaje: 0
+            };
+        }
+
+        // Calcular porcentaje de coincidencia total
+        const porcentajeCoincidencia = maxPosiblesCoincidencias > 0 ? (totalCoincidencias / maxPosiblesCoincidencias) * 100 : 0;
+        
+        // Bonus por alto porcentaje de coincidencia
+        if (porcentajeCoincidencia >= 80) {
+            scoreTotal += 30;
+            razones.push('Alta similitud general');
+        } else if (porcentajeCoincidencia >= 60) {
+            scoreTotal += 20;
+            razones.push('Buena similitud general');
+        } else if (porcentajeCoincidencia >= 40) {
+            scoreTotal += 10;
+            razones.push('Similitud moderada');
+        }
+
+        console.log(`📊 Score final: ${scoreTotal}, Coincidencias: ${totalCoincidencias}/${maxPosiblesCoincidencias} (${porcentajeCoincidencia.toFixed(1)}%), Preferencias válidas: ${preferenciasValidas}`);
+        
+        return { 
+            score: scoreTotal, 
+            razones: razones, 
+            coincidencias: totalCoincidencias,
+            porcentaje: porcentajeCoincidencia
+        };
+    };
 
     if (loading) {
         return (
             <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Generando recomendaciones inteligentes...</p>
+                <p className="mt-4 text-gray-600">
+                    {contextProducts && contextProducts.length > 0 
+                        ? 'Analizando productos similares...'
+                        : 'Generando recomendaciones inteligentes...'
+                    }
+                </p>
+                <div className="mt-2 text-sm text-gray-500">
+                    {contextProducts && contextProducts.length > 0 
+                        ? 'Buscando productos relacionados por similitud'
+                        : 'Analizando tu historial de compras y preferencias'
+                    }
+                </div>
             </div>
         );
     }
@@ -1064,10 +2060,17 @@ export default function RecomendacionesInteligentes({
                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
                     <p className="text-red-800 text-sm">{error}</p>
                     <button 
-                        onClick={generarRecomendaciones}
-                        className="mt-2 bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors cursor-pointer text-sm"
+                        onClick={limpiarCacheYRegenerar}
+                        disabled={loading}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
+                            loading 
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                        title="Regenerar recomendaciones"
                     >
-                        Reintentar
+                        <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'Regenerando...' : 'Regenerar'}
                     </button>
                 </div>
             </div>
@@ -1087,16 +2090,39 @@ export default function RecomendacionesInteligentes({
         return (
             <div className="text-center py-8">
                 <FaLightbulb className="text-gray-400 text-4xl mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No hay recomendaciones disponibles</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Generando recomendaciones personalizadas</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                    Genera recomendaciones basadas en tu historial de compras.
+                    {contextProducts && contextProducts.length > 0 
+                        ? 'Analizando productos similares para encontrar las mejores opciones...'
+                        : 'Analizando tu historial de compras y preferencias para crear recomendaciones únicas...'
+                    }
                 </p>
+                <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span>Analizando preferencias de uso</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                        <span>Buscando productos relacionados</span>
+                    </div>
+                    <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span>Calculando similitudes</span>
+                    </div>
+                </div>
                 <button
-                    onClick={generarRecomendaciones}
-                    className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm cursor-pointer"
+                    onClick={limpiarCacheYRegenerar}
+                    disabled={loading}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
+                        loading 
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                    title="Regenerar recomendaciones"
                 >
-                                            <FaRedo className="mr-2" />
-                    Generar Recomendaciones
+                    <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Regenerando...' : 'Regenerar'}
                 </button>
             </div>
         );
@@ -1114,14 +2140,91 @@ export default function RecomendacionesInteligentes({
                         <h3 className={`font-semibold text-gray-900 ${compact ? 'text-base' : 'text-lg'}`}>
                             {compact ? 'Recomendaciones' : 'Recomendaciones Inteligentes'}
                         </h3>
+                        {/* Indicador de estado de preferencias */}
+                        {!compact && preferenciasInfo.total > 0 && (
+                            <div className="flex items-center space-x-2 mb-1">
+                                <div className={`w-2 h-2 rounded-full ${
+                                    preferenciasInfo.validas > 0 ? 'bg-green-500' : 'bg-yellow-500'
+                                }`}></div>
+                                <span className="text-xs text-gray-500">
+                                    {preferenciasInfo.validas > 0 
+                                        ? `${preferenciasInfo.validas} preferencias activas`
+                                        : `${preferenciasInfo.total} preferencias sin datos válidos`
+                                    }
+                                </span>
+                            </div>
+                        )}
                         <p className={`text-gray-600 ${compact ? 'text-xs' : 'text-sm'}`}>
                             {contextProducts && contextProducts.length > 0 
                                 ? `Productos relacionados por similitud (${contextProducts.length} productos)`
-                                : 'Basadas en tu historial de compras'
+                                : productosRecomendados.length > 0 
+                                    ? `Basadas en ${preferenciasInfo.modo === 'preferencias' ? 'tus preferencias personalizadas' : preferenciasInfo.modo === 'generales' ? 'productos populares y ofertas' : 'características generales'} (${productosRecomendados.length} productos)`
+                                    : 'Analizando tus preferencias para crear recomendaciones únicas'
                             }
                         </p>
+                        {/* MEJORA: Información sobre personalización */}
+                        {!compact && (
+                            <div className="text-xs text-gray-500 mt-1">
+                                {preferenciasInfo.modo === 'preferencias' ? (
+                                    `💡 Recomendaciones personalizadas (${preferenciasInfo.validas}/${preferenciasInfo.total} preferencias válidas)`
+                                ) : preferenciasInfo.modo === 'generales' ? (
+                                    '🌟 Recomendaciones basadas en productos populares y ofertas'
+                                ) : (
+                                    '🔄 Recomendaciones basadas en características generales del producto'
+                                )}
+                                {preferenciasInfo.total > 0 && preferenciasInfo.validas === 0 && (
+                                    <button
+                                        onClick={limpiarCacheYRegenerar}
+                                        className="ml-2 text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                        title="Regenerar recomendaciones con preferencias válidas"
+                                    >
+                                        🔄 Regenerar
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
+                
+                {/* Botones de Debug */}
+                {!compact && (
+                    <div className="flex items-center space-x-2">
+                        <button
+                            onClick={limpiarCacheYRegenerar}
+                            disabled={loading}
+                            className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer ${
+                                loading 
+                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                            title="Regenerar recomendaciones"
+                        >
+                            <FaRedo className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
+                            {loading ? 'Regenerando...' : 'Regenerar'}
+                        </button>
+                        <button
+                            onClick={poblarTablaProductosRelacionados}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
+                            title="Poblar tabla de productos relacionados"
+                        >
+                            🗄️ Poblar BD
+                        </button>
+                        <button
+                            onClick={limpiarProductosRelacionadosObsoletos}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
+                            title="Limpiar productos relacionados obsoletos"
+                        >
+                            🧹 Limpiar
+                        </button>
+                        <button
+                            onClick={() => console.log('Estado actual:', { productosRecomendados, loading, error })}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer"
+                            title="Ver estado en consola"
+                        >
+                            🔍 Debug
+                        </button>
+                    </div>
+                )}
                 
                 {!showAll && productosRecomendados.length > 4 && (
                     <div className="flex items-center space-x-2">
@@ -1146,6 +2249,54 @@ export default function RecomendacionesInteligentes({
                     </div>
                 )}
             </div>
+
+            {/* Indicador de distribución de recomendaciones */}
+            {productosRecomendados.length > 0 && (
+                <div className={`mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 ${compact ? 'text-xs' : 'text-sm'}`}>
+                    <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Distribución de recomendaciones:</span>
+                        <div className="flex space-x-2">
+                            <div className="flex items-center space-x-1">
+                                <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                                <span className="text-indigo-700">Similares</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                <span className="text-purple-700">Nuevos</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                                <span className="text-orange-700">Tendencia</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Indicador del tipo de recomendación */}
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">Tipo de recomendación:</span>
+                            <div className="flex items-center space-x-2">
+                                {contextProducts && contextProducts.length > 0 ? (
+                                    <div className="flex items-center space-x-1">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span className="text-xs text-blue-700 font-medium">Por similitud de productos</span>
+                                    </div>
+                                ) : productosRecomendados.length > 0 ? (
+                                    <div className="flex items-center space-x-1">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <span className="text-xs text-green-700 font-medium">Por historial y preferencias</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center space-x-1">
+                                        <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                                        <span className="text-xs text-amber-700 font-medium">Por preferencias de uso</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className={`grid gap-3 ${compact ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mb-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6'}`}>
                 {productosAMostrar.map((producto) => {
@@ -1173,6 +2324,28 @@ export default function RecomendacionesInteligentes({
                                     {producto.descuento && producto.descuento > 0 && (
                                         <div className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
                                             -{producto.descuento}%
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Badge de tipo de recomendación */}
+                                <div className="absolute top-1.5 right-1.5">
+                                    {producto.razon_recomendacion?.includes('Producto complementario') && (
+                                        <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                            <FaEye className="mr-1 inline" />
+                                            Nuevo
+                                        </div>
+                                    )}
+                                    {producto.razon_recomendacion?.includes('Producto de tendencia') && (
+                                        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                            <FaStar className="mr-1 inline" />
+                                            Tendencia
+                                        </div>
+                                    )}
+                                    {producto.razon_recomendacion?.includes('Producto relacionado') && (
+                                        <div className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                                            <FaCheck className="mr-1 inline" />
+                                            Relacionado
                                         </div>
                                     )}
                                 </div>
@@ -1300,12 +2473,22 @@ export default function RecomendacionesInteligentes({
                                         para identificar patrones en categorías, estilos, materiales y colores.
                                     </p>
                                     <p>
+                                        <strong>Preferencias de uso personalizadas:</strong> Utilizamos tus preferencias específicas 
+                                        de uso (cocina, baño, exterior, etc.) para encontrar productos que se adapten perfectamente 
+                                        a tus necesidades y gustos.
+                                    </p>
+                                    <p>
                                         <strong>Productos relacionados:</strong> Incluimos productos que están técnicamente 
                                         relacionados con tus compras anteriores, almacenados en nuestra base de datos de relaciones.
                                     </p>
                                     <p>
+                                        <strong>Recomendaciones inteligentes:</strong> Si no tienes historial de compras, 
+                                        generamos recomendaciones basadas en tus preferencias de uso. Si tampoco tienes preferencias, 
+                                        te mostramos productos populares y de tendencia.
+                                    </p>
+                                    <p>
                                         <strong>Puntuación inteligente:</strong> Cada producto recibe una puntuación basada en 
-                                        qué tan bien se adapta a tus patrones de compra anteriores (se calcula analizando similitud de características, 
+                                        qué tan bien se adapta a tus patrones de compra anteriores y preferencias de uso (se calcula analizando similitud de características, 
                                         historial de compras, y coincidencias con preferencias de uso).
                                     </p>
                                     <div className="mt-3 p-3 bg-blue-100 rounded-lg">
@@ -1316,7 +2499,7 @@ export default function RecomendacionesInteligentes({
                                                     <FaStar className="mr-0.5" />
                                                     85
                                                 </div>
-                                                <span><strong>Estrella azul:</strong> Puntuación de recomendación (0-100). Cuanto más alta, mejor se adapta a tus preferencias (se calcula analizando similitud de características, historial de compras, y coincidencias con preferencias de uso).</span>
+                                                <span><strong>Estrella azul:</strong> Puntuación de recomendación (0-100). Cuanto más alta, mejor se adapta a tus preferencias.</span>
                                             </div>
                                             <div className="flex items-center">
                                                 <div className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full mr-2">
@@ -1330,6 +2513,20 @@ export default function RecomendacionesInteligentes({
                                                     ¡Ideal!
                                                 </div>
                                                 <span><strong>Badge verde:</strong> Producto que coincide perfectamente con tus preferencias de uso.</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-2 py-1 rounded-full font-medium mr-2">
+                                                    <FaEye className="mr-1 inline" />
+                                                    Nuevo
+                                                </div>
+                                                <span><strong>Badge púrpura:</strong> Producto complementario a tus preferencias.</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs px-2 py-1 rounded-full font-medium mr-2">
+                                                    <FaStar className="mr-1 inline" />
+                                                    Tendencia
+                                                </div>
+                                                <span><strong>Badge naranja:</strong> Producto de tendencia o popular.</span>
                                             </div>
                                         </div>
                                     </div>
