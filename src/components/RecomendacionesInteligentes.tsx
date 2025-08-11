@@ -275,17 +275,13 @@ export default function RecomendacionesInteligentes({
             
             console.log('🎯 Productos Comprados finales:', productosComprados);
 
-            if (productosComprados.length === 0) {
-                console.log('⚠️ No hay productos para generar recomendaciones');
-                setProductosRecomendados([]);
-                return;
-            }
-
-            // Generar recomendaciones personalizadas
+            // Generar recomendaciones personalizadas - SIEMPRE llamar la función
+            // Si no hay compras previas, la función internamente generará recomendaciones por preferencias
             console.log('🔮 Calling generarRecomendacionesPersonalizadas with:', {
                 productosComprados,
                 clienteId,
-                modo: contextProducts && contextProducts.length > 0 ? 'productos_relacionados' : 'historial_compras'
+                modo: contextProducts && contextProducts.length > 0 ? 'productos_relacionados' : 'historial_compras',
+                sinCompras: productosComprados.length === 0
             });
             
             const recomendaciones = await generarRecomendacionesPersonalizadas(
@@ -1486,14 +1482,27 @@ export default function RecomendacionesInteligentes({
                 return await generarRecomendacionesGenerales(clienteId);
             }
 
+            // Imprimir estructura de preferencias para debug
+            console.log('🔍 Estructura de preferencias recibidas:', JSON.stringify(preferenciasUsuario.slice(0, 2), null, 2));
+
             // Verificar si las preferencias tienen datos válidos
-            const preferenciasValidas = preferenciasUsuario.filter(pref => 
-                pref.preferenciasProd && 
-                Array.isArray(pref.preferenciasProd) && 
-                pref.preferenciasProd.length > 0
-            );
+            // Revisar tanto la estructura de usoXpref como preferencias directas
+            const preferenciasValidas = preferenciasUsuario.filter(pref => {
+                // Caso 1: Estructura de usoXpref (con preferenciasProd array)
+                if (pref.preferenciasProd && Array.isArray(pref.preferenciasProd) && pref.preferenciasProd.length > 0) {
+                    return true;
+                }
+                // Caso 2: Estructura directa de preferenciasProd
+                if (pref.idClientes || pref.idEstilo || pref.idMaterial || pref.idCategoria || pref.color) {
+                    return true;
+                }
+                return false;
+            });
 
             console.log(`📋 Preferencias totales: ${preferenciasUsuario.length}, Preferencias válidas: ${preferenciasValidas.length}`);
+            if (preferenciasValidas.length > 0) {
+                console.log('✅ Ejemplos de preferencias válidas:', JSON.stringify(preferenciasValidas.slice(0, 2), null, 2));
+            }
 
             // Actualizar estado de preferencias
             setPreferenciasInfo({
@@ -1503,6 +1512,20 @@ export default function RecomendacionesInteligentes({
             });
 
             if (preferenciasValidas.length === 0) {
+                console.log('⚠️ No hay preferencias válidas, intentando obtener preferencias directamente...');
+                
+                // Intentar obtener preferencias directamente de preferenciasProd
+                const { data: preferenciasDirect, error: errorDirect } = await supabase
+                    .from('preferenciasProd')
+                    .select('*')
+                    .eq('idClientes', clienteId);
+                
+                if (!errorDirect && preferenciasDirect && preferenciasDirect.length > 0) {
+                    console.log('✅ Preferencias directas encontradas:', preferenciasDirect.length);
+                    console.log('📊 Preferencias directas:', JSON.stringify(preferenciasDirect, null, 2));
+                    return await procesarPreferenciasDirect(preferenciasDirect, clienteId);
+                }
+                
                 console.log('⚠️ No hay preferencias válidas, generando recomendaciones generales...');
                 return await generarRecomendacionesGenerales(clienteId);
             }
@@ -1630,18 +1653,18 @@ export default function RecomendacionesInteligentes({
     };
 
     // NUEVA FUNCIÓN: Generar recomendaciones generales cuando no hay preferencias ni historial
-    const generarRecomendacionesGenerales = async (clienteId: number): Promise<ProductoRecomendado[]> => {
-        console.log('🌟 Generando recomendaciones generales para usuario nuevo...');
-        
-        // Actualizar estado de preferencias
-        setPreferenciasInfo({
-            total: 0,
-            validas: 0,
-            modo: 'generales'
-        });
+    // Nueva función para procesar preferencias directas
+    const procesarPreferenciasDirect = async (
+        preferenciasDirect: any[],
+        clienteId: number
+    ): Promise<ProductoRecomendado[]> => {
+        console.log('🎯 Procesando preferencias directas...');
         
         try {
-            // Obtener productos populares, en oferta y con buen stock
+            const preferencia = preferenciasDirect[0]; // Usar la primera preferencia
+            console.log('📊 Preferencia a procesar:', JSON.stringify(preferencia, null, 2));
+
+            // Construir query basada en las preferencias directas
             let query = supabase
                 .from('productos')
                 .select(`
@@ -1662,19 +1685,218 @@ export default function RecomendacionesInteligentes({
                     disponibilidad
                 `)
                 .eq('disponibilidad', true)
-                .gt('stock_actual', 5);
+                .gt('stock_actual', 0);
 
-            // MEJORA: Agregar aleatorización para evitar siempre los mismos productos
-            // Usar un offset aleatorio basado en el ID del cliente para variar las recomendaciones
-            const offsetAleatorio = (clienteId % 50) * 10; // Variar el offset por usuario
-            query = query.range(offsetAleatorio, offsetAleatorio + 150); // Obtener más productos para luego aleatorizar
+            // Aplicar filtros basados en preferencias (uno por vez para máxima flexibilidad)
+            if (preferencia.idCategoria) {
+                console.log('🏷️ Aplicando filtro por categoría:', preferencia.idCategoria);
+                query = query.eq('id_categoria', preferencia.idCategoria);
+            } else if (preferencia.idEstilo) {
+                console.log('🎨 Aplicando filtro por estilo:', preferencia.idEstilo);
+                query = query.eq('id_estilo', preferencia.idEstilo);
+            } else if (preferencia.idMaterial) {
+                console.log('🧱 Aplicando filtro por material:', preferencia.idMaterial);
+                query = query.eq('id_materiales', preferencia.idMaterial);
+            }
 
-            const { data: productosBase, error: productosError } = await query;
+            // Si hay rango de precios, aplicarlo
+            if (preferencia.precMin && preferencia.precMax) {
+                console.log('💰 Aplicando filtro por precio:', preferencia.precMin, '-', preferencia.precMax);
+                query = query.gte('precio', preferencia.precMin).lte('precio', preferencia.precMax);
+            }
+
+            const { data: productos, error } = await query.limit(20);
+
+            if (error) {
+                console.error('❌ Error obteniendo productos por preferencias directas:', error);
+                return await generarRecomendacionesGenerales(clienteId);
+            }
+
+            console.log('📦 Productos encontrados con filtros:', productos?.length || 0);
+
+            if (!productos || productos.length === 0) {
+                console.log('⚠️ No se encontraron productos con las preferencias específicas, ampliando búsqueda...');
+                
+                // Búsqueda más amplia - solo productos disponibles
+                const { data: productosAmplia } = await supabase
+                    .from('productos')
+                    .select(`
+                        id_producto,
+                        nombre_producto,
+                        imagen,
+                        precio,
+                        stock_actual,
+                        metros_por_caja,
+                        descripcion,
+                        id_categoria,
+                        id_estilo,
+                        id_materiales,
+                        descuento,
+                        colorDom,
+                        superficie,
+                        durabilidad,
+                        disponibilidad
+                    `)
+                    .eq('disponibilidad', true)
+                    .gt('stock_actual', 0)
+                    .limit(20);
+
+                console.log('📦 Productos en búsqueda amplia:', productosAmplia?.length || 0);
+
+                if (!productosAmplia || productosAmplia.length === 0) {
+                    return await generarRecomendacionesGenerales(clienteId);
+                }
+
+                // Puntuar productos basándose en las preferencias
+                const productosConScore = productosAmplia.map(producto => {
+                    let score = 10; // Score base
+                    let razones: string[] = ['Producto disponible'];
+
+                    // Puntuar por coincidencias con preferencias
+                    if (preferencia.idCategoria && producto.id_categoria === preferencia.idCategoria) {
+                        score += 40;
+                        razones.push('Categoría de tu preferencia');
+                    }
+                    if (preferencia.idEstilo && producto.id_estilo === preferencia.idEstilo) {
+                        score += 35;
+                        razones.push('Estilo de tu preferencia');
+                    }
+                    if (preferencia.idMaterial && producto.id_materiales === preferencia.idMaterial) {
+                        score += 35;
+                        razones.push('Material de tu preferencia');
+                    }
+                    if (preferencia.color && producto.colorDom && 
+                        producto.colorDom.toLowerCase().includes(preferencia.color.toLowerCase())) {
+                        score += 25;
+                        razones.push('Color de tu preferencia');
+                    }
+                    if (preferencia.superficie && producto.superficie && 
+                        producto.superficie.toLowerCase().includes(preferencia.superficie.toLowerCase())) {
+                        score += 25;
+                        razones.push('Superficie de tu preferencia');
+                    }
+
+                    // Puntuar por precio dentro del rango
+                    if (preferencia.precMin && preferencia.precMax) {
+                        if (producto.precio >= preferencia.precMin && producto.precio <= preferencia.precMax) {
+                            score += 30;
+                            razones.push('Precio dentro de tu rango preferido');
+                        }
+                    }
+
+                    // Puntuar por descuento
+                    if (producto.descuento && producto.descuento > 0) {
+                        score += 15;
+                        razones.push('Producto en oferta');
+                    }
+
+                    return {
+                        ...producto,
+                        score_recomendacion: score,
+                        razon_recomendacion: razones.join(', ')
+                    };
+                });
+
+                // Ordenar por score y tomar los mejores
+                const productosFinales = productosConScore
+                    .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
+                    .slice(0, 12);
+
+                console.log('✅ Productos recomendados por preferencias directas (amplia):', productosFinales.length);
+                return productosFinales;
+            }
+
+            // Si encontramos productos con los filtros directos
+            const productosConScore = productos.map(producto => ({
+                ...producto,
+                score_recomendacion: 80, // Score alto por coincidencia directa
+                razon_recomendacion: 'Coincide perfectamente con tus preferencias'
+            }));
+
+            console.log('✅ Productos encontrados con preferencias directas:', productosConScore.length);
+            return productosConScore;
+
+        } catch (error) {
+            console.error('❌ Error procesando preferencias directas:', error);
+            return await generarRecomendacionesGenerales(clienteId);
+        }
+    };
+
+    const generarRecomendacionesGenerales = async (clienteId: number): Promise<ProductoRecomendado[]> => {
+        console.log('🌟 Generando recomendaciones generales para usuario nuevo...');
+        
+        // Actualizar estado de preferencias
+        setPreferenciasInfo({
+            total: 0,
+            validas: 0,
+            modo: 'generales'
+        });
+        
+        try {
+            console.log('🔍 Buscando productos disponibles para recomendaciones generales...');
+            
+            // Obtener productos disponibles (sin filtros restrictivos)
+            const { data: productosBase, error: productosError } = await supabase
+                .from('productos')
+                .select(`
+                    id_producto,
+                    nombre_producto,
+                    imagen,
+                    precio,
+                    stock_actual,
+                    metros_por_caja,
+                    descripcion,
+                    id_categoria,
+                    id_estilo,
+                    id_materiales,
+                    descuento,
+                    colorDom,
+                    superficie,
+                    durabilidad,
+                    disponibilidad
+                `)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0)
+                .limit(50);
             
             if (productosError) throw productosError;
             if (!productosBase) return [];
 
             console.log(`✅ Encontrados ${productosBase.length} productos para recomendaciones generales`);
+            
+            // Debug: verificar si realmente no hay productos disponibles
+            if (productosBase.length === 0) {
+                console.log('🔍 No se encontraron productos, verificando datos en base...');
+                
+                // Verificar cuántos productos existen en total
+                const { data: totalProductos, error: errorTotal } = await supabase
+                    .from('productos')
+                    .select('id_producto, disponibilidad, stock_actual')
+                    .limit(10);
+                
+                console.log('📊 Muestra de productos en base:', totalProductos?.length || 0);
+                if (totalProductos) {
+                    console.log('📋 Ejemplos de productos:', totalProductos.slice(0, 3));
+                }
+                
+                // Intentar obtener cualquier producto sin filtros
+                const { data: cualquierProducto } = await supabase
+                    .from('productos')
+                    .select('*')
+                    .limit(5);
+                
+                if (cualquierProducto && cualquierProducto.length > 0) {
+                    console.log('✅ Se encontraron productos sin filtros, usando como fallback');
+                    const productosConScore = cualquierProducto.map(producto => ({
+                        ...producto,
+                        score_recomendacion: 20,
+                        razon_recomendacion: 'Producto disponible para empezar'
+                    }));
+                    return productosConScore;
+                }
+                
+                return [];
+            }
 
             // MEJORA: Aleatorizar los productos antes de puntuarlos
             const productosAleatorizados = [...productosBase].sort(() => Math.random() - 0.5);

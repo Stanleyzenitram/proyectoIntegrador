@@ -148,6 +148,9 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
             // Cargar preferencias por uso del cliente para enriquecer las recomendaciones y mensajes
             const preferenciasPorUso = await obtenerPreferenciasPorUso(clienteId);
 
+            // Si no hay compras previas, basar recomendaciones únicamente en preferencias
+            const sinComprasPrevias = !productosComprados || productosComprados.length === 0;
+
             let query = supabase
                 .from('productos')
                 .select(`
@@ -195,16 +198,25 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
                 if (preferencia.superficie) {
                     query = query.ilike('superficie', `%${preferencia.superficie}%`);
                 }
+            } else if (sinComprasPrevias) {
+                // Si no hay preferencias ni compras, mostrar productos populares o en descuento
+                query = query
+                    .order('descuento', { ascending: false, nullsFirst: false })
+                    .order('stock_actual', { ascending: false });
             }
 
-            // Obtener productos base
-            const { data: productosBase, error: productosError } = await query.limit(30);
+            // Obtener productos base - más productos si no hay compras previas
+            const limitProductos = sinComprasPrevias ? 50 : 30;
+            const { data: productosBase, error: productosError } = await query.limit(limitProductos);
 
             if (productosError) throw productosError;
             if (!productosBase) return [];
 
-            // Obtener productos relacionados
-            const productosRelacionados = await obtenerProductosRelacionados(productosComprados);
+            // Solo obtener productos relacionados si hay compras previas
+            let productosRelacionados: number[] = [];
+            if (!sinComprasPrevias) {
+                productosRelacionados = await obtenerProductosRelacionados(productosComprados);
+            }
 
             // Combinar y puntuar productos
             const productosPuntuados = productosBase.map(producto => {
@@ -212,39 +224,82 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
                 let razones: string[] = [];
                 let usoRecomendado: string | undefined;
 
-                // Puntuar por preferencias
-                if (preferencias.length > 0) {
-                    score += 50;
-                    razones.push('Basado en tus preferencias');
+                if (sinComprasPrevias) {
+                    // Lógica específica para usuarios sin compras previas - solo preferencias
+                    if (preferencias.length > 0) {
+                        const preferencia = preferencias[0];
+                        
+                        // Puntuar por coincidencia exacta con preferencias
+                        if (preferencia.idCategoria && producto.id_categoria === preferencia.idCategoria) {
+                            score += 40;
+                            razones.push('Categoría de tu preferencia');
+                        }
+                        if (preferencia.idEstilo && producto.id_estilo === preferencia.idEstilo) {
+                            score += 35;
+                            razones.push('Estilo de tu preferencia');
+                        }
+                        if (preferencia.idMaterial && producto.id_materiales === preferencia.idMaterial) {
+                            score += 35;
+                            razones.push('Material de tu preferencia');
+                        }
+                        if (preferencia.color && producto.colorDom && 
+                            producto.colorDom.toLowerCase().includes(preferencia.color.toLowerCase())) {
+                            score += 25;
+                            razones.push('Color de tu preferencia');
+                        }
+                        if (preferencia.superficie && producto.superficie && 
+                            producto.superficie.toLowerCase().includes(preferencia.superficie.toLowerCase())) {
+                            score += 25;
+                            razones.push('Superficie de tu preferencia');
+                        }
+                        if (preferencia.durabilidad && producto.durabilidad && 
+                            producto.durabilidad >= preferencia.durabilidad) {
+                            score += 20;
+                            razones.push('Durabilidad según tus preferencias');
+                        }
+                        
+                        // Puntuar por rango de precio
+                        if (preferencia.precMin && preferencia.precMax) {
+                            if (producto.precio >= preferencia.precMin && producto.precio <= preferencia.precMax) {
+                                score += 30;
+                                razones.push('Precio dentro de tu rango preferido');
+                            }
+                        }
+                        
+                        // Bonus por tendencia
+                        if (preferencia.enTendencia) {
+                            score += 15;
+                            razones.push('Producto en tendencia');
+                        }
+                    } else {
+                        // Sin preferencias ni compras - productos generales atractivos
+                        score += 10; // Score base
+                        razones.push('Producto recomendado para empezar');
+                    }
+                } else {
+                    // Lógica original para usuarios con compras previas
+                    if (preferencias.length > 0) {
+                        score += 50;
+                        razones.push('Basado en tus preferencias');
+                    }
+
+                    // Puntuar por productos relacionados
+                    if (productosRelacionados.includes(producto.id_producto)) {
+                        score += 30;
+                        razones.push('Relacionado con compras anteriores');
+                    }
                 }
 
-                // Puntuar por productos relacionados
-                if (productosRelacionados.includes(producto.id_producto)) {
-                    score += 30;
-                    razones.push('Relacionado con compras anteriores');
-                }
-
+                // Factores comunes para ambos casos
+                
                 // Puntuar por descuento
                 if (producto.descuento && producto.descuento > 0) {
                     score += 20;
                     razones.push('Producto en oferta');
                 }
 
-                // Puntuar por tendencia
-                if (preferencias.some(p => p.enTendencia)) {
-                    score += 15;
-                    razones.push('Producto en tendencia');
-                }
-
                 // Puntuar por stock
                 score += Math.min(10, producto.stock_actual / 5);
-
-                // Puntuar por precio
-                if (preferencias.length > 0 && preferencias[0].precMin && preferencias[0].precMax) {
-                    const precioMedio = (preferencias[0].precMin + preferencias[0].precMax) / 2;
-                    const diferenciaPrecio = Math.abs(producto.precio - precioMedio);
-                    score += Math.max(0, 15 - diferenciaPrecio / 100);
-                }
 
                 // Coincidencia por uso específico guardado (si existe)
                 const mensajeUso = verificarCoincidenciaUsoProducto(producto, preferenciasPorUso);
@@ -252,6 +307,11 @@ export const useRecomendaciones = (context?: RecomendacionContext) => {
                     score += 40; // impulso por coincidencia de uso
                     usoRecomendado = mensajeUso;
                     razones.push(mensajeUso);
+                }
+
+                // Si no hay razones específicas, agregar una razón por defecto
+                if (razones.length === 0) {
+                    razones.push(sinComprasPrevias ? 'Producto recomendado para ti' : 'Recomendación general');
                 }
 
                 return {

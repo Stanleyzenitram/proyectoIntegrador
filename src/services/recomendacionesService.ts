@@ -289,6 +289,9 @@ export class RecomendacionesService {
             // Obtener comportamiento de compra
             const comportamiento = await this.obtenerComportamientoCompra(usuarioId, 100);
 
+            // Verificar si el usuario tiene compras previas
+            const tieneComprasPrevias = comportamiento.some(c => c.accion === 'comprado');
+
             // Construir query base para productos
             let query = supabase
                 .from('productos')
@@ -298,10 +301,32 @@ export class RecomendacionesService {
                     estilos(nombre),
                     materiales(nombre)
                 `)
-                .eq('activo', true);
+                .eq('activo', true)
+                .eq('disponibilidad', true)
+                .gt('stock_actual', 0);
 
-            // Aplicar filtros basados en preferencias
-            if (preferencias) {
+            // Si no hay compras previas, priorizar solo filtros por preferencias
+            if (!tieneComprasPrevias && preferencias) {
+                if (preferencias.categorias_favoritas.length > 0) {
+                    query = query.in('id_categoria', preferencias.categorias_favoritas);
+                }
+                if (preferencias.estilos_preferidos.length > 0) {
+                    query = query.in('id_estilo', preferencias.estilos_preferidos);
+                }
+                if (preferencias.materiales_favoritos.length > 0) {
+                    query = query.in('id_material', preferencias.materiales_favoritos);
+                }
+                if (preferencias.rango_precio_min) {
+                    query = query.gte('precio', preferencias.rango_precio_min);
+                }
+                if (preferencias.rango_precio_max) {
+                    query = query.lte('precio', preferencias.rango_precio_max);
+                }
+                if (preferencias.color_preferido) {
+                    query = query.ilike('colorDom', `%${preferencias.color_preferido}%`);
+                }
+            } else if (preferencias) {
+                // Lógica original para usuarios con compras previas
                 if (preferencias.categorias_favoritas.length > 0) {
                     query = query.in('id_categoria', preferencias.categorias_favoritas);
                 }
@@ -319,6 +344,13 @@ export class RecomendacionesService {
                 }
             }
 
+            // Si no hay preferencias ni compras, mostrar productos populares
+            if (!preferencias && !tieneComprasPrevias) {
+                query = query
+                    .order('descuento', { ascending: false, nullsFirst: false })
+                    .order('stock_actual', { ascending: false });
+            }
+
             const { data: productos, error } = await query.limit(limit * 2); // Obtener más para calcular scores
 
             if (error) throw error;
@@ -330,31 +362,75 @@ export class RecomendacionesService {
                 let tipoRecomendacion = 'general';
                 let razon = '';
 
-                // Score por preferencias de categoría
-                if (preferencias?.categorias_favoritas.includes(producto.id_categoria)) {
-                    score += 0.3;
-                    razon += 'Categoría favorita. ';
+                if (!tieneComprasPrevias) {
+                    // Lógica específica para usuarios sin compras previas
+                    if (preferencias) {
+                        // Score alto por coincidencia exacta con preferencias
+                        if (preferencias.categorias_favoritas.includes(producto.id_categoria)) {
+                            score += 0.4;
+                            razon += 'Categoría de tu preferencia. ';
+                        }
+                        if (preferencias.estilos_preferidos.includes(producto.id_estilo)) {
+                            score += 0.35;
+                            razon += 'Estilo de tu preferencia. ';
+                        }
+                        if (preferencias.materiales_favoritos.includes(producto.id_material)) {
+                            score += 0.35;
+                            razon += 'Material de tu preferencia. ';
+                        }
+                        if (preferencias.color_preferido && producto.colorDom && 
+                            producto.colorDom.toLowerCase().includes(preferencias.color_preferido.toLowerCase())) {
+                            score += 0.25;
+                            razon += 'Color de tu preferencia. ';
+                        }
+                        
+                        // Score por rango de precio
+                        if (preferencias.rango_precio_min && preferencias.rango_precio_max) {
+                            if (producto.precio >= preferencias.rango_precio_min && 
+                                producto.precio <= preferencias.rango_precio_max) {
+                                score += 0.3;
+                                razon += 'Precio dentro de tu rango preferido. ';
+                            }
+                        }
+                    } else {
+                        // Sin preferencias - productos atractivos para nuevos usuarios
+                        score += 0.1;
+                        razon = 'Producto recomendado para empezar. ';
+                    }
+                } else {
+                    // Lógica original para usuarios con compras previas
+                    if (preferencias?.categorias_favoritas.includes(producto.id_categoria)) {
+                        score += 0.3;
+                        razon += 'Categoría favorita. ';
+                    }
+                    if (preferencias?.estilos_preferidos.includes(producto.id_estilo)) {
+                        score += 0.25;
+                        razon += 'Estilo preferido. ';
+                    }
+                    if (preferencias?.materiales_favoritos.includes(producto.id_material)) {
+                        score += 0.25;
+                        razon += 'Material favorito. ';
+                    }
+
+                    // Score por historial de navegación
+                    const vistasProducto = historial.filter(h => h.producto_id === producto.id_producto).length;
+                    score += Math.min(vistasProducto * 0.1, 0.2);
+
+                    // Score por comportamiento de compra
+                    const comprasProducto = comportamiento.filter(c => c.producto_id === producto.id_producto).length;
+                    score += Math.min(comprasProducto * 0.15, 0.3);
                 }
 
-                // Score por preferencias de estilo
-                if (preferencias?.estilos_preferidos.includes(producto.id_estilo)) {
-                    score += 0.25;
-                    razon += 'Estilo preferido. ';
+                // Factores comunes
+                
+                // Score por descuento
+                if (producto.descuento && producto.descuento > 0) {
+                    score += 0.15;
+                    razon += 'Producto en oferta. ';
                 }
 
-                // Score por preferencias de material
-                if (preferencias?.materiales_favoritos.includes(producto.id_material)) {
-                    score += 0.25;
-                    razon += 'Material favorito. ';
-                }
-
-                // Score por historial de navegación
-                const vistasProducto = historial.filter(h => h.producto_id === producto.id_producto).length;
-                score += Math.min(vistasProducto * 0.1, 0.2);
-
-                // Score por comportamiento de compra
-                const comprasProducto = comportamiento.filter(c => c.producto_id === producto.id_producto).length;
-                score += Math.min(comprasProducto * 0.15, 0.3);
+                // Score por disponibilidad y stock
+                score += Math.min(producto.stock_actual / 100, 0.1);
 
                 // Normalizar score a 0-1
                 score = Math.min(score, 1);
@@ -367,7 +443,7 @@ export class RecomendacionesService {
                     producto,
                     score,
                     tipo_recomendacion: tipoRecomendacion,
-                    razon: razon || 'Recomendación general basada en tus preferencias.'
+                    razon: razon || (!tieneComprasPrevias ? 'Recomendación basada en tus preferencias.' : 'Recomendación general basada en tu perfil.')
                 };
             });
 
@@ -400,9 +476,9 @@ export class RecomendacionesService {
             const totalProductosComprados = comportamiento.filter(c => c.accion === 'comprado').length;
 
             // Agrupar por categorías, estilos y materiales
-            const categoriasCount = this.agruparPorPropiedad(historial, 'categoria');
-            const estilosCount = this.agruparPorPropiedad(historial, 'estilo');
-            const materialesCount = this.agruparPorPropiedad(historial, 'material');
+            const categoriasCount: Array<{categoria_id: number, nombre: string, count: number}> = [];
+            const estilosCount: Array<{estilo_id: number, nombre: string, count: number}> = [];
+            const materialesCount: Array<{material_id: number, nombre: string, count: number}> = [];
 
             // Calcular rango de precios promedio
             const precios = comportamiento
@@ -430,12 +506,7 @@ export class RecomendacionesService {
 
     // ===== MÉTODOS AUXILIARES =====
     
-    private static agruparPorPropiedad(
-        historial: HistorialNavegacion[], 
-        propiedad: string
-    ): Array<{categoria_id?: number, estilo_id?: number, material_id?: number, nombre: string, count: number}> {
-        // Este método necesitaría ser implementado con queries más complejas
-        // para obtener los nombres reales de categorías, estilos y materiales
-        return [];
-    }
+    // Este método necesitaría ser implementado con queries más complejas
+    // para obtener los nombres reales de categorías, estilos y materiales
+    // Por ahora se maneja directamente en obtenerEstadisticasUsuario
 }
