@@ -266,6 +266,7 @@ const PedidosInt = () => {
                     nombre_producto,
                     imagen,
                     stock_actual,
+                    precio,
                     metros_por_caja,
                     descripcion,
                     id_categoria,
@@ -298,7 +299,9 @@ const PedidosInt = () => {
                         ...producto,
                         cantidad: detalle.cantidad,
                         precio_unitario: detalle.precio_unitario,
-                        subtotal: detalle.subtotal
+                        subtotal: detalle.subtotal,
+                        // Asegurar que el precio base se mantenga para el carrito
+                        precio: producto.precio
                     };
                 }
                 return null;
@@ -348,13 +351,61 @@ const PedidosInt = () => {
         }
     };
 
-    const confirmarPedidoRepetido = () => {
+    const confirmarPedidoRepetido = async () => {
         if (!pedidoSeleccionadoRepetir) return;
         
+        console.log('Confirmando pedido repetido con productos:', productosRepetir);
+        
         // Agregar todos los productos del modal al carrito con sus cantidades actuales
-        productosRepetir.forEach(producto => {
-            addItem(producto, producto.cantidad);
-        });
+        let productosAgregados = 0;
+        const totalProductos = productosRepetir.length;
+        
+        // Usar for...of para poder usar await
+        for (const producto of productosRepetir) {
+            // Validar que el producto tenga los datos necesarios
+            if (!producto.id_producto || !producto.nombre_producto || !producto.precio) {
+                console.error('Producto inválido en confirmarPedidoRepetido:', producto);
+                continue;
+            }
+            
+            // Validar que la cantidad sea válida
+            if (!producto.cantidad || isNaN(producto.cantidad) || producto.cantidad < 1) {
+                console.error('Cantidad inválida en confirmarPedidoRepetido:', producto.cantidad);
+                continue;
+            }
+            
+            // Extraer solo los datos del Producto base, sin las propiedades adicionales
+            const productoBase: Producto = {
+                id_producto: producto.id_producto,
+                nombre_producto: producto.nombre_producto,
+                imagen: producto.imagen || '',
+                stock_actual: producto.stock_actual || 0,
+                precio: producto.precio,
+                metros_por_caja: producto.metros_por_caja || 0,
+                descripcion: producto.descripcion || '',
+                id_categoria: producto.id_categoria || 1,
+                id_estilo: producto.id_estilo || 1,
+                id_materiales: producto.id_materiales || 1,
+                formato: producto.formato || 'Rectangular',
+                piezas_por_caja: producto.piezas_por_caja || 1,
+                superficie: producto.superficie || 'Lisa',
+                durabilidad: producto.durabilidad || 5,
+                disponibilidad: producto.disponibilidad !== false,
+                colorDom: producto.colorDom || 'Blanco',
+                descuento: producto.descuento || 0
+            };
+            
+            console.log('Agregando producto al carrito:', { productoBase, cantidad: producto.cantidad });
+            try {
+                await addItem(productoBase, producto.cantidad);
+                productosAgregados++;
+                console.log(`Producto ${producto.nombre_producto} agregado exitosamente`);
+            } catch (error) {
+                console.error(`Error al agregar producto ${producto.nombre_producto}:`, error);
+            }
+        }
+        
+        console.log(`Se agregaron exitosamente ${productosAgregados} de ${totalProductos} productos al carrito`);
         
         // Procesar y guardar la dirección de entrega del pedido
         if (pedidoSeleccionadoRepetir.direccion_entrega) {

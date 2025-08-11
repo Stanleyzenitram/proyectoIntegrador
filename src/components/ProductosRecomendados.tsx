@@ -68,15 +68,31 @@ export default function ProductosRecomendados({
     };
 
     const agregarAlCarrito = (producto: any) => {
+        // Validar que el producto tenga los datos necesarios
+        if (!producto.id_producto || !producto.nombre_producto || !producto.precio) {
+            console.error('Producto inválido:', producto);
+            return;
+        }
+
         addItem({
-            id: producto.id_producto,
-            name: producto.nombre_producto,
-            price: producto.precio,
-            image: producto.imagen,
-            quantity: 1,
-            stock: producto.stock_actual,
-            metros_por_caja: producto.metros_por_caja || 0
-        });
+            id_producto: producto.id_producto,
+            nombre_producto: producto.nombre_producto,
+            precio: producto.precio,
+            imagen: producto.imagen || '',
+            stock_actual: producto.stock_actual || 0,
+            metros_por_caja: producto.metros_por_caja || 0,
+            descripcion: producto.descripcion || '',
+            id_categoria: producto.id_categoria || 1,
+            id_estilo: producto.id_estilo || 1,
+            id_materiales: producto.id_materiales || 1,
+            formato: producto.formato || 'Rectangular',
+            piezas_por_caja: producto.piezas_por_caja || 1,
+            superficie: producto.superficie || 'Lisa',
+            durabilidad: producto.durabilidad || 5,
+            disponibilidad: producto.disponibilidad !== false,
+            colorDom: producto.colorDom || 'Blanco',
+            descuento: producto.descuento || 0
+        }, 1); // Agregar con cantidad 1 por defecto
     };
 
     const formatearPrecio = (precio: number) => {

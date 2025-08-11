@@ -201,6 +201,40 @@ export default function Checkout() {
 
     // Verificamos que tengamos items antes de renderizar
     console.log("Items en el carrito:", items); // Para debugging
+    console.log("Subtotal calculado:", subtotal);
+    console.log("IVA calculado:", iva);
+    console.log("Total del pedido:", totalPedido);
+
+    // Validar que los items tengan datos válidos
+    const itemsValidos = items.filter(item => 
+        item.id_producto && 
+        item.nombre_producto && 
+        item.precio && 
+        item.quantity && 
+        !isNaN(item.quantity) && 
+        item.quantity > 0
+    );
+
+    if (itemsValidos.length !== items.length) {
+        console.error('Hay items inválidos en el carrito:', items);
+        return (
+            <div className="container mx-auto px-4 py-8 pt-32">
+                <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Error en el Carrito</h2>
+                    <p className="text-gray-600 mb-6">Hay productos inválidos en tu carrito. Por favor, vacía el carrito e intenta de nuevo.</p>
+                    <button 
+                        onClick={() => {
+                            clearCart();
+                            navigate('/');
+                        }}
+                        className="bg-amber-500 text-white px-5 py-2 rounded hover:bg-amber-600 transition-colors"
+                    >
+                        Vaciar Carrito y Volver
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto px-4 py-8 pt-32">

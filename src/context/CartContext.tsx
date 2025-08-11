@@ -17,13 +17,13 @@ interface CartContextType {
         metrosCuadrados?: number;
         cajasNecesarias?: number;
         metrosReales?: number;
-    }) => void;
-    removeItem: (productId: string) => void;
-    updateQuantity: (productId: string, quantity: number, options?: {
+    }) => Promise<void>;
+    removeItem: (productId: number) => void;
+    updateQuantity: (productId: number, quantity: number, options?: {
         metrosCuadrados?: number;
         cajasNecesarias?: number;
         metrosReales?: number;
-    }) => void;
+    }) => Promise<void>;
     subtotal: number;
     total: number;
     tax: number;
@@ -75,6 +75,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             metrosReales?: number;
         }
     ) => {
+        // Validar que la cantidad sea un número válido
+        if (!quantity || isNaN(quantity) || quantity < 1) {
+            console.error('Cantidad inválida:', quantity);
+            quantity = 1;
+        }
+
+        // Validar que el producto tenga los datos necesarios
+        if (!product.id_producto || !product.nombre_producto || !product.precio) {
+            console.error('Producto inválido:', product);
+            return;
+        }
+
+        console.log('Agregando producto al carrito:', { product, quantity, options });
+
         const { data: currentProduct } = await supabase
             .from('productos')
             .select('stock_actual')
@@ -87,41 +101,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         const currentItem = items.find(item => item.id_producto === product.id_producto);
-        const currentQuantity = currentItem?.quantity || 0;
 
-        if (currentQuantity + quantity > currentProduct.stock_actual) {
-            alert('No hay suficiente stock disponible');
-            return;
-        }
-
-        setItems(currentItems => {
-            const existingItem = currentItems.find(item => item.id_producto === product.id_producto);
-            if (existingItem) {
-                return currentItems.map(item =>
-                    item.id_producto === product.id_producto
-                        ? {
-                            ...item,
-                            quantity: item.quantity + quantity,
-                            ...options
-                        }
-                        : item
-                );
+        if (currentItem) {
+            // Si el item ya existe, actualizar cantidad
+            const newQuantity = currentItem.quantity + quantity;
+            if (newQuantity <= currentProduct.stock_actual) {
+                setItems(currentItems => {
+                    const updatedItems = currentItems.map(item => 
+                        item.id_producto === product.id_producto 
+                            ? { ...item, quantity: newQuantity }
+                            : item
+                    );
+                    console.log('Cantidad actualizada en carrito:', updatedItems);
+                    return updatedItems;
+                });
+            } else {
+                alert('Stock insuficiente');
             }
-            return [...currentItems, {
-                ...product,
-                quantity,
-                unidadMedida: product.metros_por_caja ? 'metro' : 'unidad',
-                ...options
-            }];
-        });
+        } else {
+            // Si es un nuevo item, agregarlo
+            if (quantity <= currentProduct.stock_actual) {
+                const newItem: CartItem = {
+                    ...product,
+                    quantity: quantity,
+                    metrosCuadrados: options?.metrosCuadrados || 0,
+                    cajasNecesarias: options?.cajasNecesarias || quantity,
+                    metrosReales: options?.metrosReales || 0,
+                    precioTotal: product.precio * quantity
+                };
+                
+                console.log('Nuevo item agregado:', newItem);
+                setItems(currentItems => {
+                    const newItems = [...currentItems, newItem];
+                    console.log('Carrito actualizado:', newItems);
+                    return newItems;
+                });
+            } else {
+                alert('Stock insuficiente');
+            }
+        }
     };
 
-    const removeItem = (productId: string) => {
+    const removeItem = (productId: number) => {
         setItems(currentItems => currentItems.filter(item => item.id_producto !== productId));
     };
 
     const updateQuantity = async (
-        productId: string, 
+        productId: number, 
         quantity: number,
         options?: {
             metrosCuadrados?: number;

@@ -13,21 +13,27 @@ export default function CartItem({ item }: CartItemProps) {
     const [displayMode, setDisplayMode] = useState<'cajas' | 'metros'>('cajas');
 
     const handleQuantityChange = (newQuantity: number) => {
-        if (newQuantity >= 1 && newQuantity <= item.stock_actual) {
+        if (newQuantity >= 1 && newQuantity <= (item.stock_actual || 0)) {
             if (item.metros_por_caja) {
                 const metrosReales = newQuantity * (item.metros_por_caja || 0);
-                updateQuantity(item.id_producto, newQuantity, {
+                updateQuantity(item.id_producto || 0, newQuantity, {
                     metrosCuadrados: metrosReales,
                     cajasNecesarias: newQuantity,
                     metrosReales: metrosReales
                 });
             } else {
-                updateQuantity(item.id_producto, newQuantity);
+                updateQuantity(item.id_producto || 0, newQuantity);
             }
         }
     };
 
     const getDisplayQuantity = () => {
+        // Validar que la cantidad sea un número válido
+        if (!item.quantity || isNaN(item.quantity) || item.quantity < 1) {
+            console.error('Cantidad inválida en item:', item);
+            return 'Error';
+        }
+
         if (item.metros_por_caja) {
             if (displayMode === 'metros') {
                 return `${(item.metrosReales || 0).toFixed(2)} m²`;
@@ -55,7 +61,7 @@ export default function CartItem({ item }: CartItemProps) {
 
     const getTotal = () => {
         // El precio es por caja, así que multiplicamos directamente por la cantidad de cajas
-        const precioBase = item.precio * item.quantity;
+        const precioBase = (item.precio || 0) * (item.quantity || 0);
         
         // Aplicar descuento si existe
         if (item.descuento && item.descuento > 0) {
@@ -90,7 +96,7 @@ export default function CartItem({ item }: CartItemProps) {
                                 Ver detalles
                             </button>
                             <button
-                                onClick={() => removeItem(item.id_producto)}
+                                onClick={() => removeItem(item.id_producto || 0)}
                                 className="text-red-500 hover:text-red-700 text-xs"
                             >
                                 Borrar
@@ -103,7 +109,7 @@ export default function CartItem({ item }: CartItemProps) {
                 <div className="text-center">
                     <p>RD$ {item.precio.toFixed(2)}</p>
                     <p className="text-xs text-gray-500">por caja</p>
-                    {item.descuento > 0 && (
+                    {item.descuento && item.descuento > 0 && (
                         <p className="text-green-600 text-xs">-{item.descuento}%</p>
                     )}
                 </div>
