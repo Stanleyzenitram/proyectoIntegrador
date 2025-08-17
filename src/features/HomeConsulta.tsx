@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Search, Filter, ChevronDown, ChevronRight } from "lucide-react"; // Añadimos íconos para colapsar
 import ProductModal from '../components/ProductModal';
+import SeccionRecomendaciones from '../components/SeccionRecomendaciones';
 
 export default function Home() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -378,6 +379,25 @@ export default function Home() {
 
                     {/* Grid de productos */}
                     <div className="flex-1">
+                        {/* Sección de Recomendaciones Personalizadas */}
+                        <SeccionRecomendaciones 
+                            titulo="Recomendaciones para Ti"
+                            limite={4}
+                            className="mb-6"
+                        />
+                        
+                        {/* Título de todos los productos */}
+                        <div className="mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Todos los Productos
+                                {productos.length > 0 && (
+                                    <span className="text-sm text-gray-600 ml-2">
+                                        ({productos.length} productos)
+                                    </span>
+                                )}
+                            </h2>
+                        </div>
+                        
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {productos.map((producto) => {
                                 const precioFinal = calcularPrecioConDescuento(producto.precio, producto.descuento);

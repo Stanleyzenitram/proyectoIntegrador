@@ -12,6 +12,8 @@ import {
     analizarCaracteristicasProductos,
     calcularSimilitudProducto
 } from '../services/productosRelacionadosService';
+import { useRecomendacionesCategorias } from '../hooks/useRecomendacionesCategorias';
+import { generarRecomendacionesPorCategorias } from '../utils/recomendacionesCategorias';
 
 interface ProductoRecomendado {
     id_producto: number;
@@ -47,6 +49,7 @@ export default function RecomendacionesInteligentes({
     const { user } = useAuth();
     const { addItem } = useCart();
     const navigate = useNavigate();
+    const { productosRecomendados: recomendacionesCategorias, generarRecomendaciones: obtenerRecomendaciones } = useRecomendacionesCategorias();
     const [productosRecomendados, setProductosRecomendados] = useState<ProductoRecomendado[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -320,16 +323,119 @@ export default function RecomendacionesInteligentes({
             const preferenciasUsuario = await obtenerPreferenciasUsuario(clienteId);
             console.log('Preferencias del usuario:', preferenciasUsuario);
 
-            // MEJORA: Si no hay productos comprados, generar recomendaciones basadas SOLO en preferencias
+            // MEJORA: Si no hay productos comprados, generar recomendaciones basadas SOLO en preferencias categorizadas
             if (productosComprados.length === 0) {
-                console.log('🆕 No hay historial de compras, generando recomendaciones por preferencias...');
-                const recomendacionesPorPreferencias = await generarRecomendacionesPorPreferencias(preferenciasUsuario, clienteId);
+                console.log('🆕 No hay historial de compras, generando recomendaciones por preferencias categorizadas...');
                 
-                if (recomendacionesPorPreferencias.length > 0) {
-                    console.log('✅ Recomendaciones por preferencias generadas exitosamente');
-                    return recomendacionesPorPreferencias;
-                } else {
-                    console.log('⚠️ No se generaron recomendaciones por preferencias, usando fallback general...');
+                try {
+                    // Intentar usar recomendaciones categorizadas ya cargadas
+                    if (recomendacionesCategorias && recomendacionesCategorias.length > 0) {
+                        console.log('✅ Usando recomendaciones categorizadas disponibles:', recomendacionesCategorias.length);
+                        // Formatear productos para retornar
+                        const productosFormateados = recomendacionesCategorias.map((producto: any) => ({
+                            ...producto,
+                            metros_por_caja: producto.metros_por_caja || 0,
+                            descripcion: producto.descripcion || '',
+                            id_categoria: producto.id_categoria || 1,
+                            id_estilo: producto.id_estilo || 1,
+                            id_materiales: producto.id_materiales || 1,
+                            descuento: producto.descuento || 0,
+                            score_recomendacion: producto.score_recomendacion || 50,
+                            razon_recomendacion: producto.razon_recomendacion || 'Basado en tus preferencias',
+                            colorDom: producto.colorDom || 'Blanco',
+                            superficie: producto.superficie || 'Lisa',
+                            durabilidad: producto.durabilidad || 5,
+                            disponibilidad: producto.disponibilidad !== false,
+                            formato: producto.formato || 'Rectangular',
+                            piezas_por_caja: producto.piezas_por_caja || 1
+                        }));
+                        return productosFormateados;
+                    } else {
+                        // Disparar generación de recomendaciones categorizadas
+                        console.log('🔄 Generando nuevas recomendaciones categorizadas...');
+                        await obtenerRecomendaciones();
+                        
+                        // Esperar un poco y verificar si se generaron
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        if (recomendacionesCategorias && recomendacionesCategorias.length > 0) {
+                            console.log('✅ Recomendaciones categorizadas generadas:', recomendacionesCategorias.length);
+                            const productosFormateados = recomendacionesCategorias.map((producto: any) => ({
+                                ...producto,
+                                metros_por_caja: producto.metros_por_caja || 0,
+                                descripcion: producto.descripcion || '',
+                                id_categoria: producto.id_categoria || 1,
+                                id_estilo: producto.id_estilo || 1,
+                                id_materiales: producto.id_materiales || 1,
+                                descuento: producto.descuento || 0,
+                                score_recomendacion: producto.score_recomendacion || 50,
+                                razon_recomendacion: producto.razon_recomendacion || 'Basado en tus preferencias',
+                                colorDom: producto.colorDom || 'Blanco',
+                                superficie: producto.superficie || 'Lisa',
+                                durabilidad: producto.durabilidad || 5,
+                                disponibilidad: producto.disponibilidad !== false,
+                                formato: producto.formato || 'Rectangular',
+                                piezas_por_caja: producto.piezas_por_caja || 1
+                            }));
+                            return productosFormateados;
+                        } else {
+                            console.log('⚠️ No se generaron recomendaciones categorizadas, forzando generación...');
+                            // Forzar generación de recomendaciones categorizadas
+                            await obtenerRecomendaciones();
+                            
+                            // Esperar un poco más para asegurar que se generen
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Verificar nuevamente
+                            if (recomendacionesCategorias && recomendacionesCategorias.length > 0) {
+                                console.log('✅ Recomendaciones categorizadas generadas en segundo intento:', recomendacionesCategorias.length);
+                                const productosFormateados = recomendacionesCategorias.map((producto: any) => ({
+                                    ...producto,
+                                    metros_por_caja: producto.metros_por_caja || 0,
+                                    descripcion: producto.descripcion || '',
+                                    id_categoria: producto.id_categoria || 1,
+                                    id_estilo: producto.id_estilo || 1,
+                                    id_materiales: producto.id_materiales || 1,
+                                    descuento: producto.descuento || 0,
+                                    score_recomendacion: producto.score_recomendacion || 50,
+                                    razon_recomendacion: producto.razon_recomendacion || 'Basado en tus preferencias',
+                                    colorDom: producto.colorDom || 'Blanco',
+                                    superficie: producto.superficie || 'Lisa',
+                                    durabilidad: producto.durabilidad || 5,
+                                    disponibilidad: producto.disponibilidad !== false,
+                                    formato: producto.formato || 'Rectangular',
+                                    piezas_por_caja: producto.piezas_por_caja || 1
+                                }));
+                                                            return productosFormateados;
+                            } else {
+                                console.log('🔄 Generando recomendaciones por categorías como último recurso...');
+                                // Usar directamente la función de recomendaciones por categorías
+                                const recomendacionesCategorias = await generarRecomendacionesPorCategorias(clienteId, 12);
+                                if (recomendacionesCategorias && recomendacionesCategorias.length > 0) {
+                                    console.log('✅ Recomendaciones por categorías generadas directamente:', recomendacionesCategorias.length);
+                                                                    return recomendacionesCategorias;
+                                } else {
+                                    console.log('⚠️ No se pudieron generar recomendaciones por categorías, usando fallback general...');
+                                    return await generarRecomendacionesGenerales(clienteId);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Error al obtener recomendaciones categorizadas:', error);
+                    // Intentar generar recomendaciones por categorías como último recurso
+                    try {
+                        console.log('🔄 Intentando generar recomendaciones por categorías como último recurso...');
+                        const recomendacionesCategorias = await generarRecomendacionesPorCategorias(clienteId, 12);
+                        if (recomendacionesCategorias && recomendacionesCategorias.length > 0) {
+                            console.log('✅ Recomendaciones por categorías generadas en catch:', recomendacionesCategorias.length);
+                            return recomendacionesCategorias;
+                        }
+                    } catch (error2) {
+                        console.error('❌ Error al generar recomendaciones por categorías en catch:', error2);
+                    }
+                    // Solo usar fallback general si todo lo demás falla
+                    console.log('⚠️ Usando fallback general como último recurso...');
                     return await generarRecomendacionesGenerales(clienteId);
                 }
             }

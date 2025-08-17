@@ -32,12 +32,12 @@ interface DetalleFactura {
     cantidad: number;
     precio_unitario: number;
     subtotal: number;
-    productos: Producto[]; // Reverted back to Producto[] since Supabase returns an array
+    productos: Producto[]; 
 }
 
 interface ProductoEnRepetirModal extends Producto {
     cantidad: number;
-    precio_unitario: number; // Precio específico del pedido (puede ser diferente al precio base)
+    precio_unitario: number; 
     subtotal: number;
 }
 
