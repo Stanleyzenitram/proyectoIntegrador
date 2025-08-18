@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Search, Filter, ChevronDown, ChevronRight } from "lucide-react"; // Añadimos íconos para colapsar
 import ProductModal from '../components/ProductModal';
-import SeccionRecomendaciones from '../components/SeccionRecomendaciones';
+
 
 export default function Home() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -379,12 +379,7 @@ export default function Home() {
 
                     {/* Grid de productos */}
                     <div className="flex-1">
-                        {/* Sección de Recomendaciones Personalizadas */}
-                        <SeccionRecomendaciones 
-                            titulo="Recomendaciones para Ti"
-                            limite={4}
-                            className="mb-6"
-                        />
+
                         
                         {/* Título de todos los productos */}
                         <div className="mb-4">
