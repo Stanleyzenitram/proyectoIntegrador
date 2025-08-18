@@ -5,7 +5,7 @@ export interface CategoriaPreferencia {
     id: string;
     nombre: string;
     descripcion: string;
-    mapeo: {
+    mapeo?: {
         campo: 'color' | 'precio' | 'id_categoria' | 'id_estilo' | 'id_materiales';
         valores?: string[] | number[];
         rango?: { min: number; max: number };
@@ -16,6 +16,8 @@ export interface CategoriaPreferencia {
 export const useConfiguracionPreferencias = () => {
     const [categoriasColores, setCategoriasColores] = useState<CategoriaPreferencia[]>([]);
     const [categoriasPrecio, setCategoriasPrecio] = useState<CategoriaPreferencia[]>([]);
+    const [estilosDecorativos, setEstilosDecorativos] = useState<CategoriaPreferencia[]>([]);
+    const [tiposMateriales, setTiposMateriales] = useState<CategoriaPreferencia[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -24,14 +26,20 @@ export const useConfiguracionPreferencias = () => {
             setLoading(true);
             setError(null);
 
-            // Cargar categorías de colores y precios desde la configuración del sistema
-            const [colores, precios] = await Promise.all([
+            // Cargar todas las categorías desde la configuración del sistema
+            const [colores, precios, estilos, materiales] = await Promise.all([
                 configuracionService.obtenerCategoriasColoresFormateadas(),
-                configuracionService.obtenerRangosPrecioFormateados()
+                configuracionService.obtenerRangosPrecioFormateados(),
+                configuracionService.obtenerEstilosDecorativosFormateados(),
+                configuracionService.obtenerTiposMaterialesFormateados()
             ]);
 
             setCategoriasColores(colores);
             setCategoriasPrecio(precios);
+            console.log('📊 Estilos decorativos cargados:', estilos);
+            console.log('📊 Tipos de materiales cargados:', materiales);
+            setEstilosDecorativos(estilos);
+            setTiposMateriales(materiales);
         } catch (err) {
             console.error('Error cargando configuración de preferencias:', err);
             setError('Error al cargar la configuración');
@@ -87,6 +95,32 @@ export const useConfiguracionPreferencias = () => {
                     }
                 }
             ]);
+
+            setEstilosDecorativos([
+                {
+                    id: 'rustico',
+                    nombre: 'Estilo Rústico',
+                    descripcion: 'Caracterizado por texturas naturales y acabados envejecidos'
+                },
+                {
+                    id: 'moderno',
+                    nombre: 'Estilo Moderno',
+                    descripcion: 'Líneas limpias, minimalista y contemporáneo'
+                }
+            ]);
+
+            setTiposMateriales([
+                {
+                    id: 'ceramica_natural',
+                    nombre: 'Cerámica Natural',
+                    descripcion: 'Materiales naturales y orgánicos'
+                },
+                {
+                    id: 'porcelanato',
+                    nombre: 'Porcelanato',
+                    descripcion: 'Materiales de alta densidad y durabilidad'
+                }
+            ]);
         } finally {
             setLoading(false);
         }
@@ -115,6 +149,8 @@ export const useConfiguracionPreferencias = () => {
     return {
         categoriasColores,
         categoriasPrecio,
+        estilosDecorativos,
+        tiposMateriales,
         loading,
         error,
         refrescarConfiguracion

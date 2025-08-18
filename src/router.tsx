@@ -38,6 +38,7 @@ import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
 import Preferencias from "./pages/Preferencias";
 import ConfiguracionSistema from "./features/mantenimientos/ConfiguracionSistema";
+import AdminPreferenciasUso from "./features/mantenimientos/AdminPreferenciasUso";
 import TestRecomendaciones from "./test/TestRecomendaciones";
 
 export default function AppRouter() {
@@ -85,6 +86,7 @@ export default function AppRouter() {
                     <Route path="/inventario" element={<Inventario />} />
                     <Route path="/compras" element={<CompraProductos />} />
                     <Route path="/configuracion-sistema" element={<ConfiguracionSistema />} />
+                    <Route path="/admin-preferencias-uso" element={<AdminPreferenciasUso />} />
                     <Route path="/test-recomendaciones" element={<TestRecomendaciones />} />
                     <Route
                         path="/proveedores-lista"

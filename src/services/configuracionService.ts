@@ -119,6 +119,20 @@ export const configuracionService = {
         return await this.obtenerConfiguracionPorNombre('categorias_colores');
     },
 
+    // Obtener estilos decorativos
+    async obtenerEstilosDecorativos(): Promise<any> {
+        const estilos = await this.obtenerConfiguracionPorNombre('estilos_decorativos');
+        console.log('🔍 Estilos decorativos obtenidos:', estilos);
+        return estilos;
+    },
+
+    // Obtener tipos de materiales
+    async obtenerTiposMateriales(): Promise<any> {
+        const materiales = await this.obtenerConfiguracionPorNombre('tipos_materiales');
+        console.log('🔍 Tipos de materiales obtenidos:', materiales);
+        return materiales;
+    },
+
     // Obtener rangos de precio formateados para preferencias
     async obtenerRangosPrecioFormateados(): Promise<Array<{id: string, nombre: string, descripcion: string, mapeo: {campo: string, rango: {min: number, max: number}}}>> {
         const rangos = await this.obtenerRangosPrecio();
@@ -151,6 +165,30 @@ export const configuracionService = {
         }));
     },
 
+    // Obtener estilos decorativos formateados para preferencias
+    async obtenerEstilosDecorativosFormateados(): Promise<Array<{id: string, nombre: string, descripcion: string}>> {
+        const estilos = await this.obtenerEstilosDecorativos();
+        if (!estilos) return [];
+        
+        return Object.entries(estilos).map(([key, valor]: [string, any]) => ({
+            id: key,
+            nombre: valor.nombre,
+            descripcion: valor.descripcion
+        }));
+    },
+
+    // Obtener tipos de materiales formateados para preferencias
+    async obtenerTiposMaterialesFormateados(): Promise<Array<{id: string, nombre: string, descripcion: string}>> {
+        const materiales = await this.obtenerTiposMateriales();
+        if (!materiales) return [];
+        
+        return Object.entries(materiales).map(([key, valor]: [string, any]) => ({
+            id: key,
+            nombre: valor.nombre,
+            descripcion: valor.descripcion
+        }));
+    },
+
     // Obtener configuración de recomendaciones
     async obtenerConfiguracionRecomendaciones(): Promise<any> {
         return await this.obtenerConfiguracionPorNombre('configuracion_recomendaciones');
@@ -169,6 +207,16 @@ export const configuracionService = {
     // Actualizar categorías de colores
     async actualizarCategoriasColores(categorias: any): Promise<boolean> {
         return await this.actualizarConfiguracionPorNombre('categorias_colores', categorias);
+    },
+
+    // Actualizar estilos decorativos
+    async actualizarEstilosDecorativos(estilos: any): Promise<boolean> {
+        return await this.actualizarConfiguracionPorNombre('estilos_decorativos', estilos);
+    },
+
+    // Actualizar tipos de materiales
+    async actualizarTiposMateriales(materiales: any): Promise<boolean> {
+        return await this.actualizarConfiguracionPorNombre('tipos_materiales', materiales);
     },
 
     // Actualizar configuración de recomendaciones
@@ -204,6 +252,48 @@ export const configuracionService = {
                     metálicos: { nombre: 'Colores Metálicos', colores: ['Dorado', 'Plateado', 'Cobre', 'Bronce'] }
                 },
                 descripcion: 'Categorías de colores y sus colores asociados',
+                activo: true
+            },
+            {
+                nombre: 'estilos_decorativos',
+                valor: {
+                    rustico: { 
+                        nombre: 'Estilo Rústico', 
+                        descripcion: 'Caracterizado por texturas naturales y acabados envejecidos'
+                    },
+                    moderno: { 
+                        nombre: 'Estilo Moderno', 
+                        descripcion: 'Líneas limpias, minimalista y contemporáneo'
+                    },
+                    ejecutivo: { 
+                        nombre: 'Estilo Ejecutivo', 
+                        descripcion: 'Elegante, sofisticado y profesional'
+                    },
+                    clasico: { 
+                        nombre: 'Estilo Clásico', 
+                        descripcion: 'Tradicional, atemporal y refinado'
+                    }
+                },
+                descripcion: 'Estilos decorativos y sus características',
+                activo: true
+            },
+            {
+                nombre: 'tipos_materiales',
+                valor: {
+                    ceramica_natural: { 
+                        nombre: 'Cerámica Natural', 
+                        descripcion: 'Materiales naturales y orgánicos'
+                    },
+                    porcelanato: { 
+                        nombre: 'Porcelanato', 
+                        descripcion: 'Materiales de alta densidad y durabilidad'
+                    },
+                    gres: { 
+                        nombre: 'Gres', 
+                        descripcion: 'Materiales resistentes y versátiles'
+                    }
+                },
+                descripcion: 'Tipos de materiales y sus características',
                 activo: true
             },
             {

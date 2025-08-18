@@ -5,7 +5,7 @@ import { TrashIcon, PencilIcon, PlusIcon } from '@heroicons/react/24/outline';
 export default function ConfiguracionSistema() {
     const [configuraciones, setConfiguraciones] = useState<ConfiguracionSistema[]>([]);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'rangos' | 'colores'>('rangos');
+    const [activeTab, setActiveTab] = useState<'rangos' | 'colores' | 'estilos' | 'materiales'>('rangos');
 
     useEffect(() => {
         cargarConfiguraciones();
@@ -26,10 +26,14 @@ export default function ConfiguracionSistema() {
 
     const crearConfiguracionesPorDefecto = async () => {
         try {
+            console.log('🔄 Creando configuraciones por defecto...');
             await configuracionService.crearConfiguracionesPorDefecto();
+            console.log('✅ Configuraciones por defecto creadas exitosamente');
             await cargarConfiguraciones();
+            alert('✅ Configuraciones por defecto creadas exitosamente. Ahora puedes editar estilos y materiales.');
         } catch (error) {
             console.error('❌ Error creando configuraciones por defecto:', error);
+            alert('❌ Error creando configuraciones por defecto: ' + error);
         }
     };
 
@@ -63,12 +67,50 @@ export default function ConfiguracionSistema() {
         }
     };
 
+    const actualizarEstilosDecorativos = async (estilos: any) => {
+        try {
+            await configuracionService.actualizarEstilosDecorativos(estilos);
+            alert('✅ Estilos decorativos actualizados correctamente');
+            await cargarConfiguraciones();
+            
+            // Notificar que la configuración cambió
+            window.dispatchEvent(new CustomEvent('configuracionActualizada', {
+                detail: { tipo: 'estilos_decorativos', datos: estilos }
+            }));
+        } catch (error) {
+            alert('❌ Error al actualizar los estilos decorativos');
+        }
+    };
+
+    const actualizarTiposMateriales = async (materiales: any) => {
+        try {
+            await configuracionService.actualizarTiposMateriales(materiales);
+            alert('✅ Tipos de materiales actualizados correctamente');
+            await cargarConfiguraciones();
+            
+            // Notificar que la configuración cambió
+            window.dispatchEvent(new CustomEvent('configuracionActualizada', {
+                detail: { tipo: 'tipos_materiales', datos: materiales }
+            }));
+        } catch (error) {
+            alert('❌ Error al actualizar los tipos de materiales');
+        }
+    };
+
     const getRangosPrecio = () => {
         return configuraciones.find(config => config.nombre === 'rangos_precio')?.valor || {};
     };
 
     const getCategoriasColores = () => {
         return configuraciones.find(config => config.nombre === 'categorias_colores')?.valor || {};
+    };
+
+    const getEstilosDecorativos = () => {
+        return configuraciones.find(config => config.nombre === 'estilos_decorativos')?.valor || {};
+    };
+
+    const getTiposMateriales = () => {
+        return configuraciones.find(config => config.nombre === 'tipos_materiales')?.valor || {};
     };
 
     if (loading) {
@@ -80,14 +122,28 @@ export default function ConfiguracionSistema() {
     }
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">⚙️ Configuración del Sistema</h1>
+        <div className="p-6 max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">⚙️ Configuración del Sistema de Preferencias</h1>
+            
+            {/* Botón para crear configuraciones por defecto */}
+            <div className="mb-6">
+                <button
+                    onClick={crearConfiguracionesPorDefecto}
+                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors flex items-center space-x-2"
+                >
+                    <span>🔧</span>
+                    <span>Crear Configuraciones por Defecto</span>
+                </button>
+                <p className="text-sm text-gray-600 mt-2">
+                    Usa este botón si es la primera vez que configuras el sistema o si necesitas restaurar la configuración inicial.
+                </p>
+            </div>
             
             {/* Tabs de navegación */}
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('rangos')}
-                    className={`px-6 py-3 rounded-md transition-colors font-medium ${
+                    className={`px-6 py-3 rounded-md transition-colors font-medium whitespace-nowrap ${
                         activeTab === 'rangos'
                             ? 'bg-orange-500 text-white'
                             : 'text-gray-600 hover:bg-gray-200'
@@ -97,13 +153,33 @@ export default function ConfiguracionSistema() {
                 </button>
                 <button
                     onClick={() => setActiveTab('colores')}
-                    className={`px-6 py-3 rounded-md transition-colors font-medium ${
+                    className={`px-6 py-3 rounded-md transition-colors font-medium whitespace-nowrap ${
                         activeTab === 'colores'
                             ? 'bg-orange-500 text-white'
                             : 'text-gray-600 hover:bg-gray-200'
                     }`}
                 >
                     🎨 Categorías de Colores
+                </button>
+                <button
+                    onClick={() => setActiveTab('estilos')}
+                    className={`px-6 py-3 rounded-md transition-colors font-medium whitespace-nowrap ${
+                        activeTab === 'estilos'
+                            ? 'bg-orange-500 text-white'
+                            : 'text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                    🏠 Estilos Decorativos
+                </button>
+                <button
+                    onClick={() => setActiveTab('materiales')}
+                    className={`px-6 py-3 rounded-md transition-colors font-medium whitespace-nowrap ${
+                        activeTab === 'materiales'
+                            ? 'bg-orange-500 text-white'
+                            : 'text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                    🧱 Tipos de Materiales
                 </button>
             </div>
 
@@ -118,6 +194,20 @@ export default function ConfiguracionSistema() {
                 <CategoriasColores 
                     categorias={getCategoriasColores()} 
                     onSave={actualizarCategoriasColores} 
+                />
+            )}
+
+            {activeTab === 'estilos' && (
+                <EstilosDecorativos 
+                    estilos={getEstilosDecorativos()} 
+                    onSave={actualizarEstilosDecorativos} 
+                />
+            )}
+
+            {activeTab === 'materiales' && (
+                <TiposMateriales 
+                    materiales={getTiposMateriales()} 
+                    onSave={actualizarTiposMateriales} 
                 />
             )}
         </div>
@@ -396,6 +486,220 @@ function CategoriasColores({ categorias, onSave }: { categorias: any, onSave: (c
                 <p className="text-blue-800 text-sm">
                     Estas categorías se usan para organizar los colores de los productos y 
                     hacer recomendaciones más precisas basadas en las preferencias de color de los clientes.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// Componente para editar estilos decorativos
+function EstilosDecorativos({ estilos, onSave }: { estilos: any, onSave: (estilos: any) => void }) {
+    const [estilosEdit, setEstilosEdit] = useState(estilos);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const handleChange = (estilo: string, campo: string, valor: string) => {
+        setEstilosEdit({
+            ...estilosEdit,
+            [estilo]: {
+                ...estilosEdit[estilo],
+                [campo]: valor
+            }
+        });
+    };
+
+
+
+    const handleSave = () => {
+        onSave(estilosEdit);
+        setIsEditing(false);
+    };
+
+    const handleCancel = () => {
+        setEstilosEdit(estilos);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">🏠 Estilos Decorativos para Productos</h2>
+                {!isEditing ? (
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                    >
+                        ✏️ Editar Estilos
+                    </button>
+                ) : (
+                    <div className="space-x-2">
+                        <button
+                            onClick={handleSave}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                        >
+                            💾 Guardar
+                        </button>
+                        <button
+                            onClick={handleCancel}
+                            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+                        >
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Object.entries(estilosEdit).map(([estilo, datos]: [string, any]) => (
+                    <div key={estilo} className="border rounded-lg p-4 bg-gray-50">
+                        <h3 className="font-semibold text-lg mb-3 text-gray-800">
+                            {datos.nombre}
+                        </h3>
+                        
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Nombre del Estilo
+                                </label>
+                                <input
+                                    type="text"
+                                    value={datos.nombre}
+                                    onChange={(e) => handleChange(estilo, 'nombre', e.target.value)}
+                                    disabled={!isEditing}
+                                    className="w-full p-2 border rounded focus:border-orange-500 focus:outline-none disabled:bg-gray-100"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Descripción
+                                </label>
+                                <textarea
+                                    value={datos.descripcion}
+                                    onChange={(e) => handleChange(estilo, 'descripcion', e.target.value)}
+                                    disabled={!isEditing}
+                                    rows={2}
+                                    className="w-full p-2 border rounded focus:border-orange-500 focus:outline-none disabled:bg-gray-100"
+                                />
+                            </div>
+                            
+
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-medium text-blue-900 mb-2">💡 ¿Para qué sirven estos estilos?</h3>
+                <p className="text-blue-800 text-sm">
+                    Estos estilos se usan para categorizar los productos por su apariencia decorativa y 
+                    hacer recomendaciones más precisas basadas en las preferencias de estilo de los clientes.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// Componente para editar tipos de materiales
+function TiposMateriales({ materiales, onSave }: { materiales: any, onSave: (materiales: any) => void }) {
+    const [materialesEdit, setMaterialesEdit] = useState(materiales);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const handleChange = (material: string, campo: string, valor: string) => {
+        setMaterialesEdit({
+            ...materialesEdit,
+            [material]: {
+                ...materialesEdit[material],
+                [campo]: valor
+            }
+        });
+    };
+
+
+
+    const handleSave = () => {
+        onSave(materialesEdit);
+        setIsEditing(false);
+    };
+
+    const handleCancel = () => {
+        setMaterialesEdit(materiales);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">🧱 Tipos de Materiales para Productos</h2>
+                {!isEditing ? (
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                    >
+                        ✏️ Editar Materiales
+                    </button>
+                ) : (
+                    <div className="space-x-2">
+                        <button
+                            onClick={handleSave}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                        >
+                            💾 Guardar
+                        </button>
+                        <button
+                            onClick={handleCancel}
+                            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+                        >
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {Object.entries(materialesEdit).map(([material, datos]: [string, any]) => (
+                    <div key={material} className="border rounded-lg p-4 bg-gray-50">
+                        <h3 className="font-semibold text-lg mb-3 text-gray-800">
+                            {datos.nombre}
+                        </h3>
+                        
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Nombre del Material
+                                </label>
+                                <input
+                                    type="text"
+                                    value={datos.nombre}
+                                    onChange={(e) => handleChange(material, 'nombre', e.target.value)}
+                                    disabled={!isEditing}
+                                    className="w-full p-2 border rounded focus:border-orange-500 focus:outline-none disabled:bg-gray-100"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Descripción
+                                </label>
+                                <textarea
+                                    value={datos.descripcion}
+                                    onChange={(e) => handleChange(material, 'descripcion', e.target.value)}
+                                    disabled={!isEditing}
+                                    rows={2}
+                                    className="w-full p-2 border rounded focus:border-orange-500 focus:outline-none disabled:bg-gray-100"
+                                />
+                            </div>
+                            
+
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-medium text-blue-900 mb-2">💡 ¿Para qué sirven estos tipos de materiales?</h3>
+                <p className="text-blue-800 text-sm">
+                    Estos tipos se usan para categorizar los productos por su composición material y 
+                    hacer recomendaciones más precisas basadas en las preferencias de material de los clientes.
                 </p>
             </div>
         </div>

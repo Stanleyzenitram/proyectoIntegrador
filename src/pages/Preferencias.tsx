@@ -4,8 +4,6 @@ import { supabase } from '../services/supabase';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart, faSave, faCheck, faHome, faDollarSign, faTags, faPalette, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { 
-    CATEGORIAS_ESTILOS, 
-    CATEGORIAS_MATERIALES,
     PreferenciasCategorizadas,
     obtenerNombreCategoria
 } from '../utils/preferenciasCategorias';
@@ -42,6 +40,8 @@ export default function Preferencias() {
     const { 
         categoriasColores, 
         categoriasPrecio, 
+        estilosDecorativos,
+        tiposMateriales,
         loading: loadingConfig,
         error: errorConfig,
         refrescarConfiguracion 
@@ -311,10 +311,17 @@ export default function Preferencias() {
                                         <FontAwesomeIcon icon={faHome} className="mr-2 text-amber-500" />
                                         Estilo Decorativo
                                     </h3>
-                                    <p className="text-sm text-gray-600">Selecciona el estilo que mejor refleje tu personalidad</p>
+                                    <p className="text-sm text-gray-600">Selecciona el estilo que mejor refleje tu personalidad y preferencias decorativas</p>
+                                    {loadingConfig && (
+                                        <div className="mt-2 text-xs text-blue-600">🔄 Cargando configuración...</div>
+                                    )}
+                                    {errorConfig && (
+                                        <div className="mt-2 text-xs text-red-600">⚠️ Error: {errorConfig}</div>
+                                    )}
+                                    
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {CATEGORIAS_ESTILOS.map((categoria) => (
+                                    {estilosDecorativos.map((categoria) => (
                                         <label 
                                             key={categoria.id} 
                                             className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -356,10 +363,17 @@ export default function Preferencias() {
                                         <FontAwesomeIcon icon={faLayerGroup} className="mr-2 text-amber-500" />
                                         Tipo de Material
                                     </h3>
-                                    <p className="text-sm text-gray-600">Elige el tipo de material que prefieres</p>
+                                    <p className="text-sm text-gray-600">Elige el tipo de material que prefieres para tus proyectos</p>
+                                    {loadingConfig && (
+                                        <div className="mt-2 text-xs text-blue-600">🔄 Cargando configuración...</div>
+                                    )}
+                                    {errorConfig && (
+                                        <div className="mt-2 text-xs text-red-600">⚠️ Error: {errorConfig}</div>
+                                    )}
+                                    
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    {CATEGORIAS_MATERIALES.map((categoria) => (
+                                    {tiposMateriales.map((categoria) => (
                                         <label 
                                             key={categoria.id} 
                                             className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -450,34 +464,7 @@ export default function Preferencias() {
                                 </div>
                             </div>
 
-                            {/* Información útil */}
-                            <div className="bg-white rounded-lg shadow p-6">
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                    <h4 className="font-semibold text-amber-800 mb-2 flex items-center">
-                                        <FontAwesomeIcon icon={faHeart} className="mr-2" />
-                                        ¿Cómo funcionan las nuevas recomendaciones?
-                                    </h4>
-                                    <ul className="text-sm text-amber-700 space-y-1">
-                                        <li>• <strong>Colores:</strong> Filtramos por familias de colores (cálidos, fríos, neutros) para encontrar productos que coincidan con tu estilo</li>
-                                        <li>• <strong>Estilos:</strong> Mostramos productos que se adapten a tu preferencia decorativa (rústico, moderno, ejecutivo, clásico)</li>
-                                        <li>• <strong>Materiales:</strong> Priorizamos el tipo de material que prefieres (cerámica natural, porcelanato, gres)</li>
-                                        <li>• <strong>Presupuesto:</strong> Solo te sugerimos productos dentro de tu rango de precio seleccionado</li>
-                                    </ul>
-                                    <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                                        <p className="text-xs text-blue-700 font-medium">
-                                            🎯 <strong>Ventaja:</strong> Ahora puedes seleccionar una sola categoría por tipo, lo que hace más fácil encontrar productos perfectos para ti.
-                                        </p>
-                                    </div>
-                                    <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
-                                        <p className="text-xs text-green-700 font-medium">
-                                            🔄 <strong>Sincronizado:</strong> Los cambios en la configuración del sistema se reflejan automáticamente aquí.
-                                        </p>
-                                    </div>
-                                    <p className="text-xs text-amber-600 mt-3 font-medium">
-                                        💡 Consejo: No es necesario seleccionar todas las categorías. Puedes elegir solo las que más te importen para tu proyecto.
-                                    </p>
-                                </div>
-                            </div>
+                            
 
                             {/* Botón guardar (solo en móviles) */}
                             <div className="lg:hidden">
