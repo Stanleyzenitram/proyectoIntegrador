@@ -4,14 +4,13 @@ import { supabase } from '../services/supabase';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart, faSave, faCheck, faHome, faDollarSign, faTags, faPalette, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { 
-    CATEGORIAS_COLORES, 
     CATEGORIAS_ESTILOS, 
-    CATEGORIAS_PRECIO, 
     CATEGORIAS_MATERIALES,
     PreferenciasCategorizadas,
     obtenerNombreCategoria
 } from '../utils/preferenciasCategorias';
 import { useRecomendacionesCategorias } from '../hooks/useRecomendacionesCategorias';
+import { useConfiguracionPreferencias } from '../hooks/useConfiguracionPreferencias';
 
 interface PreferenciaCompleta {
     idClientes: number;
@@ -39,6 +38,14 @@ export default function Preferencias() {
         loadingPreferencias,
         cargarPreferencias 
     } = useRecomendacionesCategorias();
+    
+    const { 
+        categoriasColores, 
+        categoriasPrecio, 
+        loading: loadingConfig,
+        error: errorConfig,
+        refrescarConfiguracion 
+    } = useConfiguracionPreferencias();
     
     const [preferencias, setPreferencias] = useState<PreferenciaCompleta>({
         idClientes: 0,
@@ -251,9 +258,15 @@ export default function Preferencias() {
                                         Preferencia de Colores
                                     </h3>
                                     <p className="text-sm text-gray-600">Elige el tipo de colores que más te gustan</p>
+                                    {loadingConfig && (
+                                        <div className="mt-2 text-xs text-blue-600">🔄 Cargando configuración...</div>
+                                    )}
+                                    {errorConfig && (
+                                        <div className="mt-2 text-xs text-red-600">⚠️ Error: {errorConfig}</div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    {CATEGORIAS_COLORES.map((categoria) => (
+                                    {categoriasColores.map((categoria) => (
                                         <label 
                                             key={categoria.id} 
                                             className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -389,9 +402,15 @@ export default function Preferencias() {
                                         Rango de Presupuesto
                                     </h3>
                                     <p className="text-sm text-gray-600">Selecciona el rango de precio que mejor se adapte a tu presupuesto</p>
+                                    {loadingConfig && (
+                                        <div className="mt-2 text-xs text-blue-600">🔄 Cargando configuración...</div>
+                                    )}
+                                    {errorConfig && (
+                                        <div className="mt-2 text-xs text-red-600">⚠️ Error: {errorConfig}</div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {CATEGORIAS_PRECIO.map((categoria) => (
+                                    {categoriasPrecio.map((categoria) => (
                                         <label 
                                             key={categoria.id} 
                                             className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -447,6 +466,11 @@ export default function Preferencias() {
                                     <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
                                         <p className="text-xs text-blue-700 font-medium">
                                             🎯 <strong>Ventaja:</strong> Ahora puedes seleccionar una sola categoría por tipo, lo que hace más fácil encontrar productos perfectos para ti.
+                                        </p>
+                                    </div>
+                                    <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
+                                        <p className="text-xs text-green-700 font-medium">
+                                            🔄 <strong>Sincronizado:</strong> Los cambios en la configuración del sistema se reflejan automáticamente aquí.
                                         </p>
                                     </div>
                                     <p className="text-xs text-amber-600 mt-3 font-medium">
@@ -536,7 +560,7 @@ export default function Preferencias() {
                                             {preferencias.categoria_precio && (
                                                 <div className="mt-1 text-xs text-amber-600">
                                                     {(() => {
-                                                        const categoria = CATEGORIAS_PRECIO.find(c => c.id === preferencias.categoria_precio);
+                                                        const categoria = categoriasPrecio.find(c => c.id === preferencias.categoria_precio);
                                                         if (categoria?.mapeo.rango) {
                                                             return `RD$ ${categoria.mapeo.rango.min.toLocaleString()} - RD$ ${categoria.mapeo.rango.max === 999999 ? '15,000+' : categoria.mapeo.rango.max.toLocaleString()}`;
                                                         }

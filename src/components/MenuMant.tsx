@@ -63,7 +63,7 @@ export default function MenuMant() {
                         <NavLink to="/productos" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Productos</NavLink>
                         <NavLink to="/proveedores-form" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
                         <NavLink to="/materiales" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Materiales</NavLink>
-                        <NavLink to="/productos-relacionados" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Productos Relacionados</NavLink>
+                        <NavLink to="/configuracion-sistema" onClick={() => setIsMenuOpen(false)} className="block px-4 py-2 hover:bg-gray-200">Configuración del Sistema</NavLink>
                             </div>
                         </details>
 
@@ -156,7 +156,7 @@ export default function MenuMant() {
                         <NavLink to="/productos" className="block px-4 py-2 hover:bg-gray-200">Productos</NavLink>
                         <NavLink to="/proveedores-form" className="block px-4 py-2 hover:bg-gray-200">Proveedores</NavLink>
                         <NavLink to="/materiales" className="block px-4 py-2 hover:bg-gray-200">Materiales</NavLink>
-                        <NavLink to="/productos-relacionados" className="block px-4 py-2 hover:bg-gray-200">Productos Relacionados</NavLink>
+                        <NavLink to="/configuracion-sistema" className="block px-4 py-2 hover:bg-gray-200">Configuración del Sistema</NavLink>
                     </div>
                 </div>
 

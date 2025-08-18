@@ -37,6 +37,8 @@ import ReporteClientes from "./features/reportes/ReporteClientes";
 import ReporteEmpleados from "./features/reportes/ReporteEmpleados";
 import EstiloMaterialForm from "./features/mantenimientos/EstilosForm";
 import Preferencias from "./pages/Preferencias";
+import ConfiguracionSistema from "./features/mantenimientos/ConfiguracionSistema";
+import TestRecomendaciones from "./test/TestRecomendaciones";
 
 export default function AppRouter() {
     const { user } = useAuth();
@@ -82,6 +84,8 @@ export default function AppRouter() {
                     <Route path="/pedidos-mant" element={<PedidosMant />} />
                     <Route path="/inventario" element={<Inventario />} />
                     <Route path="/compras" element={<CompraProductos />} />
+                    <Route path="/configuracion-sistema" element={<ConfiguracionSistema />} />
+                    <Route path="/test-recomendaciones" element={<TestRecomendaciones />} />
                     <Route
                         path="/proveedores-lista"
                         element={<ListaProveedores />}

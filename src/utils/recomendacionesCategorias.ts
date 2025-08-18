@@ -6,6 +6,7 @@ import {
     obtenerFiltrosReales, 
     construirQueryConCategorias 
 } from './preferenciasCategorias';
+import { configuracionService } from '../services/configuracionService';
 
 export interface ProductoRecomendadoCategorizado {
     id_producto: number;
@@ -50,23 +51,54 @@ export async function cargarPreferenciasCategorias(clienteId: number): Promise<P
 }
 
 /**
- * Generar recomendaciones basadas en categorías
+ * Generar recomendaciones basadas en categorías usando configuración dinámica
  */
 export async function generarRecomendacionesPorCategorias(
     clienteId: number,
     limite: number = 12
 ): Promise<ProductoRecomendadoCategorizado[]> {
     try {
+        console.log('🎯 Generando recomendaciones por categorías para cliente:', clienteId);
+        
         // Cargar preferencias categorizadas
         const preferencias = await cargarPreferenciasCategorias(clienteId);
         
         if (!preferencias) {
-            // Si no hay preferencias categorizadas, devolver productos populares
+            console.log('⚠️ No hay preferencias categorizadas, usando productos populares');
             return await obtenerProductosPopulares(limite);
         }
 
+        // Cargar configuración dinámica del sistema
+        const [rangosPrecio, categoriasColores] = await Promise.all([
+            configuracionService.obtenerRangosPrecio(),
+            configuracionService.obtenerCategoriasColores()
+        ]);
+
+        console.log('📊 Configuración cargada:', { rangosPrecio, categoriasColores });
+
         // Obtener filtros reales basados en categorías
         const filtros = obtenerFiltrosReales(preferencias);
+
+        // Aplicar filtros de precio usando la configuración dinámica
+        if (preferencias.categoria_precio && rangosPrecio) {
+            const categoriaPrecio = rangosPrecio[preferencias.categoria_precio];
+            if (categoriaPrecio) {
+                filtros.precioMin = categoriaPrecio.min;
+                filtros.precioMax = categoriaPrecio.max;
+                console.log('💰 Filtros de precio aplicados:', { min: filtros.precioMin, max: filtros.precioMax });
+            }
+        }
+
+        // Aplicar filtros de color usando la configuración dinámica
+        if (preferencias.categoria_color && categoriasColores) {
+            const categoriaColor = categoriasColores[preferencias.categoria_color];
+            if (categoriaColor && categoriaColor.colores) {
+                filtros.colores = categoriaColor.colores;
+                console.log('🎨 Filtros de color aplicados:', filtros.colores);
+            }
+        }
+
+        console.log('🔍 Filtros finales aplicados:', filtros);
 
         // Construir query base con joins para obtener nombres
         let query = supabase
@@ -101,13 +133,15 @@ export async function generarRecomendacionesPorCategorias(
 
         if (error) throw error;
         
+        console.log(`📦 Productos encontrados inicialmente: ${productos?.length || 0}`);
+        
         // Aplicar filtros post-query para estilos y materiales
         let productosFiltrados = productos || [];
         
         if (filtros.estilos && filtros.estilos.length > 0) {
             productosFiltrados = productosFiltrados.filter(producto => {
                 const nombreEstilo = (producto as any).estilos?.nombre_estilo?.toLowerCase() || '';
-                return filtros.estilos.some((estilo: string) => 
+                return filtros.estilos!.some((estilo: string) => 
                     nombreEstilo.includes(estilo.toLowerCase())
                 );
             });
@@ -116,13 +150,17 @@ export async function generarRecomendacionesPorCategorias(
         if (filtros.materiales && filtros.materiales.length > 0) {
             productosFiltrados = productosFiltrados.filter(producto => {
                 const nombreMaterial = (producto as any).materiales?.nombre_materiales?.toLowerCase() || '';
-                return filtros.materiales.some((material: string) => 
+                return filtros.materiales!.some((material: string) => 
                     nombreMaterial.includes(material.toLowerCase())
                 );
             });
         }
         
+        console.log(`🔍 Productos después de filtros post-query: ${productosFiltrados.length}`);
+        
         if (!productosFiltrados || productosFiltrados.length === 0) {
+            console.log('⚠️ No hay productos que coincidan con todos los filtros, intentando solo con precio...');
+            
             // Intentar solo con filtro de precio como fallback
             if (filtros.precioMin !== undefined || filtros.precioMax !== undefined) {
                 
@@ -158,6 +196,7 @@ export async function generarRecomendacionesPorCategorias(
                 const { data: productosPrecio, error: errorPrecio } = await queryPrecio.limit(limite);
                 
                 if (!errorPrecio && productosPrecio && productosPrecio.length > 0) {
+                    console.log(`✅ Encontrados ${productosPrecio.length} productos por precio`);
                     return productosPrecio.map(p => ({
                         ...p,
                         score_recomendacion: 30,
@@ -165,6 +204,8 @@ export async function generarRecomendacionesPorCategorias(
                     }));
                 }
             }
+            
+            console.log('⚠️ Fallback a productos populares');
             return await obtenerProductosPopulares(limite);
         }
 
@@ -199,43 +240,41 @@ export async function generarRecomendacionesPorCategorias(
                 }
             }
 
-            // Puntuar por rango de precio
-            if (preferencias.categoria_precio && filtros.precioMin !== undefined && filtros.precioMax !== undefined) {
-                if (producto.precio >= filtros.precioMin && producto.precio <= filtros.precioMax) {
-                    score += 30;
-                    razones.push('Precio dentro de tu rango preferido');
+            // Puntuar por estar en el rango de precio
+            if (filtros.precioMin !== undefined || filtros.precioMax !== undefined) {
+                const precio = producto.precio;
+                if ((filtros.precioMin === undefined || precio >= filtros.precioMin) &&
+                    (filtros.precioMax === undefined || precio <= filtros.precioMax)) {
+                    score += 25;
+                    razones.push('Dentro de tu presupuesto');
                 }
-            }
-
-            // Puntuar por descuento
-            if (producto.descuento && producto.descuento > 0) {
-                score += 20;
-                razones.push('Producto en oferta');
-            }
-
-            // Puntuar por stock disponible
-            score += Math.min(10, producto.stock_actual / 5);
-
-            // Si no hay razones específicas, dar razón general
-            if (razones.length === 0) {
-                razones.push('Recomendado para ti');
-                score += 10;
             }
 
             return {
                 ...producto,
                 score_recomendacion: score,
-                razon_recomendacion: razones.join(', ')
+                razon_recomendacion: razones.join(', ') || 'Recomendación general'
             };
         });
 
-        // Ordenar por score y limitar resultados
-        return productosConScore
+        // Ordenar por score y tomar los mejores
+        const productosOrdenados = productosConScore
             .sort((a, b) => (b.score_recomendacion || 0) - (a.score_recomendacion || 0))
             .slice(0, limite);
 
+        console.log(`✅ Recomendaciones generadas: ${productosOrdenados.length} productos`);
+        console.log('🏆 Top 3 productos:', productosOrdenados.slice(0, 3).map(p => ({
+            nombre: p.nombre_producto,
+            precio: p.precio,
+            score: p.score_recomendacion,
+            razon: p.razon_recomendacion
+        })));
+
+        return productosOrdenados;
+
     } catch (error) {
-        console.error('Error al generar recomendaciones por categorías:', error);
+        console.error('❌ Error generando recomendaciones por categorías:', error);
+        // Fallback a productos populares
         return await obtenerProductosPopulares(limite);
     }
 }
@@ -346,7 +385,7 @@ export async function migrarPreferenciasLegacy(clienteId: number): Promise<boole
 
         // Convertir a formato categorizado (migración básica)
         const preferenciasCategorizadas: PreferenciasCategorizadas = {
-            idClientes: clienteId,
+            idclientes: clienteId,
             categoria_precio: prefsLegacy.rango_precio || undefined,
             fecha_actualizacion: new Date().toISOString()
         };
